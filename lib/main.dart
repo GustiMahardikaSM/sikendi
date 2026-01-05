@@ -1,4 +1,5 @@
 import 'package:sikendi/driver_page.dart'; // Import halaman driver
+import 'package:sikendi/login_page.dart';
 import 'package:sikendi/manager_page.dart'; // Import halaman manager
 import 'package:flutter/material.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
 
@@ -9,20 +10,19 @@ void main() {
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false, // Menghilangkan banner "Debug" di pojok kanan atas
     title: 'SiKenDi App',
-    // Aplikasi dimulai dari Halaman Login
-    home: LoginPage(),
+    // Aplikasi dimulai dari Halaman Awal (RoleSelectionPage)
+    home: RoleSelectionPage(),
   ));
 }
 
 // ========================================================== 
-// 2. HALAMAN LOGIN (DEMO AUTH & CONSENT)
+// 2. HALAMAN PEMILIHAN PERAN
 // ========================================================== 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
+class RoleSelectionPage extends StatelessWidget {
+  const RoleSelectionPage({super.key});
 
-  // Fungsi untuk menampilkan Dialog Persetujuan Privasi (UU PDP)
-  // Dipanggil saat tombol peran ditekan.
-  void _showConsentDialog(BuildContext context, String role) {
+  // Fungsi untuk menampilkan Dialog Persetujuan Privasi untuk Manajer
+  void _showManagerConsentDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false, // User tidak bisa tutup dialog dengan klik di luar kotak
@@ -30,7 +30,7 @@ class LoginPage extends StatelessWidget {
         title: const Text("Persetujuan Privasi Data"),
         content: const SingleChildScrollView(
           child: Text(
-            // Teks disesuaikan dengan dokumen proposal [cite: 195, 506]
+            // Teks disesuaikan dengan dokumen proposal
             "Sesuai dengan UU No. 27 Tahun 2022 tentang Perlindungan Data Pribadi:\n\n" 
             "1. Aplikasi ini akan mengakses lokasi perangkat Anda secara real-time.\n"
             "2. Data lokasi digunakan hanya untuk keperluan operasional kendaraan dinas Undip.\n"
@@ -44,25 +44,15 @@ class LoginPage extends StatelessWidget {
             onPressed: () => Navigator.of(ctx).pop(), // Tutup dialog
             child: const Text("Tolak"),
           ),
-          // Tombol Setuju -> Masuk ke Peta
+          // Tombol Setuju -> Masuk ke Peta Manajer
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop(); // Tutup dialog dulu
-              
-              // --- LOGIKA NAVIGASI BERDASARKAN PERAN ---
-              if (role == "Sopir") {
-                // Jika peran adalah Sopir, pergi ke DriverPage
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DriverPage()),
-                );
-              } else {
-                // Jika peran lain (Manajer), pergi ke halaman Peta umum
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ManagerPage()),
-                );
-              }
+              // Langsung ke halaman manajer
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const ManagerPage()),
+              );
             },
             child: const Text("Setuju & Masuk"),
           ),
@@ -91,12 +81,12 @@ class LoginPage extends StatelessWidget {
               const Text("Sistem Informasi Kendaraan Dinas"),
               const SizedBox(height: 48),
 
-              // --- TOMBOL PILIH PERAN (DEMO) --- 
+              // --- TOMBOL PILIH PERAN ---
               
               const Text("Masuk Sebagai:", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
 
-              // Tombol untuk MANAJER [cite: 502]
+              // Tombol untuk MANAJER
               SizedBox(
                 width: double.infinity, // Lebar tombol memenuhi layar
                 height: 50,
@@ -104,12 +94,12 @@ class LoginPage extends StatelessWidget {
                   icon: const Icon(Icons.admin_panel_settings),
                   label: const Text("MANAJER (Monitoring Armada)"),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[900], foregroundColor: Colors.white),
-                  onPressed: () => _showConsentDialog(context, "Manajer"),
+                  onPressed: () => _showManagerConsentDialog(context),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Tombol untuk SOPIR [cite: 503]
+              // Tombol untuk SOPIR
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -117,7 +107,13 @@ class LoginPage extends StatelessWidget {
                   icon: const Icon(Icons.drive_eta),
                   label: const Text("SOPIR (Aktifkan Tracking)"),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white),
-                  onPressed: () => _showConsentDialog(context, "Sopir"),
+                  onPressed: () {
+                    // Arahkan ke halaman login khusus sopir
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                    );
+                  },
                 ),
               ),
             ],

@@ -37,6 +37,7 @@ dependencies:
   flutter_map: ^7.0.0
   latlong2: ^0.9.1
   mongo_dart: ^0.10.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
