@@ -28,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (user != null) {
       if (mounted) {
-        _showConsentDialog(context, "Sopir", user['nama_lengkap']);
+        _showConsentDialog(context, "Sopir", user);
       }
     } else {
       if (mounted) {
@@ -39,12 +39,12 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _showConsentDialog(BuildContext context, String role, String? namaUser) {
+  void _showConsentDialog(BuildContext context, String role, Map<String, dynamic> user) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("Selamat Datang, $namaUser"),
+        title: Text("Selamat Datang, ${user['nama_lengkap']}"),
         content: const Text(
           "Sesuai UU No. 27 Tahun 2022, aplikasi ini akan mengakses lokasi Anda untuk keperluan dinas.",
           textAlign: TextAlign.justify,
@@ -56,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
               Navigator.of(ctx).pop();
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const DriverPage()),
+                MaterialPageRoute(builder: (_) => DriverPage(user: user)),
               );
             },
             child: const Text("Setuju & Masuk"),

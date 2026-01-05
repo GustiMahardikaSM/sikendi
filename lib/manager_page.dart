@@ -3,6 +3,8 @@ import 'package:flutter/material.dart'; // UI Standar
 import 'package:flutter_map/flutter_map.dart'; // Peta
 import 'package:latlong2/latlong.dart'; // Koordinat
 import 'package:mongo_dart/mongo_dart.dart' as mongo; // Database
+import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/manager_vehicle_tab.dart';
 
 // ==========================================================
 // KELAS UTAMA HALAMAN MANAJER
@@ -20,8 +22,9 @@ class _ManagerPageState extends State<ManagerPage> {
   // Daftar Tab Halaman
   static final List<Widget> _pages = <Widget>[
     const ManagerDashboardTab(), // Tab 0: Peta Monitoring Armada
-    const ManagerDriversTab(),   // Tab 1: Daftar & Profil Sopir
-    const ManagerAlertsTab(),    // Tab 2: Peringatan (Alert System)
+    const ManagerVehicleManagementTab(), // Tab 1: Manajemen Kendaraan
+    const ManagerDriversTab(),   // Tab 2: Daftar & Profil Sopir
+    const ManagerAlertsTab(),    // Tab 3: Peringatan (Alert System)
   ];
 
   void _onItemTapped(int index) {
@@ -40,10 +43,15 @@ class _ManagerPageState extends State<ManagerPage> {
       ),
       body: _pages.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed, // Ensure all items are visible
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.map_outlined),
             label: 'Monitoring',
+          ),
+           BottomNavigationBarItem(
+            icon: Icon(Icons.directions_car),
+            label: 'Kendaraan',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.people_alt),
@@ -73,21 +81,15 @@ class ManagerDashboardTab extends StatefulWidget {
 }
 
 class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
-  // Konfigurasi Database
-  final String _mongoUrl =
-      "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
-  final String _collectionName = "gps_location";
-
-  mongo.Db? _db;
   List<Map<String, dynamic>> _activeVehicles = [];
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _connectToMongo();
-    // Refresh peta setiap 3 detik
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _fetchFleetData(); // Initial fetch
+    // Refresh peta setiap 5 detik
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _fetchFleetData();
     });
   }
@@ -95,47 +97,19 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
   @override
   void dispose() {
     _timer?.cancel();
-    _db?.close();
     super.dispose();
   }
 
-  Future<void> _connectToMongo() async {
-    try {
-      _db = await mongo.Db.create(_mongoUrl);
-      await _db!.open();
-      _fetchFleetData();
-    } catch (e) {
-      debugPrint("Error DB: $e");
-    }
-  }
-
   Future<void> _fetchFleetData() async {
-    if (_db == null || !_db!.isConnected) return;
     try {
-      var collection = _db!.collection(_collectionName);
-      
-      // Ambil 100 data terakhir
-      final data = await collection
-          .find(mongo.where.sortBy('server_received_at', descending: true).limit(100))
-          .toList();
-
-      Map<String, Map<String, dynamic>> uniqueVehicles = {};
-
-      for (var doc in data) {
-        String deviceId = doc['gps_1'] ?? "Unknown";
-        if (!uniqueVehicles.containsKey(deviceId)) {
-          uniqueVehicles[deviceId] = doc;
-        }
-      }
-      
+      final data = await MongoService.getFleetDataForManager();
       if (mounted) {
         setState(() {
-          _activeVehicles = uniqueVehicles.values.toList();
+          _activeVehicles = data;
         });
       }
-
     } catch (e) {
-      debugPrint("Fetch Error: $e");
+      debugPrint("Fetch Error in ManagerDashboardTab: $e");
     }
   }
 
@@ -186,7 +160,7 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
 
   // POP-UP DETAIL KENDARAAN
   void _showVehicleDetail(BuildContext context, Map<String, dynamic> vehicle) {
-    String deviceName = vehicle['gps_1'] ?? "Unknown Device";
+    String deviceName = vehicle['device_id'] ?? "Unknown Device"; // FIX: from gps_1 to device_id
     double speed = (vehicle['speed'] as num? ?? 0).toDouble();
     // Ambil waktu terakhir update
     String? timestamp = vehicle['server_received_at']?.toString();
@@ -235,7 +209,6 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
               ListTile(
                 leading: const Icon(Icons.access_time),
                 title: const Text("Terakhir Update"),
-                // Menampilkan waktu agar Manajer tahu kapan terakhir aktif
                 subtitle: Text(timestamp != null 
                     ? DateTime.parse(timestamp).toLocal().toString().split('.')[0] 
                     : "-"),
@@ -255,7 +228,7 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
   @override
   Widget build(BuildContext context) {
     return _activeVehicles.isEmpty
-        ? const Center(child: Text("Belum ada data kendaraan aktif.")) 
+        ? const Center(child: Text("Memuat data armada...")) 
         : FlutterMap(
             options: const MapOptions(
               initialCenter: LatLng(-7.052219, 110.441481), 
@@ -295,14 +268,13 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                                border: Border.all(color: Colors.black12)
                             ),
                             child: Text(
-                              vehicle['gps_1'] ?? "?",
+                              vehicle['device_id'] ?? "?", // FIX: from gps_1 to device_id
                               style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Icon(
                             Icons.directions_car_filled,
-                            // WARNA MERAH JIKA OFFLINE > 5 MENIT
                             color: _getStatusColor(speed, timestamp), 
                             size: 40,
                           ),

@@ -1,3 +1,4 @@
+import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_page.dart'; // Import halaman driver
 import 'package:sikendi/login_page.dart';
 import 'package:sikendi/manager_page.dart'; // Import halaman manager
@@ -6,7 +7,12 @@ import 'package:flutter/material.dart'; // Library UI standar Flutter (Tombol, T
 // ========================================================== 
 // 1. FUNGSI UTAMA (Main Entry Point)
 // ========================================================== 
-void main() {
+Future<void> main() async {
+  // Pastikan semua widget Flutter siap sebelum menjalankan kode async
+  WidgetsFlutterBinding.ensureInitialized();
+  // Hubungkan ke database MongoDB sebelum aplikasi dimulai
+  await MongoService.connect();
+  
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false, // Menghilangkan banner "Debug" di pojok kanan atas
     title: 'SiKenDi App',

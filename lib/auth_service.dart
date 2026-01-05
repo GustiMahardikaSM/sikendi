@@ -10,7 +10,6 @@ class AuthService {
   static const String _collection = "sopir";
 
   // Fungsi Helper: Mengubah Password Biasa menjadi Hash (SHA-256)
-  // Contoh: "rahasia123" -> "a8f9d0..." (String acak panjang)
   static String hashPassword(String password) {
     var bytes = utf8.encode(password); // Ubah ke bytes
     var digest = sha256.convert(bytes); // Hash menggunakan SHA-256
@@ -30,6 +29,7 @@ class AuthService {
       var user = await collection.findOne(where.eq('email', email));
 
       if (user == null) {
+        print("AuthService: User not found");
         return null; // User tidak ditemukan
       }
 
@@ -37,8 +37,10 @@ class AuthService {
       String inputHash = hashPassword(password);
       
       if (user['password'] == inputHash) {
+        print("AuthService: Login successful for ${user['email']}");
         return user; // Login Sukses, kembalikan data user
       } else {
+        print("AuthService: Incorrect password for ${user['email']}");
         return null; // Password salah
       }
 
