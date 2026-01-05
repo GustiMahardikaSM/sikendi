@@ -160,7 +160,12 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
 
   // POP-UP DETAIL KENDARAAN
   void _showVehicleDetail(BuildContext context, Map<String, dynamic> vehicle) {
-    String deviceName = vehicle['device_id'] ?? "Unknown Device"; // FIX: from gps_1 to device_id
+    // Tampilkan plat nomor jika sudah didefinisikan, jika tidak tampilkan device_id
+    String displayName = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown Device";
+    String? plat = vehicle['plat'];
+    String? model = vehicle['model'];
+    String deviceId = vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown";
+    
     double speed = (vehicle['speed'] as num? ?? 0).toDouble();
     // Ambil waktu terakhir update
     String? timestamp = vehicle['server_received_at']?.toString();
@@ -186,7 +191,32 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                   const Icon(Icons.directions_car, size: 30, color: Colors.blue),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(deviceName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(displayName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        if (plat != null && model != null)
+                          Text(
+                            "$model • $plat",
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          )
+                        else if (plat != null)
+                          Text(
+                            plat,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          )
+                        else if (model != null)
+                          Text(
+                            model,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          )
+                        else
+                          Text(
+                            "Device ID: $deviceId",
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -268,7 +298,7 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                                border: Border.all(color: Colors.black12)
                             ),
                             child: Text(
-                              vehicle['device_id'] ?? "?", // FIX: from gps_1 to device_id
+                              vehicle['plat'] ?? vehicle['gps_1'] ?? vehicle['device_id'] ?? "?",
                               style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
                               overflow: TextOverflow.ellipsis,
                             ),
