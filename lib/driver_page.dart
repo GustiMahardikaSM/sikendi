@@ -27,7 +27,7 @@ class _DriverPageState extends State<DriverPage> {
   void initState() {
     super.initState();
     _pages = <Widget>[
-      const DriverTrackingTab(),
+            DriverTrackingTab(user: widget.user),
       DriverVehicleTab(user: widget.user), // Pass user data
       JadwalSopirPage(email: widget.user['email']), // Use the new schedule page
     ];
@@ -79,7 +79,8 @@ class _DriverPageState extends State<DriverPage> {
 // TAB 1: TRACKING & NOTIFIKASI SAFETY (REFACTORED)
 // ==========================================================
 class DriverTrackingTab extends StatefulWidget {
-  const DriverTrackingTab({super.key});
+  final Map<String, dynamic> user;
+  const DriverTrackingTab({super.key, required this.user});
 
   @override
   State<DriverTrackingTab> createState() => _DriverTrackingTabState();
@@ -89,17 +90,60 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
   LatLng? _currentPosition;
   double _currentSpeed = 0.0;
   Timer? _timer;
-  
-  final double _speedLimit = 60.0; 
+
+  final double _speedLimit = 60.0;
   bool _isOverspeeding = false;
+
+  // New properties
+  final LatLng _widyapurayaUndip = LatLng(-7.0488231, 110.4380076);
+  bool _hasVehicle = false;
 
   @override
   void initState() {
     super.initState();
+    _currentPosition = null; // Show loading indicator initially
+    _checkIfVehicleAssigned();
     _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      _fetchData();
+      if (_hasVehicle) {
+        _fetchData();
+      }
     });
   }
+
+  void _checkIfVehicleAssigned() async {
+    final myJobs = await MongoService.getPekerjaanSaya(widget.user['nama_lengkap'] as String? ?? '');
+    if (mounted) {
+      if (myJobs.isNotEmpty) {
+        setState(() {
+          _hasVehicle = true;
+        });
+        _fetchData(); // Fetch the current location of the vehicle
+      } else {
+        setState(() {
+          _hasVehicle = false;
+          _currentPosition = _widyapurayaUndip; // Set to default
+        });
+        // Show the info message after the frame is built
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: Colors.blue,
+                content: Row(
+                  children: [
+                    Icon(Icons.info, color: Colors.white),
+                    SizedBox(width: 10),
+                    Expanded(child: Text("Anda belum meminjam kendaraan. Peta dipusatkan di lokasi default.")),
+                  ],
+                ),
+              ),
+            );
+          }
+        });
+      }
+    }
+  }
+
 
   @override
   void dispose() {
@@ -108,7 +152,9 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
   }
 
   Future<void> _fetchData() async {
-    // Logic now uses the centralized MongoService
+    // We only fetch if the driver has a vehicle, so _hasVehicle should be true here.
+    if (!_hasVehicle) return;
+
     final data = await MongoService.getLatestGpsData();
 
     if (data != null && mounted) {
@@ -164,43 +210,45 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.sikendi.driver',
                   ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: _currentPosition!,
-                        width: 80,
-                        height: 80,
-                        child: const Icon(Icons.directions_car, color: Colors.green, size: 40),
-                      ),
-                    ],
+                  if (_hasVehicle && _currentPosition != null) // Only show marker if there is a vehicle
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _currentPosition!,
+                          width: 80,
+                          height: 80,
+                          child: const Icon(Icons.directions_car, color: Colors.green, size: 40),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+        if (_hasVehicle) // Only show speed if there is a vehicle
+          Positioned(
+            top: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _isOverspeeding ? Colors.red : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: const [BoxShadow(blurRadius: 5, color: Colors.black26)],
+              ),
+              child: Column(
+                children: [
+                  const Text("Kecepatan", style: TextStyle(fontSize: 12)),
+                  Text(
+                    "${_currentSpeed.toStringAsFixed(1)} km/h",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: _isOverspeeding ? Colors.white : Colors.black,
+                    ),
                   ),
                 ],
               ),
-        Positioned(
-          top: 20,
-          right: 20,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _isOverspeeding ? Colors.red : Colors.white, 
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: const [BoxShadow(blurRadius: 5, color: Colors.black26)],
-            ),
-            child: Column(
-              children: [
-                const Text("Kecepatan", style: TextStyle(fontSize: 12)),
-                Text(
-                  "${_currentSpeed.toStringAsFixed(1)} km/h",
-                  style: TextStyle(
-                    fontSize: 24, 
-                    fontWeight: FontWeight.bold,
-                    color: _isOverspeeding ? Colors.white : Colors.black,
-                  ),
-                ),
-              ],
             ),
           ),
-        ),
       ],
     );
   }
