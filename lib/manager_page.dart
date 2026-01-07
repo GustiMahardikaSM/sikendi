@@ -384,7 +384,7 @@ class _ManagerDriversTabState extends State<ManagerDriversTab> {
                         Text('Nama Lengkap : ${nama.isNotEmpty ? nama : '-'}'),
                         Text('Email        : ${email.isNotEmpty ? email : '-'}'),
                         Text('No. HP       : ${noHp.isNotEmpty ? noHp : '-'}'),
-                        Text('Role         : ${role.isNotEmpty ? role : '-'}'),
+                        
                       ],
                     ),
                   ),
