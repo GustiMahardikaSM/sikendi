@@ -12,13 +12,15 @@ class MongoService {
   static Db? _dbLokasi;
   static DbCollection? _collectionLokasi;
 
-  // --- KONFIGURASI DB JADWAL ---
+  // --- KONFIGURASI DB JADWAL & SOPIR ---
   static final String _mongoJadwalUrl =
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
   static final String _collectionJadwalName = "kegiatan_sopir";
+  static final String _collectionSopirName = "sopir";
 
   static Db? _dbJadwal;
   static DbCollection? _collectionJadwal;
+  static DbCollection? _collectionSopir;
 
 
   // 1. KONEKSI DATABASE LOKASI
@@ -34,16 +36,17 @@ class MongoService {
     }
   }
 
-  // 2. KONEKSI DATABASE JADWAL
+  // 2. KONEKSI DATABASE JADWAL & SOPIR
   static Future<void> connectJadwal() async {
     try {
       _dbJadwal = await Db.create(_mongoJadwalUrl);
       await _dbJadwal!.open();
       inspect(_dbJadwal);
       _collectionJadwal = _dbJadwal!.collection(_collectionJadwalName);
-      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (kegiatan_sopir)");
+      _collectionSopir = _dbJadwal!.collection(_collectionSopirName);
+      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (kegiatan_sopir & sopir)");
     } catch (e) {
-      print("❌ Gagal Koneksi ke kegiatan_sopir: $e");
+      print("❌ Gagal Koneksi ke demo_akun: $e");
     }
   }
 
@@ -119,6 +122,33 @@ class MongoService {
       await _collectionJadwal!.remove(where.id(id));
     } catch (e) {
       print('Error deleting kegiatan: $e');
+    }
+  }
+
+  // =================================================================
+  // BAGIAN DATA SOPIR
+  // =================================================================
+
+  // READ: Ambil semua sopir untuk manager
+  static Future<List<Map<String, dynamic>>> getSemuaSopir() async {
+    try {
+      if (_collectionSopir == null) {
+        print('Collection sopir belum ter-inisialisasi. Memanggil connectJadwal()...');
+        await connectJadwal();
+        if (_collectionSopir == null) {
+          print('Gagal inisialisasi collection sopir setelah connectJadwal().');
+          return [];
+        }
+      }
+      final data = await _collectionSopir!.find().toList();
+      print('getSemuaSopir() - jumlah dokumen: ${data.length}');
+      if (data.isNotEmpty) {
+        print('Contoh dokumen sopir[0]: ${data.first}');
+      }
+      return data;
+    } catch (e) {
+      print('Error getting sopir: $e');
+      return [];
     }
   }
 

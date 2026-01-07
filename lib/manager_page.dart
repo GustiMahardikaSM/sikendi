@@ -320,52 +320,78 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
 }
 
 // ==========================================================
-// TAB 2: DETAIL PENGEMUDI (KARTU DRIVER)
+// TAB 2: DETAIL PENGEMUDI (KARTU DRIVER) - dari MongoDB
 // ==========================================================
-class ManagerDriversTab extends StatelessWidget {
+class ManagerDriversTab extends StatefulWidget {
   const ManagerDriversTab({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Data Dummy Driver (Karena di DB MongoDB belum ada collection user)
-    final List<Map<String, String>> drivers = [
-      {"nama": "Pak Budi", "nip": "1980101", "status": "Aktif", "mobil": "Toyota Avanza"},
-      {"nama": "Pak Asep", "nip": "1980202", "status": "Istirahat", "mobil": "-"},
-      {"nama": "Pak Joko", "nip": "1980303", "status": "Aktif", "mobil": "HiAce Kampus"},
-    ];
+  State<ManagerDriversTab> createState() => _ManagerDriversTabState();
+}
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(10),
-      itemCount: drivers.length,
-      itemBuilder: (context, index) {
-        var drv = drivers[index];
-        return Card(
-          elevation: 2,
-          child: ExpansionTile(
-            leading: CircleAvatar(child: Text(drv["nama"]![0])), // Inisial Nama
-            title: Text(drv["nama"]!, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text("NIP: ${drv["nip"]} • Status: ${drv["status"]}"),
-            children: [
-              // Bagian Riwayat / Profil (Kartu Driver)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Detail & Riwayat:", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 5),
-                    Text("Kendaraan saat ini: ${drv['mobil']}"),
-                    const Text("SIM: B1 Umum (Berlaku s.d 2028)"),
-                    const Text("Rating Kinerja: 4.8/5.0"),
-                    const Divider(),
-                    const Text("Riwayat Perjalanan Terakhir:"),
-                    const Text("- 29 Des: Rektorat -> Bandara (Aman)"),
-                    const Text("- 28 Des: F. Teknik -> Tembalang (Aman)"),
-                  ],
-                ),
-              )
-            ],
-          ),
+class _ManagerDriversTabState extends State<ManagerDriversTab> {
+  late Future<List<Map<String, dynamic>>> _driversFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _driversFuture = MongoService.getSemuaSopir();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _driversFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Gagal memuat data sopir: ${snapshot.error}'));
+        }
+        final drivers = snapshot.data ?? [];
+        if (drivers.isEmpty) {
+          return const Center(child: Text('Tidak ada data sopir.'));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(10),
+          itemCount: drivers.length,
+          itemBuilder: (context, index) {
+            final drv = drivers[index];
+            final nama = (drv['nama_lengkap'] ?? '').toString();
+            final email = (drv['email'] ?? '').toString();
+            final noHp = (drv['no_hp'] ?? '').toString();
+            final role = (drv['role'] ?? 'Sopir').toString();
+
+            final inisial = nama.isNotEmpty ? nama[0] : '?';
+
+            return Card(
+              elevation: 2,
+              child: ExpansionTile(
+                leading: CircleAvatar(child: Text(inisial)), // Inisial Nama
+                title: Text(nama.isNotEmpty ? nama : '(Nama belum diisi)',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('$email • $role'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Detail Sopir', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 5),
+                        Text('Nama Lengkap : ${nama.isNotEmpty ? nama : '-'}'),
+                        Text('Email        : ${email.isNotEmpty ? email : '-'}'),
+                        Text('No. HP       : ${noHp.isNotEmpty ? noHp : '-'}'),
+                        Text('Role         : ${role.isNotEmpty ? role : '-'}'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
