@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
@@ -110,7 +111,8 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddKegiatanDialog,
-        backgroundColor: Colors.blue[900],
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.blue[900],
         child: const Icon(Icons.add),
       ),
     );
@@ -212,13 +214,97 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
   }
 
   Future<void> _pickTime() async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime,
-    );
-    if (time != null) {
+    TimeOfDay? newTime = await showDialog<TimeOfDay>(
+        context: context,
+        builder: (BuildContext context) {
+          int tempHour = _selectedTime.hour;
+          int tempMinute = _selectedTime.minute;
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: const Text('Pilih Waktu'),
+                content: SizedBox(
+                  height: 200,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ListWheelScrollView.useDelegate(
+                              controller: FixedExtentScrollController(initialItem: tempHour),
+                              itemExtent: 32.0,
+                              physics: const FixedExtentScrollPhysics(),
+                              useMagnifier: true,
+                              magnification: 1.2,
+                              onSelectedItemChanged: (int index) {
+                                setState(() {
+                                  tempHour = index % 24;
+                                });
+                              },
+                              childDelegate: ListWheelChildLoopingListDelegate(
+                                children: List<Widget>.generate(24, (int index) {
+                                  return Center(child: Text(index.toString().padLeft(2, '0')));
+                                }),
+                              ),
+                            ),
+                          ),
+                          const Text(' : '),
+                          Expanded(
+                            child: ListWheelScrollView.useDelegate(
+                              controller: FixedExtentScrollController(initialItem: tempMinute),
+                              itemExtent: 32.0,
+                              physics: const FixedExtentScrollPhysics(),
+                              useMagnifier: true,
+                              magnification: 1.2,
+                              onSelectedItemChanged: (int index) {
+                                 setState(() {
+                                  tempMinute = index % 60;
+                                });
+                              },
+                              childDelegate: ListWheelChildLoopingListDelegate(
+                                children: List<Widget>.generate(60, (int index) {
+                                  return Center(child: Text(index.toString().padLeft(2, '0')));
+                                }),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        height: 32.0, // Match the itemExtent
+                        decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: Colors.grey.shade400, width: 1.0),
+                            bottom: BorderSide(color: Colors.grey.shade400, width: 1.0),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    child: const Text('Batal'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  TextButton(
+                    child: const Text('Pilih'),
+                    onPressed: () {
+                      Navigator.of(context).pop(TimeOfDay(hour: tempHour, minute: tempMinute));
+                    },
+                  ),
+                ],
+              );
+            }
+          );
+        });
+
+    if (newTime != null) {
       setState(() {
-        _selectedTime = time;
+        _selectedTime = newTime;
       });
     }
   }
@@ -288,7 +374,7 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: Text('Waktu: ${_selectedTime.format(context)}'),
+                    child: Text('Waktu: ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}'),
                   ),
                   TextButton(
                     onPressed: _pickTime,
