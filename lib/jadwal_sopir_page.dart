@@ -74,6 +74,7 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
         title: const Text('Jadwal Kegiatan'),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
       ),
       body: FutureBuilder<List<KegiatanSopir>>(
         future: _kegiatanFuture,
