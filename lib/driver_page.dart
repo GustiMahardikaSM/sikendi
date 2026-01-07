@@ -21,6 +21,7 @@ class DriverPage extends StatefulWidget {
 class _DriverPageState extends State<DriverPage> {
   int _selectedIndex = 0;
   late List<Widget> _pages;
+  final MapController _mapController = MapController();
 
   // =============================================
   // STATE DIANGKAT KE ATAS (LIFTED STATE)
@@ -52,6 +53,7 @@ class _DriverPageState extends State<DriverPage> {
   void _buildPages() {
     _pages = <Widget>[
       DriverTrackingTab(
+        mapController: _mapController,
         hasVehicle: _hasVehicle,
         currentPosition: _currentPosition,
         widyapurayaUndip: _widyapurayaUndip,
@@ -140,6 +142,22 @@ class _DriverPageState extends State<DriverPage> {
     setState(() {
       _selectedIndex = index;
     });
+
+    // Setiap kali tab Tracking dibuka, pusatkan ulang peta
+    if (index == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        LatLng targetCenter;
+
+        if (_hasVehicle && _currentPosition != null) {
+          targetCenter = _currentPosition!;
+        } else {
+          targetCenter = _widyapurayaUndip;
+        }
+
+        // Gunakan zoom default 16.0 (sama seperti initialZoom)
+        _mapController.move(targetCenter, 16.0);
+      });
+    }
   }
 
   @override
@@ -173,6 +191,7 @@ class _DriverPageState extends State<DriverPage> {
 // TAB 1: TRACKING (STATELESS)
 // ==========================================================
 class DriverTrackingTab extends StatelessWidget {
+  final MapController mapController;
   final bool hasVehicle;
   final LatLng? currentPosition;
   final LatLng widyapurayaUndip;
@@ -181,6 +200,7 @@ class DriverTrackingTab extends StatelessWidget {
 
   const DriverTrackingTab({
     super.key,
+    required this.mapController,
     required this.hasVehicle,
     this.currentPosition,
     required this.widyapurayaUndip,
@@ -217,6 +237,7 @@ class DriverTrackingTab extends StatelessWidget {
         (hasVehicle && currentPosition == null)
             ? const Center(child: CircularProgressIndicator())
             : FlutterMap(
+                mapController: mapController,
                 options: MapOptions(
                   initialCenter: displayPosition,
                   initialZoom: 16.0,
