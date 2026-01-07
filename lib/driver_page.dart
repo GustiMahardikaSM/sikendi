@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
+import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 
 // ==========================================================
@@ -28,7 +29,7 @@ class _DriverPageState extends State<DriverPage> {
     _pages = <Widget>[
       const DriverTrackingTab(),
       DriverVehicleTab(user: widget.user), // Pass user data
-      const DriverScheduleTab(),
+      JadwalSopirPage(email: widget.user['email']), // Use the new schedule page
     ];
   }
 
@@ -389,169 +390,6 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-}
-
-
-// ==========================================================
-// TAB 3: INFORMASI JADWAL PENUGASAN (UNCHANGED)
-// ==========================================================
-class DriverScheduleTab extends StatefulWidget {
-  const DriverScheduleTab({super.key});
-
-  @override
-  State<DriverScheduleTab> createState() => _DriverScheduleTabState();
-}
-
-class _DriverScheduleTabState extends State<DriverScheduleTab> with AutomaticKeepAliveClientMixin {
-  // Data dummy ini tidak diubah sesuai instruksi
-  final List<Map<String, String>> _schedules = [
-    {"tanggal": "29 Des 2025", "waktu": "08:00 WIB", "tugas": "Antar Wakil Rektor II ke Rektorat", "status": "Selesai"},
-    {"tanggal": "30 Des 2025", "waktu": "09:30 WIB", "tugas": "Jemput Tamu Fakultas Teknik di Bandara", "status": "Akan Datang"},
-    {"tanggal": "31 Des 2025", "waktu": "13:00 WIB", "tugas": "Operasional Logistik KBAUK", "status": "Menunggu Persetujuan"},
-  ];
-
-  void _addSchedule() {
-    final TextEditingController tugasController = TextEditingController();
-    DateTime? selectedDate;
-    TimeOfDay? selectedTime;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: const Text("Tambah Jadwal Baru"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: tugasController,
-                    decoration: const InputDecoration(labelText: "Tugas"),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final DateTime? picked = await showDatePicker(
-                              context: context,
-                              initialDate: selectedDate ?? DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2101),
-                            );
-                            if (picked != null && picked != selectedDate) {
-                              setState(() { selectedDate = picked; });
-                            }
-                          },
-                          icon: const Icon(Icons.calendar_today),
-                          label: Text(selectedDate == null ? "Pilih Tanggal" : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}"),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final TimeOfDay? picked = await showTimePicker(
-                              context: context,
-                              initialTime: selectedTime ?? TimeOfDay.now(),
-                            );
-                            if (picked != null && picked != selectedTime) {
-                              setState(() { selectedTime = picked; });
-                            }
-                          },
-                          icon: const Icon(Icons.access_time),
-                          label: Text(selectedTime == null ? "Pilih Waktu" : selectedTime!.format(context)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Batal")),
-                ElevatedButton(
-                  onPressed: () {
-                    if (tugasController.text.isNotEmpty && selectedDate != null && selectedTime != null) {
-                      final String formattedDate = "${selectedDate!.day} ${_getBulan(selectedDate!.month)} ${selectedDate!.year}";
-                      final String formattedTime = selectedTime!.format(context);
-                      
-                      this.setState(() {
-                        _schedules.add({
-                          "tugas": tugasController.text, "tanggal": formattedDate, "waktu": formattedTime, "status": "Akan Datang",
-                        });
-                      });
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text("Simpan"),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String _getBulan(int month) {
-    const bulan = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-    return bulan[month - 1];
-  }
-
-  void _deleteSchedule(int index) {
-    setState(() {
-      _schedules.removeAt(index);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Jadwal berhasil dihapus.")));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return Scaffold(
-      body: ListView.builder(
-        padding: const EdgeInsets.all(10),
-        itemCount: _schedules.length,
-        itemBuilder: (context, index) {
-          var item = _schedules[index];
-          return Card(
-            elevation: 3,
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: item['status'] == "Selesai" ? Colors.green : Colors.orange,
-                child: const Icon(Icons.schedule, color: Colors.white),
-              ),
-              title: Text(item['tugas']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 5),
-                  Text("${item['tanggal']} • ${item['waktu']}"),
-                  Text("Status: ${item['status']}", style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.bold)),
-                ],
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteSchedule(index),
-              ),
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addSchedule,
-        tooltip: 'Tambah Jadwal',
-        child: const Icon(Icons.add),
-        backgroundColor: Colors.green,
       ),
     );
   }

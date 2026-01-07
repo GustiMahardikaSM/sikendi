@@ -12,6 +12,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Hubungkan ke database MongoDB sebelum aplikasi dimulai
   await MongoService.connect();
+  await MongoService.connectJadwal();
   
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false, // Menghilangkan banner "Debug" di pojok kanan atas

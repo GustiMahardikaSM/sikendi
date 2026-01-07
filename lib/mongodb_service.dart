@@ -1,29 +1,127 @@
 import 'dart:developer';
 import 'package:mongo_dart/mongo_dart.dart';
+import 'package:sikendi/models/kegiatan_sopir.dart';
 
 class MongoService {
-  // --- KONFIGURASI DB (Sesuai Request) ---
-  static final String _mongoUrl =
+  // --- KONFIGURASI DB LOKASI---
+  static final String _mongoLokasiUrl =
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
   
-  static final String _collectionName = "gps_location";
+  static final String _collectionLokasiName = "gps_location";
 
-  static Db? _db;
-  static DbCollection? _collection;
+  static Db? _dbLokasi;
+  static DbCollection? _collectionLokasi;
 
-  // 1. KONEKSI DATABASE
-  // Panggil ini di main() sebelum runApp
+  // --- KONFIGURASI DB JADWAL ---
+  static final String _mongoJadwalUrl =
+      "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
+  static final String _collectionJadwalName = "kegiatan_sopir";
+
+  static Db? _dbJadwal;
+  static DbCollection? _collectionJadwal;
+
+
+  // 1. KONEKSI DATABASE LOKASI
   static Future<void> connect() async {
     try {
-      _db = await Db.create(_mongoUrl);
-      await _db!.open();
-      inspect(_db);
-      _collection = _db!.collection(_collectionName);
+      _dbLokasi = await Db.create(_mongoLokasiUrl);
+      await _dbLokasi!.open();
+      inspect(_dbLokasi);
+      _collectionLokasi = _dbLokasi!.collection(_collectionLokasiName);
       print("✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location)");
     } catch (e) {
-      print("❌ Gagal Koneksi: $e");
+      print("❌ Gagal Koneksi ke gps_location: $e");
     }
   }
+
+  // 2. KONEKSI DATABASE JADWAL
+  static Future<void> connectJadwal() async {
+    try {
+      _dbJadwal = await Db.create(_mongoJadwalUrl);
+      await _dbJadwal!.open();
+      inspect(_dbJadwal);
+      _collectionJadwal = _dbJadwal!.collection(_collectionJadwalName);
+      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (kegiatan_sopir)");
+    } catch (e) {
+      print("❌ Gagal Koneksi ke kegiatan_sopir: $e");
+    }
+  }
+
+  // =================================================================
+  // BAGIAN JADWAL SOPIR
+  // =================================================================
+
+  // CREATE: Tambah kegiatan baru untuk sopir
+  static Future<void> addKegiatan({
+    required String email,
+    required String judul,
+    required DateTime waktu,
+  }) async {
+    try {
+      final kegiatan = KegiatanSopir(
+        id: ObjectId(),
+        email: email,
+        judul: judul,
+        waktu: waktu,
+        status: 'Belum', // Status default
+      );
+      await _collectionJadwal!.insert(kegiatan.toMap());
+    } catch (e) {
+      print('Error adding kegiatan: $e');
+    }
+  }
+
+  // READ: Ambil semua kegiatan untuk sopir tertentu
+  static Future<List<KegiatanSopir>> getKegiatan(String email) async {
+    try {
+      final data = await _collectionJadwal!.find(where.eq('email', email)).toList();
+      return data.map((map) => KegiatanSopir.fromMap(map)).toList();
+    } catch (e) {
+      print('Error getting kegiatan: $e');
+      return [];
+    }
+  }
+
+  // READ ALL: Ambil semua kegiatan untuk manager
+  static Future<List<KegiatanSopir>> getAllKegiatan() async {
+    try {
+      final data = await _collectionJadwal!.find().toList();
+      return data.map((map) => KegiatanSopir.fromMap(map)).toList();
+    } catch (e) {
+      print('Error getting all kegiatan: $e');
+      return [];
+    }
+  }
+
+  // UPDATE: Perbarui kegiatan sopir
+  static Future<void> updateKegiatan({
+    required ObjectId id,
+    required String judul,
+    required DateTime waktu,
+    required String status,
+  }) async {
+    try {
+      await _collectionJadwal!.update(
+        where.id(id),
+        modify
+          .set('judul', judul)
+          .set('waktu', waktu)
+          .set('status', status),
+      );
+    } catch (e) {
+      print('Error updating kegiatan: $e');
+    }
+  }
+
+  // DELETE: Hapus kegiatan sopir
+  static Future<void> deleteKegiatan(ObjectId id) async {
+    try {
+      await _collectionJadwal!.remove(where.id(id));
+    } catch (e) {
+      print('Error deleting kegiatan: $e');
+    }
+  }
+
 
   // =================================================================
   // BAGIAN MANAJER
@@ -35,8 +133,8 @@ class MongoService {
     try {
       // Cek apakah sudah ada metadata dengan gps_1 atau device_id yang sama
       // Cari dokumen yang memiliki gps_1 atau device_id yang sama DAN memiliki model atau plat
-      final docsGps1 = await _collection!.find(where.eq('gps_1', deviceId)).toList();
-      final docsDeviceId = await _collection!.find(where.eq('device_id', deviceId)).toList();
+      final docsGps1 = await _collectionLokasi!.find(where.eq('gps_1', deviceId)).toList();
+      final docsDeviceId = await _collectionLokasi!.find(where.eq('device_id', deviceId)).toList();
       final allDocs = [...docsGps1, ...docsDeviceId];
       // Hapus duplikat berdasarkan _id
       final uniqueDocs = <String, Map<String, dynamic>>{};
@@ -61,7 +159,7 @@ class MongoService {
       
       if (adaGps != null) {
         // Update dokumen GPS location yang sudah ada dengan menambahkan metadata
-        await _collection!.update(
+        await _collectionLokasi!.update(
           where.id(adaGps['_id']),
           modify
             .set('plat', plat)
@@ -74,7 +172,7 @@ class MongoService {
         );
       } else {
         // Buat dokumen baru jika belum ada sama sekali
-        await _collection!.insert({
+        await _collectionLokasi!.insert({
           'plat': plat,
           'model': model,
           'gps_1': deviceId,
@@ -97,8 +195,8 @@ class MongoService {
   static Future<bool> updateKendaraanManager(String gps1, String plat, String model, String? status) async {
     try {
       // Query untuk semua dokumen dengan gps_1 atau device_id yang sama
-      final docsGps1 = await _collection!.find(where.eq('gps_1', gps1)).toList();
-      final docsDeviceId = await _collection!.find(where.eq('device_id', gps1)).toList();
+      final docsGps1 = await _collectionLokasi!.find(where.eq('gps_1', gps1)).toList();
+      final docsDeviceId = await _collectionLokasi!.find(where.eq('device_id', gps1)).toList();
       final allDocs = [...docsGps1, ...docsDeviceId];
       // Hapus duplikat berdasarkan _id
       final uniqueDocs = <String, Map<String, dynamic>>{};
@@ -126,7 +224,7 @@ class MongoService {
             updateModifier.set('status', status);
           }
           
-          await _collection!.update(where.id(doc['_id']), updateModifier);
+          await _collectionLokasi!.update(where.id(doc['_id']), updateModifier);
         }
         return true;
       } else if (allDocsUnique.isNotEmpty) {
@@ -142,12 +240,12 @@ class MongoService {
             updateModifier.set('status', status);
           }
           
-          await _collection!.update(where.id(doc['_id']), updateModifier);
+          await _collectionLokasi!.update(where.id(doc['_id']), updateModifier);
         }
         return true;
       } else {
         // Buat dokumen baru jika belum ada sama sekali
-        await _collection!.insert({
+        await _collectionLokasi!.insert({
           'plat': plat,
           'model': model,
           'gps_1': gps1,
@@ -169,8 +267,8 @@ class MongoService {
   static Future<bool> hapusMetadataKendaraan(String gps1) async {
     try {
       // Cari semua dokumen dengan gps_1 atau device_id yang sama
-      final docsGps1 = await _collection!.find(where.eq('gps_1', gps1)).toList();
-      final docsDeviceId = await _collection!.find(where.eq('device_id', gps1)).toList();
+      final docsGps1 = await _collectionLokasi!.find(where.eq('gps_1', gps1)).toList();
+      final docsDeviceId = await _collectionLokasi!.find(where.eq('device_id', gps1)).toList();
       final allDocs = [...docsGps1, ...docsDeviceId];
       // Hapus duplikat berdasarkan _id
       final uniqueDocs = <String, Map<String, dynamic>>{};
@@ -184,7 +282,7 @@ class MongoService {
       bool deleted = false;
       for (var doc in allDocsUnique) {
         if (doc['model'] != null || doc['plat'] != null) {
-          await _collection!.remove(where.id(doc['_id']));
+          await _collectionLokasi!.remove(where.id(doc['_id']));
           deleted = true;
         }
       }
@@ -201,7 +299,7 @@ class MongoService {
   static Future<Map<String, List<Map<String, dynamic>>>> getSemuaDataUntukManagerDipisah() async {
     try {
       // Ambil semua data
-      final allData = await _collection!.find().toList();
+      final allData = await _collectionLokasi!.find().toList();
       
       // Pisahkan dokumen GPS location dan metadata kendaraan
       Map<String, Map<String, dynamic>> gpsLocations = {}; // Key: gps_1, Value: latest GPS data
@@ -293,7 +391,7 @@ class MongoService {
   static Future<List<Map<String, dynamic>>> getSemuaDataUntukManager() async {
     try {
       // Ambil semua data
-      final allData = await _collection!.find().toList();
+      final allData = await _collectionLokasi!.find().toList();
       
       // Pisahkan dokumen GPS location dan metadata kendaraan
       Map<String, Map<String, dynamic>> gpsLocations = {}; // Key: gps_1, Value: latest GPS data
@@ -374,7 +472,7 @@ class MongoService {
   static Future<List<Map<String, dynamic>>> getFleetDataForManager() async {
     try {
       // Ambil semua data untuk mendapatkan GPS location dan metadata
-      final allData = await _collection!.find().toList();
+      final allData = await _collectionLokasi!.find().toList();
       
       // Pisahkan dokumen GPS location dan metadata kendaraan
       Map<String, Map<String, dynamic>> gpsLocations = {}; // Key: gps_1, Value: latest GPS data
@@ -451,7 +549,7 @@ class MongoService {
   // Filter: Hanya yang statusnya 'Tersedia'
   static Future<List<Map<String, dynamic>>> getKendaraanTersedia() async {
     try {
-      final data = await _collection!
+      final data = await _collectionLokasi!
           .find(where.eq('status', 'Tersedia'))
           .toList();
       return data;
@@ -465,7 +563,7 @@ class MongoService {
   // Filter: Hanya yang peminjam == namaSopir
   static Future<List<Map<String, dynamic>>> getPekerjaanSaya(String namaSopir) async {
     try {
-      final data = await _collection!
+      final data = await _collectionLokasi!
           .find(where.eq('peminjam', namaSopir)) // Filter isolasi driver
           .toList();
       return data;
@@ -479,7 +577,7 @@ class MongoService {
   static Future<void> ambilKendaraan(ObjectId id, String namaSopir) async {
     try {
       // Update data di server
-      await _collection!.update(
+      await _collectionLokasi!.update(
         where.id(id),
         modify
           .set('status', 'Dipakai')        // Ubah status
@@ -495,7 +593,7 @@ class MongoService {
   // UPDATE (CHECK-OUT): Sopir mengembalikan mobil (Selesai tugas)
   static Future<void> selesaikanPekerjaan(ObjectId id) async {
     try {
-      await _collection!.update(
+      await _collectionLokasi!.update(
         where.id(id),
         modify
           .set('status', 'Tersedia')
@@ -515,7 +613,7 @@ class MongoService {
   // Mengambil 1 data GPS paling baru dari collection
   static Future<Map<String, dynamic>?> getLatestGpsData() async {
     try {
-      final data = await _collection!
+      final data = await _collectionLokasi!
           .find(where.sortBy('server_received_at', descending: true).limit(1))
           .toList();
       if (data.isNotEmpty) {
