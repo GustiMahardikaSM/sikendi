@@ -8,9 +8,11 @@ class MongoService {
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
   
   static final String _collectionLokasiName = "gps_location";
+  static final String _collectionKendaraanName = "kendaraan";
 
   static Db? _dbLokasi;
   static DbCollection? _collectionLokasi;
+  static DbCollection? _collectionKendaraan;
 
   // --- KONFIGURASI DB JADWAL & SOPIR ---
   static final String _mongoJadwalUrl =
@@ -30,7 +32,8 @@ class MongoService {
       await _dbLokasi!.open();
       inspect(_dbLokasi);
       _collectionLokasi = _dbLokasi!.collection(_collectionLokasiName);
-      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location)");
+      _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
+      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location & kendaraan)");
     } catch (e) {
       print("❌ Gagal Koneksi ke gps_location: $e");
     }
@@ -653,6 +656,185 @@ class MongoService {
     } catch (e) {
       print("Error get latest GPS data: $e");
       return null;
+    }
+  }
+
+  // =================================================================
+  // BAGIAN DETAIL KENDARAAN
+  // =================================================================
+
+  // READ: Ambil detail kendaraan dari collection kendaraan berdasarkan device_id atau gps_1
+  static Future<Map<String, dynamic>?> getDetailKendaraan(String deviceId) async {
+    try {
+      // Pastikan koneksi database terbuka
+      if (_dbLokasi == null) {
+        await connect();
+      }
+      
+      // Pastikan collection sudah terinisialisasi
+      if (_collectionKendaraan == null) {
+        if (_dbLokasi != null) {
+          _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
+        } else {
+          print("Collection kendaraan belum ter-inisialisasi.");
+          return null;
+        }
+      }
+      
+      // Jika terjadi error koneksi, reconnect dan coba lagi
+      try {
+
+        // Cari berdasarkan gps_1 atau device_id
+        final docsGps1 = await _collectionKendaraan!
+            .find(where.eq('gps_1', deviceId))
+            .toList();
+        final docsDeviceId = await _collectionKendaraan!
+            .find(where.eq('device_id', deviceId))
+            .toList();
+        
+        // Gabungkan hasil dan hapus duplikat berdasarkan _id
+        final allDocs = [...docsGps1, ...docsDeviceId];
+        final uniqueDocs = <String, Map<String, dynamic>>{};
+        for (var doc in allDocs) {
+          uniqueDocs[doc['_id'].toString()] = doc;
+        }
+        
+        if (uniqueDocs.isNotEmpty) {
+          return uniqueDocs.values.first;
+        }
+        return null;
+      } catch (e) {
+        // Jika terjadi error koneksi, reconnect dan coba sekali lagi
+        if (e.toString().contains('No master connection') || 
+            e.toString().contains('connection')) {
+          print("⚠️ Koneksi terputus, mencoba reconnect...");
+          await connect();
+          _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
+          
+          // Coba lagi setelah reconnect
+          final docsGps1 = await _collectionKendaraan!
+              .find(where.eq('gps_1', deviceId))
+              .toList();
+          final docsDeviceId = await _collectionKendaraan!
+              .find(where.eq('device_id', deviceId))
+              .toList();
+          
+          final allDocs = [...docsGps1, ...docsDeviceId];
+          final uniqueDocs = <String, Map<String, dynamic>>{};
+          for (var doc in allDocs) {
+            uniqueDocs[doc['_id'].toString()] = doc;
+          }
+          
+          if (uniqueDocs.isNotEmpty) {
+            return uniqueDocs.values.first;
+          }
+          return null;
+        } else {
+          rethrow;
+        }
+      }
+    } catch (e) {
+      print("Error get detail kendaraan: $e");
+      return null;
+    }
+  }
+
+  // UPDATE: Update plat dan model kendaraan di collection kendaraan
+  static Future<bool> updateKendaraanDetail(String deviceId, String plat, String model) async {
+    try {
+      // Pastikan koneksi database terbuka
+      if (_dbLokasi == null) {
+        await connect();
+      }
+      
+      // Pastikan collection sudah terinisialisasi
+      if (_collectionKendaraan == null) {
+        if (_dbLokasi != null) {
+          _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
+        } else {
+          print("Collection kendaraan belum ter-inisialisasi.");
+          return false;
+        }
+      }
+      
+      // Jika terjadi error koneksi, reconnect dan coba lagi
+      try {
+
+        // Cari berdasarkan gps_1 atau device_id
+        final docsGps1 = await _collectionKendaraan!
+            .find(where.eq('gps_1', deviceId))
+            .toList();
+        final docsDeviceId = await _collectionKendaraan!
+            .find(where.eq('device_id', deviceId))
+            .toList();
+        
+        // Gabungkan hasil dan hapus duplikat berdasarkan _id
+        final allDocs = [...docsGps1, ...docsDeviceId];
+        final uniqueDocs = <String, Map<String, dynamic>>{};
+        for (var doc in allDocs) {
+          uniqueDocs[doc['_id'].toString()] = doc;
+        }
+        
+        if (uniqueDocs.isNotEmpty) {
+          // Update semua dokumen yang ditemukan
+          for (var doc in uniqueDocs.values) {
+            await _collectionKendaraan!.update(
+              where.id(doc['_id']),
+              modify
+                .set('plat', plat)
+                .set('model', model),
+            );
+          }
+          print("✅ Berhasil update kendaraan: $deviceId");
+          return true;
+        } else {
+          print("❌ Dokumen kendaraan tidak ditemukan: $deviceId");
+          return false;
+        }
+      } catch (e) {
+        // Jika terjadi error koneksi, reconnect dan coba sekali lagi
+        if (e.toString().contains('No master connection') || 
+            e.toString().contains('connection')) {
+          print("⚠️ Koneksi terputus, mencoba reconnect...");
+          await connect();
+          _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
+          
+          // Coba lagi setelah reconnect
+          final docsGps1 = await _collectionKendaraan!
+              .find(where.eq('gps_1', deviceId))
+              .toList();
+          final docsDeviceId = await _collectionKendaraan!
+              .find(where.eq('device_id', deviceId))
+              .toList();
+          
+          final allDocs = [...docsGps1, ...docsDeviceId];
+          final uniqueDocs = <String, Map<String, dynamic>>{};
+          for (var doc in allDocs) {
+            uniqueDocs[doc['_id'].toString()] = doc;
+          }
+          
+          if (uniqueDocs.isNotEmpty) {
+            for (var doc in uniqueDocs.values) {
+              await _collectionKendaraan!.update(
+                where.id(doc['_id']),
+                modify
+                  .set('plat', plat)
+                  .set('model', model),
+              );
+            }
+            print("✅ Berhasil update kendaraan setelah reconnect: $deviceId");
+            return true;
+          } else {
+            print("❌ Dokumen kendaraan tidak ditemukan setelah reconnect: $deviceId");
+            return false;
+          }
+        } else {
+          rethrow;
+        }
+      }
+    } catch (e) {
+      print("Error update detail kendaraan: $e");
+      return false;
     }
   }
 }
