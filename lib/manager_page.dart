@@ -331,11 +331,40 @@ class ManagerDriversTab extends StatefulWidget {
 
 class _ManagerDriversTabState extends State<ManagerDriversTab> {
   late Future<List<Map<String, dynamic>>> _driversFuture;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _driversFuture = MongoService.getSemuaSopir();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase().trim();
+    });
+  }
+
+  // Fungsi untuk memfilter driver berdasarkan nama
+  List<Map<String, dynamic>> _filterDrivers(List<Map<String, dynamic>> drivers) {
+    if (_searchQuery.isEmpty) {
+      return drivers;
+    }
+
+    return drivers.where((driver) {
+      final nama = (driver['nama_lengkap'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+      final searchQueryNoSpace = _searchQuery.replaceAll(' ', '');
+      return nama.contains(searchQueryNoSpace);
+    }).toList();
   }
 
   @override
@@ -349,49 +378,131 @@ class _ManagerDriversTabState extends State<ManagerDriversTab> {
         if (snapshot.hasError) {
           return Center(child: Text('Gagal memuat data sopir: ${snapshot.error}'));
         }
-        final drivers = snapshot.data ?? [];
-        if (drivers.isEmpty) {
-          return const Center(child: Text('Tidak ada data sopir.'));
-        }
+        final allDrivers = snapshot.data ?? [];
+        final drivers = _filterDrivers(allDrivers);
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(10),
-          itemCount: drivers.length,
-          itemBuilder: (context, index) {
-            final drv = drivers[index];
-            final nama = (drv['nama_lengkap'] ?? '').toString();
-            final email = (drv['email'] ?? '').toString();
-            final noHp = (drv['no_hp'] ?? '').toString();
-            final role = (drv['role'] ?? 'Sopir').toString();
-
-            final inisial = nama.isNotEmpty ? nama[0] : '?';
-
-            return Card(
-              elevation: 2,
-              child: ExpansionTile(
-                leading: CircleAvatar(child: Text(inisial)), // Inisial Nama
-                title: Text(nama.isNotEmpty ? nama : '(Nama belum diisi)',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('$email • $role'),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Detail Sopir', style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 5),
-                        Text('Nama Lengkap : ${nama.isNotEmpty ? nama : '-'}'),
-                        Text('Email        : ${email.isNotEmpty ? email : '-'}'),
-                        Text('No. HP       : ${noHp.isNotEmpty ? noHp : '-'}'),
-                        
-                      ],
+        return CustomScrollView(
+          slivers: [
+            // Search Bar di bagian atas
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cari berdasarkan nama driver...',
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.blue[900]!, width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
-                ],
+                ),
               ),
-            );
-          },
+            ),
+
+            // Daftar Driver
+            if (drivers.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _searchQuery.isNotEmpty ? Icons.search_off : Icons.people_outline,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _searchQuery.isNotEmpty
+                            ? "Tidak ada driver yang cocok dengan pencarian \"$_searchQuery\""
+                            : "Tidak ada data sopir.",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.all(10),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final drv = drivers[index];
+                      final nama = (drv['nama_lengkap'] ?? '').toString();
+                      final email = (drv['email'] ?? '').toString();
+                      final noHp = (drv['no_hp'] ?? '').toString();
+                      final role = (drv['role'] ?? 'Sopir').toString();
+
+                      final inisial = nama.isNotEmpty ? nama[0] : '?';
+
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ExpansionTile(
+                          leading: CircleAvatar(child: Text(inisial)), // Inisial Nama
+                          title: Text(nama.isNotEmpty ? nama : '(Nama belum diisi)',
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('$email • $role'),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Detail Sopir', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 5),
+                                  Text('Nama Lengkap : ${nama.isNotEmpty ? nama : '-'}'),
+                                  Text('Email        : ${email.isNotEmpty ? email : '-'}'),
+                                  Text('No. HP       : ${noHp.isNotEmpty ? noHp : '-'}'),
+                                  
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    childCount: drivers.length,
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
