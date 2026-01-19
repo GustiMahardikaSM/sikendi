@@ -14,17 +14,55 @@ class ManagerVehicleManagementTab extends StatefulWidget {
 
 class _ManagerVehicleManagementTabState extends State<ManagerVehicleManagementTab> {
   late Future<Map<String, List<Map<String, dynamic>>>> _vehiclesFuture;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadVehicles();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase().trim();
+    });
   }
 
   void _loadVehicles() {
     setState(() {
       _vehiclesFuture = MongoService.getSemuaDataUntukManagerDipisah();
     });
+  }
+
+  // Fungsi untuk memfilter kendaraan berdasarkan query pencarian
+  List<Map<String, dynamic>> _filterVehicles(List<Map<String, dynamic>> vehicles, bool isDefined) {
+    if (_searchQuery.isEmpty) {
+      return vehicles;
+    }
+
+    return vehicles.where((vehicle) {
+      if (isDefined) {
+        // Untuk kendaraan yang sudah didefinisikan, cari berdasarkan model dan plat
+        final model = (vehicle['model'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+        final plat = (vehicle['plat'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+        final searchQueryNoSpace = _searchQuery.replaceAll(' ', '');
+        return model.contains(searchQueryNoSpace) || plat.contains(searchQueryNoSpace);
+      } else {
+        // Untuk kendaraan yang belum didefinisikan, cari berdasarkan device_id/gps_1
+        final deviceId = (vehicle['gps_1'] ?? vehicle['device_id'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+        final searchQueryNoSpace = _searchQuery.replaceAll(' ', '');
+        return deviceId.contains(searchQueryNoSpace);
+      }
+    }).toList();
   }
 
   void _showDefineVehicleDialog(BuildContext context, Map<String, dynamic> vehicle) {
@@ -71,13 +109,64 @@ class _ManagerVehicleManagementTabState extends State<ManagerVehicleManagementTa
             return const Center(child: Text("Belum ada data."));
           }
 
-          final undefinedVehicles = snapshot.data!['undefined'] ?? [];
-          final definedVehicles = snapshot.data!['defined'] ?? [];
+          final allUndefinedVehicles = snapshot.data!['undefined'] ?? [];
+          final allDefinedVehicles = snapshot.data!['defined'] ?? [];
+          
+          // Filter kendaraan berdasarkan query pencarian
+          final undefinedVehicles = _filterVehicles(allUndefinedVehicles, false);
+          final definedVehicles = _filterVehicles(allDefinedVehicles, true);
 
           return RefreshIndicator(
             onRefresh: () async => _loadVehicles(),
             child: CustomScrollView(
               slivers: [
+                // Search Bar di bagian atas
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Cari berdasarkan nama/model atau plat nomor...',
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, color: Colors.grey),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue[900]!, width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                  ),
+                ),
+                
                 // Bagian Atas: Kendaraan yang belum didefinisikan
                 if (undefinedVehicles.isNotEmpty)
                   SliverToBoxAdapter(
@@ -189,7 +278,29 @@ class _ManagerVehicleManagementTabState extends State<ManagerVehicleManagementTa
                 // Pesan jika tidak ada data
                 if (undefinedVehicles.isEmpty && definedVehicles.isEmpty)
                   SliverFillRemaining(
-                    child: Center(child: Text("Belum ada kendaraan terdaftar.")),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _searchQuery.isNotEmpty ? Icons.search_off : Icons.directions_car_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchQuery.isNotEmpty
+                                ? "Tidak ada kendaraan yang cocok dengan pencarian \"$_searchQuery\""
+                                : "Belum ada kendaraan terdaftar.",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
               ],
             ),

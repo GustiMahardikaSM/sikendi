@@ -17,7 +17,7 @@ Future<void> main() async {
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false, // Menghilangkan banner "Debug" di pojok kanan atas
     title: 'SiKenDi App',
-    // Aplikasi dimulai dari Halaman Awal (RoleSelectionPage)
+    // Aplikasi dimulai dari Halaman Awal (RoleSelectionPage) 
     home: RoleSelectionPage(),
   ));
 }
