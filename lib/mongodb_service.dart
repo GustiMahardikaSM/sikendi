@@ -8,9 +8,11 @@ class MongoService {
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
   
   static final String _collectionLokasiName = "gps_location";
+  static final String _collectionKendaraanName = "kendaraan";
 
   static Db? _dbLokasi;
   static DbCollection? _collectionLokasi;
+  static DbCollection? _collectionKendaraan;
 
   // --- KONFIGURASI DB JADWAL & SOPIR ---
   static final String _mongoJadwalUrl =
@@ -30,7 +32,8 @@ class MongoService {
       await _dbLokasi!.open();
       inspect(_dbLokasi);
       _collectionLokasi = _dbLokasi!.collection(_collectionLokasiName);
-      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location)");
+      _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
+      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location & kendaraan)");
     } catch (e) {
       print("❌ Gagal Koneksi ke gps_location: $e");
     }
@@ -158,6 +161,68 @@ class MongoService {
   // (Manager bisa melihat semua & menambah kendaraan valid)
   // =================================================================
 
+  // Helper: Sinkronkan data ke collection kendaraan
+  static Future<void> _syncToKendaraanCollection(Map<String, dynamic> vehicleData) async {
+    try {
+      if (_collectionKendaraan == null) {
+        print("⚠️ Collection kendaraan belum terinisialisasi");
+        return;
+      }
+
+      final deviceId = vehicleData['gps_1'] ?? vehicleData['device_id'];
+      if (deviceId == null) {
+        print("⚠️ Device ID tidak ditemukan untuk sync ke collection kendaraan");
+        return;
+      }
+
+      // Cari dokumen yang sudah ada berdasarkan device_id atau gps_1
+      final docsDeviceId = await _collectionKendaraan!.find(where.eq('device_id', deviceId)).toList();
+      final docsGps1 = await _collectionKendaraan!.find(where.eq('gps_1', deviceId)).toList();
+      final allDocs = [...docsDeviceId, ...docsGps1];
+      // Hapus duplikat berdasarkan _id
+      final uniqueDocs = <String, Map<String, dynamic>>{};
+      for (var doc in allDocs) {
+        uniqueDocs[doc['_id'].toString()] = doc;
+      }
+      final existingDocs = uniqueDocs.values.toList();
+
+      // Siapkan data untuk collection kendaraan (hanya field yang relevan)
+      final kendaraanData = {
+        'plat': vehicleData['plat'],
+        'model': vehicleData['model'],
+        'device_id': deviceId,
+        'gps_1': deviceId,
+        'status': vehicleData['status'],
+        'peminjam': vehicleData['peminjam'],
+        'waktu_ambil': vehicleData['waktu_ambil'],
+        'waktu_lepas': vehicleData['waktu_lepas'],
+      };
+
+      if (existingDocs.isNotEmpty) {
+        // Update dokumen yang sudah ada
+        for (var doc in existingDocs) {
+          await _collectionKendaraan!.update(
+            where.id(doc['_id']),
+            modify
+              .set('plat', kendaraanData['plat'])
+              .set('model', kendaraanData['model'])
+              .set('device_id', kendaraanData['device_id'])
+              .set('gps_1', kendaraanData['gps_1'])
+              .set('status', kendaraanData['status'])
+              .set('peminjam', kendaraanData['peminjam'])
+              .set('waktu_ambil', kendaraanData['waktu_ambil'])
+              .set('waktu_lepas', kendaraanData['waktu_lepas']),
+          );
+        }
+      } else {
+        // Insert dokumen baru
+        await _collectionKendaraan!.insert(kendaraanData);
+      }
+    } catch (e) {
+      print("Error sync ke collection kendaraan: $e");
+    }
+  }
+
   // CREATE: Tambahkan metadata kendaraan ke device GPS yang sudah ada atau buat baru
   static Future<bool> tambahKendaraanManager(String plat, String model, String deviceId) async {
     try {
@@ -187,6 +252,7 @@ class MongoService {
       // Cek apakah ada dokumen GPS location yang sudah ada (tanpa metadata)
       final adaGps = allDocsUnique.isNotEmpty ? allDocsUnique.first : null;
       
+      Map<String, dynamic> vehicleData;
       if (adaGps != null) {
         // Update dokumen GPS location yang sudah ada dengan menambahkan metadata
         await _collectionLokasi!.update(
@@ -198,11 +264,10 @@ class MongoService {
             .set('device_id', deviceId)
             .set('status', 'Tersedia')
             .set('peminjam', null)
-            .set('waktu_ambil', null),
+            .set('waktu_ambil', null)
+            .set('waktu_lepas', null),
         );
-      } else {
-        // Buat dokumen baru jika belum ada sama sekali
-        await _collectionLokasi!.insert({
+        vehicleData = {
           'plat': plat,
           'model': model,
           'gps_1': deviceId,
@@ -210,9 +275,28 @@ class MongoService {
           'status': 'Tersedia',
           'peminjam': null,
           'waktu_ambil': null,
+          'waktu_lepas': null,
+        };
+      } else {
+        // Buat dokumen baru jika belum ada sama sekali
+        vehicleData = {
+          'plat': plat,
+          'model': model,
+          'gps_1': deviceId,
+          'device_id': deviceId,
+          'status': 'Tersedia',
+          'peminjam': null,
+          'waktu_ambil': null,
+          'waktu_lepas': null,
+        };
+        await _collectionLokasi!.insert({
+          ...vehicleData,
           'created_at': DateTime.now().toIso8601String()
         });
       }
+      
+      // Sync ke collection kendaraan
+      await _syncToKendaraanCollection(vehicleData);
       return true;
     } catch (e) {
       print("Error tambah kendaraan: $e");
@@ -241,6 +325,8 @@ class MongoService {
         orElse: () => <String, dynamic>{},
       );
       
+      Map<String, dynamic>? vehicleDataForSync;
+      
       if (existingDoc.isNotEmpty) {
         // Update semua dokumen yang memiliki gps_1 atau device_id yang sama
         for (var doc in allDocsUnique) {
@@ -255,8 +341,21 @@ class MongoService {
           }
           
           await _collectionLokasi!.update(where.id(doc['_id']), updateModifier);
+          
+          // Simpan data untuk sync (ambil dari dokumen yang diupdate)
+          if (vehicleDataForSync == null) {
+            vehicleDataForSync = {
+              'plat': plat,
+              'model': model,
+              'gps_1': gps1,
+              'device_id': gps1,
+              'status': status ?? doc['status'] ?? 'Tersedia',
+              'peminjam': doc['peminjam'],
+              'waktu_ambil': doc['waktu_ambil'],
+              'waktu_lepas': doc['waktu_lepas'],
+            };
+          }
         }
-        return true;
       } else if (allDocsUnique.isNotEmpty) {
         // Jika tidak ada dokumen metadata, update dokumen GPS location yang sudah ada
         for (var doc in allDocsUnique) {
@@ -271,11 +370,24 @@ class MongoService {
           }
           
           await _collectionLokasi!.update(where.id(doc['_id']), updateModifier);
+          
+          // Simpan data untuk sync (ambil dari dokumen yang diupdate)
+          if (vehicleDataForSync == null) {
+            vehicleDataForSync = {
+              'plat': plat,
+              'model': model,
+              'gps_1': gps1,
+              'device_id': gps1,
+              'status': status ?? 'Tersedia',
+              'peminjam': doc['peminjam'],
+              'waktu_ambil': doc['waktu_ambil'],
+              'waktu_lepas': doc['waktu_lepas'],
+            };
+          }
         }
-        return true;
       } else {
         // Buat dokumen baru jika belum ada sama sekali
-        await _collectionLokasi!.insert({
+        vehicleDataForSync = {
           'plat': plat,
           'model': model,
           'gps_1': gps1,
@@ -283,10 +395,19 @@ class MongoService {
           'status': status ?? 'Tersedia',
           'peminjam': null,
           'waktu_ambil': null,
+          'waktu_lepas': null,
+        };
+        await _collectionLokasi!.insert({
+          ...vehicleDataForSync,
           'created_at': DateTime.now().toIso8601String()
         });
-        return true;
       }
+      
+      // Sync ke collection kendaraan
+      if (vehicleDataForSync != null) {
+        await _syncToKendaraanCollection(vehicleDataForSync);
+      }
+      return true;
     } catch (e) {
       print("Error update kendaraan: $e");
       return false;
@@ -606,14 +727,38 @@ class MongoService {
   // UPDATE (CHECK-IN): Sopir mengambil mobil
   static Future<void> ambilKendaraan(ObjectId id, String namaSopir) async {
     try {
+      // Baca dokumen yang akan diupdate untuk mendapatkan data lengkap
+      final doc = await _collectionLokasi!.findOne(where.id(id));
+      if (doc == null) {
+        print("⚠️ Dokumen tidak ditemukan untuk ID: $id");
+        return;
+      }
+
+      final waktuAmbil = DateTime.now().toIso8601String();
+      
       // Update data di server
       await _collectionLokasi!.update(
         where.id(id),
         modify
           .set('status', 'Dipakai')        // Ubah status
           .set('peminjam', namaSopir)      // Catat nama sopir
-          .set('waktu_ambil', DateTime.now().toIso8601String()), // Catat waktu
+          .set('waktu_ambil', waktuAmbil) // Catat waktu ambil
+          .set('waktu_lepas', null),       // Reset waktu lepas saat check-in
       );
+      
+      // Sync ke collection kendaraan
+      final vehicleData = {
+        'plat': doc['plat'],
+        'model': doc['model'],
+        'gps_1': doc['gps_1'] ?? doc['device_id'],
+        'device_id': doc['device_id'] ?? doc['gps_1'],
+        'status': 'Dipakai',
+        'peminjam': namaSopir,
+        'waktu_ambil': waktuAmbil,
+        'waktu_lepas': null,
+      };
+      await _syncToKendaraanCollection(vehicleData);
+      
       print("✅ Mobil berhasil diambil oleh $namaSopir");
     } catch (e) {
       print("Error ambil kendaraan: $e");
@@ -623,13 +768,37 @@ class MongoService {
   // UPDATE (CHECK-OUT): Sopir mengembalikan mobil (Selesai tugas)
   static Future<void> selesaikanPekerjaan(ObjectId id) async {
     try {
+      // Baca dokumen yang akan diupdate untuk mendapatkan data lengkap
+      final doc = await _collectionLokasi!.findOne(where.id(id));
+      if (doc == null) {
+        print("⚠️ Dokumen tidak ditemukan untuk ID: $id");
+        return;
+      }
+
+      final waktuLepas = DateTime.now().toIso8601String();
+      
       await _collectionLokasi!.update(
         where.id(id),
         modify
           .set('status', 'Tersedia')
           .set('peminjam', null)
-          .set('waktu_ambil', null),
+          .set('waktu_ambil', null)
+          .set('waktu_lepas', waktuLepas), // Catat waktu lepas
       );
+      
+      // Sync ke collection kendaraan
+      final vehicleData = {
+        'plat': doc['plat'],
+        'model': doc['model'],
+        'gps_1': doc['gps_1'] ?? doc['device_id'],
+        'device_id': doc['device_id'] ?? doc['gps_1'],
+        'status': 'Tersedia',
+        'peminjam': null,
+        'waktu_ambil': null,
+        'waktu_lepas': waktuLepas,
+      };
+      await _syncToKendaraanCollection(vehicleData);
+      
       print("✅ Pekerjaan selesai, mobil kembali tersedia");
     } catch (e) {
       print("Error selesai pekerjaan: $e");
