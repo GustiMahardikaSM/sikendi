@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/vehicle_detail_page.dart';
 
 // ==========================================================
 // TAB 4: MANAJEMEN KENDARAAN (REFACTORED - Dua Bagian)
@@ -161,8 +162,23 @@ class _ManagerVehicleManagementTabState extends State<ManagerVehicleManagementTa
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text("${vehicle['plat'] ?? 'Plat Tidak Dikenal'} - Status: $status"),
-                            trailing: Text(peminjam, style: TextStyle(color: Colors.grey[600])),
-                            onTap: () => _showVehicleCrudDialog(context, vehicle),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(peminjam, style: TextStyle(color: Colors.grey[600])),
+                                const SizedBox(width: 8),
+                                Icon(Icons.chevron_right, color: Colors.grey[400]),
+                              ],
+                            ),
+                            onTap: () {
+                              final deviceId = vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown";
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VehicleDetailPage(deviceId: deviceId),
+                                ),
+                              );
+                            },
                           ),
                         );
                       },
