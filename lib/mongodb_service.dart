@@ -504,6 +504,13 @@ class MongoService {
   // READ (FLEET): Manager melihat posisi terakhir SETIAP device unik di peta
   static Future<List<Map<String, dynamic>>> getFleetDataForManager() async {
     try {
+      // TAMBAHAN: Cek apakah koleksi sudah siap
+      if (_collectionLokasi == null) {
+        print("⚠️ Database belum terkoneksi, mencoba koneksi ulang...");
+        await connect(); // Coba koneksi ulang
+        if (_collectionLokasi == null) return []; // Jika masih gagal, kembalikan list kosong
+      }
+
       // Ambil semua data untuk mendapatkan GPS location dan metadata
       final allData = await _collectionLokasi!.find().toList();
       
