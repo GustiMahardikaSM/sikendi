@@ -670,78 +670,72 @@ class MongoService {
   // BAGIAN DETAIL KENDARAAN
   // =================================================================
 
-  // READ: Ambil detail kendaraan dari collection kendaraan berdasarkan device_id atau gps_1
+  // READ: Ambil detail kendaraan dengan MERGE (Gabungkan Data Statis & Realtime)
   static Future<Map<String, dynamic>?> getDetailKendaraan(String deviceId) async {
     try {
-      // Pastikan koneksi database terbuka
-      if (_dbLokasi == null) {
-        await connect();
-      }
-      
-      // Pastikan collection sudah terinisialisasi
-      if (_collectionKendaraan == null) {
-        if (_dbLokasi != null) {
-          _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
-        } else {
-          print("Collection kendaraan belum ter-inisialisasi.");
-          return null;
-        }
-      }
-      
-      // Jika terjadi error koneksi, reconnect dan coba lagi
-      try {
+      // 1. Pastikan koneksi siap
+      if (_dbLokasi == null) await connect();
+      _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
+      _collectionKendaraan ??= _dbLokasi!.collection(_collectionKendaraanName);
 
-        // Cari berdasarkan gps_1 atau device_id
-        final docsGps1 = await _collectionKendaraan!
-            .find(where.eq('gps_1', deviceId))
-            .toList();
-        final docsDeviceId = await _collectionKendaraan!
-            .find(where.eq('device_id', deviceId))
-            .toList();
-        
-        // Gabungkan hasil dan hapus duplikat berdasarkan _id
-        final allDocs = [...docsGps1, ...docsDeviceId];
-        final uniqueDocs = <String, Map<String, dynamic>>{};
-        for (var doc in allDocs) {
-          uniqueDocs[doc['_id'].toString()] = doc;
-        }
-        
-        if (uniqueDocs.isNotEmpty) {
-          return uniqueDocs.values.first;
-        }
-        return null;
-      } catch (e) {
-        // Jika terjadi error koneksi, reconnect dan coba sekali lagi
-        if (e.toString().contains('No master connection') || 
-            e.toString().contains('connection')) {
-          print("⚠️ Koneksi terputus, mencoba reconnect...");
-          await connect();
-          _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
-          
-          // Coba lagi setelah reconnect
-          final docsGps1 = await _collectionKendaraan!
-              .find(where.eq('gps_1', deviceId))
-              .toList();
-          final docsDeviceId = await _collectionKendaraan!
-              .find(where.eq('device_id', deviceId))
-              .toList();
-          
-          final allDocs = [...docsGps1, ...docsDeviceId];
-          final uniqueDocs = <String, Map<String, dynamic>>{};
-          for (var doc in allDocs) {
-            uniqueDocs[doc['_id'].toString()] = doc;
-          }
-          
-          if (uniqueDocs.isNotEmpty) {
-            return uniqueDocs.values.first;
-          }
-          return null;
-        } else {
-          rethrow;
-        }
+      // 2. Ambil DATA IDENTITAS (Plat, Model, Status, Peminjam) dari collection 'kendaraan'
+      //    Ini adalah data yang DIJAMIN AMAN dan tidak akan hilang saat GPS update.
+      Map<String, dynamic>? identityData;
+      final docId = await _collectionKendaraan!.findOne(where.eq('device_id', deviceId));
+      
+      if (docId != null) {
+        identityData = docId;
+      } else {
+        // Coba cari pakai field gps_1 jika device_id tidak ketemu
+        final docGps = await _collectionKendaraan!.findOne(where.eq('gps_1', deviceId));
+        identityData = docGps;
       }
+
+      // 3. Ambil DATA POSISI REALTIME (Lokasi, Speed) dari 'gps_location'
+      //    Ambil data paling baru (sort descending waktu)
+      Map<String, dynamic>? realtimeData;
+      final q1 = await _collectionLokasi!.find(
+        where.eq('gps_1', deviceId).sortBy('server_received_at', descending: true).limit(1)
+      ).toList();
+      
+      if (q1.isNotEmpty) {
+        realtimeData = q1.first;
+      } else {
+         final q2 = await _collectionLokasi!.find(
+          where.eq('device_id', deviceId).sortBy('server_received_at', descending: true).limit(1)
+        ).toList();
+        if (q2.isNotEmpty) realtimeData = q2.first;
+      }
+
+      // 4. GABUNGKAN HASILNYA (Merge)
+      if (identityData == null && realtimeData == null) return null;
+
+      final result = <String, dynamic>{};
+
+      // A. Masukkan data Identitas sebagai dasar (Plat, Model, Status ada di sini)
+      if (identityData != null) {
+        result.addAll(identityData);
+      }
+
+      // B. Timpa dengan data Realtime HANYA untuk posisi & speed
+      //    JANGAN timpa Plat/Model jika di realtime datanya kosong/null
+      if (realtimeData != null) {
+        result['gps_location'] = realtimeData['gps_location']; // Lat, Lng
+        result['speed'] = realtimeData['speed'];               // Kecepatan
+        result['server_received_at'] = realtimeData['server_received_at']; // Waktu update
+        result['gps_1'] = deviceId; // Pastikan ID konsisten
+      }
+
+      // C. Pastikan field penting memiliki nilai default agar UI tidak error
+      result['plat'] ??= '-';
+      result['model'] ??= '-';
+      result['status'] ??= 'Tersedia'; // Jika status hilang, default ke Tersedia
+      result['device_id'] = deviceId;
+
+      return result;
+
     } catch (e) {
-      print("Error get detail kendaraan: $e");
+      print("Error get detail merge: $e");
       return null;
     }
   }
