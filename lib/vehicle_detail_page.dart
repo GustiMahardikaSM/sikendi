@@ -2,8 +2,10 @@ import 'dart:convert'; // Untuk Base64
 import 'dart:io';      // Untuk File
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Plugin ambil gambar
+import 'package:sikendi/manager_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 // ==========================================================
 // HALAMAN DETAIL KENDARAAN
@@ -22,6 +24,7 @@ class VehicleDetailPage extends StatefulWidget {
 
 class _VehicleDetailPageState extends State<VehicleDetailPage> {
   late Future<Map<String, dynamic>?> _vehicleFuture;
+  Map<String, dynamic>? vehicleData;
   bool _isRefreshing = false;
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingPhoto = false;
@@ -129,6 +132,64 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     return null;
   }
 
+  void _bukaDiPeta(BuildContext context) {
+    if (vehicleData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Data kendaraan belum dimuat")),
+      );
+      return;
+    }
+
+    final gpsLoc = vehicleData!['gps_location'];
+
+    if (gpsLoc == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Lokasi kendaraan tidak tersedia")),
+      );
+      return;
+    }
+
+    try {
+      double lat, lng;
+
+      if (gpsLoc is Map && gpsLoc.containsKey('lat') && gpsLoc.containsKey('lng')) {
+        // FORMAT 1: Key-Value { "lat": ..., "lng": ... }
+        lat = (gpsLoc['lat'] as num).toDouble();
+        lng = (gpsLoc['lng'] as num).toDouble();
+      } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
+        // FORMAT 2: GeoJSON { "coordinates": [lng, lat] }
+        final List coords = gpsLoc['coordinates'];
+        if (coords.length == 2) {
+          lng = (coords[0] as num).toDouble();
+          lat = (coords[1] as num).toDouble();
+        } else {
+          throw Exception("Format koordinat GeoJSON tidak valid (bukan 2 elemen).");
+        }
+      } else {
+        throw Exception("Format lokasi tidak dikenali. Diharapkan 'lat'/'lng' atau 'coordinates'.");
+      }
+      
+      final String devId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? '';
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ManagerPage(
+            initialCenter: LatLng(lat, lng),
+            focusDeviceId: devId,
+          ),
+        ),
+        (route) => false,
+      );
+
+    } catch (e) {
+      print("Error parsing coordinates for map: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal membuka peta: ${e.toString()}")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -151,6 +212,14 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
             onPressed: _isRefreshing ? null : _refreshData,
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          _bukaDiPeta(context);
+        },
+        icon: const Icon(Icons.travel_explore),
+        label: const Text("Lihat Posisi"),
+        backgroundColor: Colors.blueAccent,
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _vehicleFuture,
@@ -186,8 +255,8 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
             );
           }
 
-          final vehicle = snapshot.data;
-          if (vehicle == null) {
+          vehicleData = snapshot.data;
+          if (vehicleData == null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -215,14 +284,14 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           }
 
           // Ambil data dari vehicle
-          final plat = vehicle['plat'] ?? '-';
-          final model = vehicle['model'] ?? '-';
-          final deviceId = vehicle['device_id'] ?? vehicle['gps_1'] ?? widget.deviceId;
-          final status = vehicle['status'] ?? '-';
-          final peminjam = vehicle['peminjam'] ?? null;
-          final waktuAmbil = vehicle['waktu_ambil']?.toString();
-          final gps1 = vehicle['gps_1'] ?? '-';
-          final waktuLepas = vehicle['waktu_lepas']?.toString();
+          final plat = vehicleData!['plat'] ?? '-';
+          final model = vehicleData!['model'] ?? '-';
+          final deviceId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? widget.deviceId;
+          final status = vehicleData!['status'] ?? '-';
+          final peminjam = vehicleData!['peminjam'] ?? null;
+          final waktuAmbil = vehicleData!['waktu_ambil']?.toString();
+          final gps1 = vehicleData!['gps_1'] ?? '-';
+          final waktuLepas = vehicleData!['waktu_lepas']?.toString();
 
           // Tentukan warna status
           Color statusColor;
@@ -241,16 +310,18 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           }
 
           // Ambil data foto
-          final fotoUrl = vehicle['foto_url'];
+          final fotoUrl = vehicleData!['foto_url'];
           
           // Ambil lokasi & speed jika ada
           double lat = 0, lng = 0, speed = 0;
-          if (vehicle['gps_location'] != null) {
-            lat = (vehicle['gps_location']['lat'] as num? ?? 0).toDouble();
-            lng = (vehicle['gps_location']['lng'] as num? ?? 0).toDouble();
+          if (vehicleData!['gps_location'] != null &&
+              vehicleData!['gps_location']['coordinates'] != null &&
+              vehicleData!['gps_location']['coordinates'].length == 2) {
+            lng = (vehicleData!['gps_location']['coordinates'][0] as num? ?? 0).toDouble();
+            lat = (vehicleData!['gps_location']['coordinates'][1] as num? ?? 0).toDouble();
           }
-          speed = (vehicle['speed'] as num? ?? 0).toDouble();
-          final gpsTime = vehicle['server_received_at'] ?? '-';
+          speed = (vehicleData!['speed'] as num? ?? 0).toDouble();
+          final gpsTime = vehicleData!['server_received_at'] ?? '-';
 
           return RefreshIndicator(
             onRefresh: _refreshData,
@@ -416,7 +487,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                           icon: Icons.confirmation_number,
                           label: 'Plat Nomor',
                           value: plat.toString(),
-                          vehicle: vehicle,
+                          vehicle: vehicleData!,
                           fieldType: 'plat',
                           onUpdate: () => _loadVehicleDetail(),
                         ),
@@ -426,7 +497,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                           icon: Icons.directions_car,
                           label: 'Model',
                           value: model.toString(),
-                          vehicle: vehicle,
+                          vehicle: vehicleData!,
                           fieldType: 'model',
                           onUpdate: () => _loadVehicleDetail(),
                         ),
@@ -449,6 +520,39 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                           value: status.toString(),
                           valueColor: statusColor,
                         ),
+                        const SizedBox(height: 12),
+
+                        // --- TAMBAHAN BARU: TAMPILKAN KOORDINAT ---
+                        Builder(
+                            builder: (context) {
+                              // Logika ekstraksi koordinat agar aman
+                              String lat = "0";
+                              String lng = "0";
+                              
+                              var gpsLoc = vehicleData!['gps_location'];
+                              if (gpsLoc != null) {
+                                if (gpsLoc is Map && gpsLoc.containsKey('lat')) {
+                                  lat = gpsLoc['lat'].toString();
+                                  lng = gpsLoc['lng'].toString();
+                                } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
+                                  // Handle GeoJSON [lng, lat]
+                                  List coords = gpsLoc['coordinates'];
+                                  if (coords.length >= 2) {
+                                    lng = coords[0].toString();
+                                    lat = coords[1].toString();
+                                  }
+                                }
+                              }
+                              
+                              return _buildInfoCard(
+                                icon: Icons.map, // Ikon Peta
+                                label: 'Lokasi Terkini (Lat, Lng)',
+                                value: "$lat, $lng",
+                              );
+                            }
+                        ),
+                        // --- AKHIR TAMBAHAN ---
+
                         const SizedBox(height: 12),
                         _buildInfoCard(
                           icon: Icons.person,
@@ -478,12 +582,6 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                           icon: Icons.access_time,
                           label: 'Terakhir Update',
                           value: _formatDateTime(gpsTime.toString()),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.location_on,
-                          label: 'Koordinat',
-                          value: "$lat, $lng",
                         ),
                       ],
                     ),
@@ -733,4 +831,3 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     );
   }
 }
-

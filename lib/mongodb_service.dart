@@ -670,7 +670,7 @@ class MongoService {
   // BAGIAN DETAIL KENDARAAN
   // =================================================================
 
-  // READ: Ambil detail kendaraan dengan MERGE (Gabungkan Data Statis & Realtime)
+  // READ: Ambil detail kendaraan dengan MERGE (Gabungan Data Identitas & Lokasi Terbaru)
   static Future<Map<String, dynamic>?> getDetailKendaraan(String deviceId) async {
     try {
       // 1. Pastikan koneksi siap
@@ -678,22 +678,21 @@ class MongoService {
       _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
       _collectionKendaraan ??= _dbLokasi!.collection(_collectionKendaraanName);
 
-      // 2. Ambil DATA IDENTITAS (Plat, Model, Status, Peminjam) dari collection 'kendaraan'
-      //    Ini adalah data yang DIJAMIN AMAN dan tidak akan hilang saat GPS update.
+      // A. Ambil DATA IDENTITAS (Plat, Model) dari collection 'kendaraan'
       Map<String, dynamic>? identityData;
-      final docId = await _collectionKendaraan!.findOne(where.eq('device_id', deviceId));
-      
-      if (docId != null) {
-        identityData = docId;
-      } else {
-        // Coba cari pakai field gps_1 jika device_id tidak ketemu
-        final docGps = await _collectionKendaraan!.findOne(where.eq('gps_1', deviceId));
-        identityData = docGps;
+      // Coba cari by device_id
+      var doc = await _collectionKendaraan!.findOne(where.eq('device_id', deviceId));
+      if (doc == null) {
+        // Coba cari by gps_1
+        doc = await _collectionKendaraan!.findOne(where.eq('gps_1', deviceId));
       }
+      identityData = doc;
 
-      // 3. Ambil DATA POSISI REALTIME (Lokasi, Speed) dari 'gps_location'
-      //    Ambil data paling baru (sort descending waktu)
+      // B. Ambil DATA LOKASI REAL-TIME dari 'gps_location'
+      //    (Ambil 1 data paling baru berdasarkan waktu server)
       Map<String, dynamic>? realtimeData;
+      
+      // Query sort descending agar dapat yang terbaru
       final q1 = await _collectionLokasi!.find(
         where.eq('gps_1', deviceId).sortBy('server_received_at', descending: true).limit(1)
       ).toList();
@@ -707,30 +706,34 @@ class MongoService {
         if (q2.isNotEmpty) realtimeData = q2.first;
       }
 
-      // 4. GABUNGKAN HASILNYA (Merge)
+      // C. PROSES MERGE (PENGGABUNGAN)
       if (identityData == null && realtimeData == null) return null;
 
       final result = <String, dynamic>{};
 
-      // A. Masukkan data Identitas sebagai dasar (Plat, Model, Status ada di sini)
-      if (identityData != null) {
-        result.addAll(identityData);
-      }
+      // Masukkan identitas dulu
+      if (identityData != null) result.addAll(identityData);
 
-      // B. Timpa dengan data Realtime HANYA untuk posisi & speed
-      //    JANGAN timpa Plat/Model jika di realtime datanya kosong/null
+      // Timpa dengan data lokasi terbaru
       if (realtimeData != null) {
-        result['gps_location'] = realtimeData['gps_location']; // Lat, Lng
-        result['speed'] = realtimeData['speed'];               // Kecepatan
-        result['server_received_at'] = realtimeData['server_received_at']; // Waktu update
-        result['gps_1'] = deviceId; // Pastikan ID konsisten
+        // Ambil koordinat dengan aman
+        if (realtimeData['gps_location'] != null) {
+           result['gps_location'] = realtimeData['gps_location'];
+        }
+        // Ambil field lain yang live
+        result['speed'] = realtimeData['speed'];               
+        result['server_received_at'] = realtimeData['server_received_at'];
+        
+        // Pastikan ID terbawa
+        result['gps_1'] ??= realtimeData['gps_1'];
+        result['device_id'] ??= realtimeData['device_id'];
       }
 
-      // C. Pastikan field penting memiliki nilai default agar UI tidak error
+      // Default value agar UI tidak null
       result['plat'] ??= '-';
       result['model'] ??= '-';
-      result['status'] ??= 'Tersedia'; // Jika status hilang, default ke Tersedia
-      result['device_id'] = deviceId;
+      result['status'] ??= 'Tersedia'; 
+      result['device_id'] ??= deviceId; 
 
       return result;
 

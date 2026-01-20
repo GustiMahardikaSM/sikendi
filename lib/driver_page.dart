@@ -107,23 +107,55 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
   }
 
   Future<void> _fetchData() async {
-    // Logic now uses the centralized MongoService
     final data = await MongoService.getLatestGpsData();
+    if (data == null || !mounted) return;
 
-    if (data != null && mounted) {
-      var doc = data;
+    final doc = data;
+    double? lat, lng;
+
+    try {
       if (doc['gps_location'] != null) {
-        double lat = (doc['gps_location']['lat'] as num).toDouble();
-        double lng = (doc['gps_location']['lng'] as num).toDouble();
-        double speed = (doc['speed'] as num? ?? 0).toDouble();
+        final loc = doc['gps_location'];
+        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
+          // Format A: { "lat": ..., "lng": ... }
+          lat = (loc['lat'] as num).toDouble();
+          lng = (loc['lng'] as num).toDouble();
+        } else if (loc is Map && loc.containsKey('coordinates')) {
+          // Format B: GeoJSON { "coordinates": [lng, lat] }
+          final List coords = loc['coordinates'];
+          if (coords.length >= 2) {
+            lng = (coords[0] as num).toDouble();
+            lat = (coords[1] as num).toDouble();
+          }
+        }
+      }
 
-        setState(() {
-          _currentPosition = LatLng(lat, lng);
-          _currentSpeed = speed;
+      // Fallback: Check for lat/lng at the root level
+      if (lat == null && lng == null) {
+        if (doc.containsKey('lat') && doc.containsKey('lng')) {
+          lat = (doc['lat'] as num).toDouble();
+          lng = (doc['lng'] as num).toDouble();
+        }
+      }
+    } catch (e) {
+      print("Error parsing location in DriverTrackingTab: $e");
+      // Prevent further processing if parsing fails
+      return;
+    }
 
-          if (_currentSpeed > _speedLimit) {
-            if (!_isOverspeeding) {
-              _isOverspeeding = true;
+    // Only update state if we successfully parsed a location
+    if (lat != null && lng != null) {
+      final speed = (doc['speed'] as num? ?? 0).toDouble();
+
+      setState(() {
+        _currentPosition = LatLng(lat!, lng!);
+        _currentSpeed = speed;
+
+        if (_currentSpeed > _speedLimit) {
+          if (!_isOverspeeding) {
+            _isOverspeeding = true;
+            // Avoid showing snackbar if widget is not in the tree
+            if(mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   backgroundColor: Colors.red,
@@ -132,17 +164,18 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
                     children: const [
                       Icon(Icons.warning, color: Colors.white),
                       SizedBox(width: 10),
-                      Text("BAHAYA! Anda melewati batas kecepatan!", style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text("BAHAYA! Anda melewati batas kecepatan!",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
               );
             }
-          } else {
-            _isOverspeeding = false;
           }
-        });
-      }
+        } else {
+          _isOverspeeding = false;
+        }
+      });
     }
   }
 
