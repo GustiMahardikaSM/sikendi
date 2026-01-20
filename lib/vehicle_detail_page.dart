@@ -1,6 +1,11 @@
+import 'dart:convert'; // Untuk Base64
+import 'dart:io';      // Untuk File
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // Plugin ambil gambar
+import 'package:sikendi/manager_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 // ==========================================================
 // HALAMAN DETAIL KENDARAAN
@@ -19,7 +24,10 @@ class VehicleDetailPage extends StatefulWidget {
 
 class _VehicleDetailPageState extends State<VehicleDetailPage> {
   late Future<Map<String, dynamic>?> _vehicleFuture;
+  Map<String, dynamic>? vehicleData;
   bool _isRefreshing = false;
+  final ImagePicker _picker = ImagePicker();
+  bool _isUploadingPhoto = false;
 
   @override
   void initState() {
@@ -57,6 +65,131 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     }
   }
 
+  // Logika Upload Gambar (Kompresi & Base64)
+  Future<void> _pickAndUploadImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 40, // Kompres kualitas agar ringan di DB
+        maxWidth: 800,    // Resize lebar maksimal
+      );
+
+      if (image != null) {
+        setState(() => _isUploadingPhoto = true);
+        
+        File imageFile = File(image.path);
+        List<int> imageBytes = await imageFile.readAsBytes();
+        String base64Image = base64Encode(imageBytes);
+        
+        // Tambahkan prefix agar kita tahu ini Base64
+        String dataToSave = "BASE64:$base64Image";
+
+        final deviceId = widget.deviceId;
+        bool success = await MongoService.updateFotoKendaraan(deviceId, dataToSave);
+
+        if (mounted) {
+          setState(() => _isUploadingPhoto = false);
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Foto berhasil disimpan!"), backgroundColor: Colors.green)
+            );
+            _loadVehicleDetail(); // Refresh halaman
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Gagal menyimpan foto."), backgroundColor: Colors.red)
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print("Error pick image: $e");
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
+        );
+      }
+    }
+  }
+
+  // Helper: Menampilkan Gambar (URL vs Base64)
+  ImageProvider? _getImageProvider(String? fotoData) {
+    if (fotoData == null || fotoData.isEmpty) {
+      return null;
+    }
+    
+    try {
+      if (fotoData.startsWith('BASE64:')) {
+        String rawBase64 = fotoData.substring(7); // Buang prefix 'BASE64:'
+        return MemoryImage(base64Decode(rawBase64));
+      } else if (fotoData.startsWith('http')) {
+        return NetworkImage(fotoData);
+      }
+    } catch (e) {
+      print("Error loading image: $e");
+    }
+    
+    return null;
+  }
+
+  void _bukaDiPeta(BuildContext context) {
+    if (vehicleData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Data kendaraan belum dimuat")),
+      );
+      return;
+    }
+
+    final gpsLoc = vehicleData!['gps_location'];
+
+    if (gpsLoc == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Lokasi kendaraan tidak tersedia")),
+      );
+      return;
+    }
+
+    try {
+      double lat, lng;
+
+      if (gpsLoc is Map && gpsLoc.containsKey('lat') && gpsLoc.containsKey('lng')) {
+        // FORMAT 1: Key-Value { "lat": ..., "lng": ... }
+        lat = (gpsLoc['lat'] as num).toDouble();
+        lng = (gpsLoc['lng'] as num).toDouble();
+      } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
+        // FORMAT 2: GeoJSON { "coordinates": [lng, lat] }
+        final List coords = gpsLoc['coordinates'];
+        if (coords.length == 2) {
+          lng = (coords[0] as num).toDouble();
+          lat = (coords[1] as num).toDouble();
+        } else {
+          throw Exception("Format koordinat GeoJSON tidak valid (bukan 2 elemen).");
+        }
+      } else {
+        throw Exception("Format lokasi tidak dikenali. Diharapkan 'lat'/'lng' atau 'coordinates'.");
+      }
+      
+      final String devId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? '';
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ManagerPage(
+            initialCenter: LatLng(lat, lng),
+            focusDeviceId: devId,
+          ),
+        ),
+        (route) => false,
+      );
+
+    } catch (e) {
+      print("Error parsing coordinates for map: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal membuka peta: ${e.toString()}")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,6 +212,14 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
             onPressed: _isRefreshing ? null : _refreshData,
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          _bukaDiPeta(context);
+        },
+        icon: const Icon(Icons.travel_explore),
+        label: const Text("Lihat Posisi"),
+        backgroundColor: Colors.blueAccent,
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _vehicleFuture,
@@ -114,8 +255,8 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
             );
           }
 
-          final vehicle = snapshot.data;
-          if (vehicle == null) {
+          vehicleData = snapshot.data;
+          if (vehicleData == null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -143,14 +284,14 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           }
 
           // Ambil data dari vehicle
-          final plat = vehicle['plat'] ?? '-';
-          final model = vehicle['model'] ?? '-';
-          final deviceId = vehicle['device_id'] ?? vehicle['gps_1'] ?? widget.deviceId;
-          final status = vehicle['status'] ?? '-';
-          final peminjam = vehicle['peminjam'] ?? null;
-          final waktuAmbil = vehicle['waktu_ambil']?.toString();
-          final gps1 = vehicle['gps_1'] ?? '-';
-          final waktuLepas = vehicle['waktu_lepas']?.toString();
+          final plat = vehicleData!['plat'] ?? '-';
+          final model = vehicleData!['model'] ?? '-';
+          final deviceId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? widget.deviceId;
+          final status = vehicleData!['status'] ?? '-';
+          final peminjam = vehicleData!['peminjam'] ?? null;
+          final waktuAmbil = vehicleData!['waktu_ambil']?.toString();
+          final gps1 = vehicleData!['gps_1'] ?? '-';
+          final waktuLepas = vehicleData!['waktu_lepas']?.toString();
 
           // Tentukan warna status
           Color statusColor;
@@ -168,149 +309,282 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
               statusColor = Colors.grey;
           }
 
+          // Ambil data foto
+          final fotoUrl = vehicleData!['foto_url'];
+          
+          // Ambil lokasi & speed jika ada
+          double lat = 0, lng = 0, speed = 0;
+          if (vehicleData!['gps_location'] != null &&
+              vehicleData!['gps_location']['coordinates'] != null &&
+              vehicleData!['gps_location']['coordinates'].length == 2) {
+            lng = (vehicleData!['gps_location']['coordinates'][0] as num? ?? 0).toDouble();
+            lat = (vehicleData!['gps_location']['coordinates'][1] as num? ?? 0).toDouble();
+          }
+          speed = (vehicleData!['speed'] as num? ?? 0).toDouble();
+          final gpsTime = vehicleData!['server_received_at'] ?? '-';
+
           return RefreshIndicator(
             onRefresh: _refreshData,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Card
-                  Card(
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.directions_car,
-                              size: 48,
-                              color: Colors.blue[900],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  model.toString(),
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                  // ====================================================
+                  // HEADER FOTO LANDSCAPE
+                  // ====================================================
+                  Stack(
+                    children: [
+                      // 1. Container Gambar
+                      Container(
+                        height: 240, // Tinggi Landscape
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          image: (fotoUrl != null && fotoUrl.toString().isNotEmpty && _getImageProvider(fotoUrl.toString()) != null)
+                              ? DecorationImage(
+                                  image: _getImageProvider(fotoUrl.toString())!,
+                                  fit: BoxFit.cover, // Gambar memenuhi kotak
+                                  onError: (exception, stackTrace) {
+                                    // Jika error loading gambar, akan menampilkan placeholder
+                                  },
+                                )
+                              : null,
+                        ),
+                        child: (fotoUrl == null || fotoUrl.toString().isEmpty || _getImageProvider(fotoUrl.toString()) == null)
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.directions_car, size: 80, color: Colors.grey[400]),
+                                    const SizedBox(height: 8),
+                                    Text("Belum ada foto", style: TextStyle(color: Colors.grey[600])),
+                                  ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  plat.toString(),
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey[700],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: statusColor,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    status.toString(),
-                                    style: TextStyle(
-                                      color: statusColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                              )
+                            : null,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
 
-                  // Informasi Detail
-                  const Text(
-                    'Informasi Detail',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                      // 2. Gradient Overlay (Agar teks putih terbaca)
+                      Positioned(
+                        bottom: 0, left: 0, right: 0,
+                        child: Container(
+                          height: 100,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                            ),
+                          ),
+                        ),
+                      ),
 
-                  _buildEditableInfoCard(
-                    context: context,
-                    icon: Icons.confirmation_number,
-                    label: 'Plat Nomor',
-                    value: plat.toString(),
-                    vehicle: vehicle,
-                    fieldType: 'plat',
-                    onUpdate: () => _loadVehicleDetail(),
+                      // 3. Informasi Utama (Model & Plat) di atas gambar
+                      Positioned(
+                        bottom: 16, left: 16, right: 80, // Ada sisa kanan utk tombol edit
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              model.toString(),
+                              style: const TextStyle(
+                                color: Colors.white, 
+                                fontSize: 24, 
+                                fontWeight: FontWeight.bold,
+                                shadows: [Shadow(color: Colors.black, blurRadius: 4)]
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.white70)
+                              ),
+                              child: Text(
+                                plat.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white, 
+                                  fontSize: 16, 
+                                  fontWeight: FontWeight.w500
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 4. Tombol Edit Foto (Pojok Kanan Bawah Header)
+                      Positioned(
+                        bottom: 16, right: 16,
+                        child: _isUploadingPhoto
+                            ? Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              )
+                            : FloatingActionButton.small(
+                                onPressed: _pickAndUploadImage,
+                                backgroundColor: Colors.white,
+                                child: const Icon(Icons.add_a_photo, color: Colors.blue),
+                              ),
+                      ),
+
+                      // 5. Badge Status (Pojok Kiri Atas)
+                      Positioned(
+                        top: 16, left: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [const BoxShadow(color: Colors.black26, blurRadius: 4)],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.info_outline, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                status.toString().toUpperCase(),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _buildEditableInfoCard(
-                    context: context,
-                    icon: Icons.directions_car,
-                    label: 'Model',
-                    value: model.toString(),
-                    vehicle: vehicle,
-                    fieldType: 'model',
-                    onUpdate: () => _loadVehicleDetail(),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.devices,
-                    label: 'Device ID',
-                    value: deviceId.toString(),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.gps_fixed,
-                    label: 'GPS ID',
-                    value: gps1.toString(),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.info_outline,
-                    label: 'Status',
-                    value: status.toString(),
-                    valueColor: statusColor,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.person,
-                    label: 'Peminjam',
-                    value: peminjam?.toString() ?? '-',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.access_time,
-                    label: 'Waktu Ambil',
-                    value: _formatDateTime(waktuAmbil),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    icon: Icons.event_available,
-                    label: 'Waktu Lepas',
-                    value: _formatDateTime(waktuLepas),
+                  
+                  // ====================================================
+                  // INFORMASI DETAIL (FITUR LAIN TETAP ADA)
+                  // ====================================================
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Informasi Detail',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        _buildEditableInfoCard(
+                          context: context,
+                          icon: Icons.confirmation_number,
+                          label: 'Plat Nomor',
+                          value: plat.toString(),
+                          vehicle: vehicleData!,
+                          fieldType: 'plat',
+                          onUpdate: () => _loadVehicleDetail(),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildEditableInfoCard(
+                          context: context,
+                          icon: Icons.directions_car,
+                          label: 'Model',
+                          value: model.toString(),
+                          vehicle: vehicleData!,
+                          fieldType: 'model',
+                          onUpdate: () => _loadVehicleDetail(),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.devices,
+                          label: 'Device ID',
+                          value: deviceId.toString(),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.gps_fixed,
+                          label: 'GPS ID',
+                          value: gps1.toString(),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.info_outline,
+                          label: 'Status',
+                          value: status.toString(),
+                          valueColor: statusColor,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // --- TAMBAHAN BARU: TAMPILKAN KOORDINAT ---
+                        Builder(
+                            builder: (context) {
+                              // Logika ekstraksi koordinat agar aman
+                              String lat = "0";
+                              String lng = "0";
+                              
+                              var gpsLoc = vehicleData!['gps_location'];
+                              if (gpsLoc != null) {
+                                if (gpsLoc is Map && gpsLoc.containsKey('lat')) {
+                                  lat = gpsLoc['lat'].toString();
+                                  lng = gpsLoc['lng'].toString();
+                                } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
+                                  // Handle GeoJSON [lng, lat]
+                                  List coords = gpsLoc['coordinates'];
+                                  if (coords.length >= 2) {
+                                    lng = coords[0].toString();
+                                    lat = coords[1].toString();
+                                  }
+                                }
+                              }
+                              
+                              return _buildInfoCard(
+                                icon: Icons.map, // Ikon Peta
+                                label: 'Lokasi Terkini (Lat, Lng)',
+                                value: "$lat, $lng",
+                              );
+                            }
+                        ),
+                        // --- AKHIR TAMBAHAN ---
+
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.person,
+                          label: 'Peminjam',
+                          value: peminjam?.toString() ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.access_time,
+                          label: 'Waktu Ambil',
+                          value: _formatDateTime(waktuAmbil),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.event_available,
+                          label: 'Waktu Lepas',
+                          value: _formatDateTime(waktuLepas),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.speed,
+                          label: 'Kecepatan',
+                          value: "${speed.toStringAsFixed(1)} km/h",
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          icon: Icons.access_time,
+                          label: 'Terakhir Update',
+                          value: _formatDateTime(gpsTime.toString()),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -557,4 +831,3 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     );
   }
 }
-

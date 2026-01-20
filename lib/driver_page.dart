@@ -198,15 +198,104 @@ class DriverTrackingTab extends StatelessWidget {
   final double currentSpeed;
   final bool isOverspeeding;
 
-  const DriverTrackingTab({
-    super.key,
-    required this.mapController,
-    required this.hasVehicle,
-    this.currentPosition,
-    required this.widyapurayaUndip,
-    required this.currentSpeed,
-    required this.isOverspeeding,
-  });
+  @override
+  State<DriverTrackingTab> createState() => _DriverTrackingTabState();
+}
+
+class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKeepAliveClientMixin {
+  LatLng? _currentPosition;
+  double _currentSpeed = 0.0;
+  Timer? _timer;
+  
+  final double _speedLimit = 60.0; 
+  bool _isOverspeeding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _fetchData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
+    final data = await MongoService.getLatestGpsData();
+    if (data == null || !mounted) return;
+
+    final doc = data;
+    double? lat, lng;
+
+    try {
+      if (doc['gps_location'] != null) {
+        final loc = doc['gps_location'];
+        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
+          // Format A: { "lat": ..., "lng": ... }
+          lat = (loc['lat'] as num).toDouble();
+          lng = (loc['lng'] as num).toDouble();
+        } else if (loc is Map && loc.containsKey('coordinates')) {
+          // Format B: GeoJSON { "coordinates": [lng, lat] }
+          final List coords = loc['coordinates'];
+          if (coords.length >= 2) {
+            lng = (coords[0] as num).toDouble();
+            lat = (coords[1] as num).toDouble();
+          }
+        }
+      }
+
+      // Fallback: Check for lat/lng at the root level
+      if (lat == null && lng == null) {
+        if (doc.containsKey('lat') && doc.containsKey('lng')) {
+          lat = (doc['lat'] as num).toDouble();
+          lng = (doc['lng'] as num).toDouble();
+        }
+      }
+    } catch (e) {
+      print("Error parsing location in DriverTrackingTab: $e");
+      // Prevent further processing if parsing fails
+      return;
+    }
+
+    // Only update state if we successfully parsed a location
+    if (lat != null && lng != null) {
+      final speed = (doc['speed'] as num? ?? 0).toDouble();
+
+      setState(() {
+        _currentPosition = LatLng(lat!, lng!);
+        _currentSpeed = speed;
+
+        if (_currentSpeed > _speedLimit) {
+          if (!_isOverspeeding) {
+            _isOverspeeding = true;
+            // Avoid showing snackbar if widget is not in the tree
+            if(mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 1),
+                  content: Row(
+                    children: const [
+                      Icon(Icons.warning, color: Colors.white),
+                      SizedBox(width: 10),
+                      Text("BAHAYA! Anda melewati batas kecepatan!",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+        } else {
+          _isOverspeeding = false;
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

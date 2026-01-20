@@ -10,7 +10,10 @@ import 'package:sikendi/manager_vehicle_tab.dart';
 // KELAS UTAMA HALAMAN MANAJER
 // ==========================================================
 class ManagerPage extends StatefulWidget {
-  const ManagerPage({super.key});
+  final LatLng? initialCenter;
+  final String? focusDeviceId;
+
+  const ManagerPage({super.key, this.initialCenter, this.focusDeviceId});
 
   @override
   State<ManagerPage> createState() => _ManagerPageState();
@@ -20,12 +23,26 @@ class _ManagerPageState extends State<ManagerPage> {
   int _selectedIndex = 0; // Mengatur Tab yang aktif
 
   // Daftar Tab Halaman
-  static final List<Widget> _pages = <Widget>[
-    const ManagerDashboardTab(), // Tab 0: Peta Monitoring Armada
-    const ManagerVehicleManagementTab(), // Tab 1: Manajemen Kendaraan
-    const ManagerDriversTab(),   // Tab 2: Daftar & Profil Sopir
-    const ManagerAlertsTab(),    // Tab 3: Peringatan (Alert System)
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    // Jika ada initialCenter, pastikan tab monitor yang terbuka
+    if (widget.initialCenter != null) {
+      _selectedIndex = 0;
+    }
+    _pages = <Widget>[
+      ManagerDashboardTab(
+        initialCenter: widget.initialCenter,
+        focusDeviceId: widget.focusDeviceId,
+      ), // Tab 0: Peta Monitoring Armada
+      const ManagerVehicleManagementTab(), // Tab 1: Manajemen Kendaraan
+      const ManagerDriversTab(),   // Tab 2: Daftar & Profil Sopir
+      const ManagerAlertsTab(),    // Tab 3: Peringatan (Alert System)
+    ];
+  }
+
 
   void _onItemTapped(int index) {
     setState(() {
@@ -74,13 +91,17 @@ class _ManagerPageState extends State<ManagerPage> {
 // TAB 1: DASHBOARD MONITORING (DENGAN DETEKSI GPS MATI)
 // ==========================================================
 class ManagerDashboardTab extends StatefulWidget {
-  const ManagerDashboardTab({super.key});
+  final LatLng? initialCenter;
+  final String? focusDeviceId;
+
+  const ManagerDashboardTab({super.key, this.initialCenter, this.focusDeviceId});
 
   @override
   State<ManagerDashboardTab> createState() => _ManagerDashboardTabState();
 }
 
 class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
+  final MapController _mapController = MapController();
   List<Map<String, dynamic>> _activeVehicles = [];
   Timer? _timer;
 
@@ -91,6 +112,12 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     // Refresh peta setiap 5 detik
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _fetchFleetData();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialCenter != null) {
+        _mapController.move(widget.initialCenter!, 16.0);
+      }
     });
   }
 
@@ -158,34 +185,35 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     return "Parkir";
   }
 
-  // POP-UP DETAIL KENDARAAN
+  // POP-UP DETAIL KENDARAAN (DIPERBAIKI)
   void _showVehicleDetail(BuildContext context, Map<String, dynamic> vehicle) {
-    // Tampilkan plat nomor jika sudah didefinisikan, jika tidak tampilkan device_id
+    // 1. Ambil Nama & Identitas
     String displayName = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown Device";
     String? plat = vehicle['plat'];
     String? model = vehicle['model'];
     String deviceId = vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown";
     
+    // 2. Ambil Data Statistik
     double speed = (vehicle['speed'] as num? ?? 0).toDouble();
-    // Ambil waktu terakhir update
     String? timestamp = vehicle['server_received_at']?.toString();
     
-    double lat = 0;
-    double lng = 0;
-    if (vehicle['gps_location'] != null) {
-      lat = (vehicle['gps_location']['lat'] as num).toDouble();
-      lng = (vehicle['gps_location']['lng'] as num).toDouble();
-    }
+    // 3. AMBIL KOORDINAT DENGAN CARA AMAN (Menggunakan fungsi helper _parseLocation)
+    // Jika Anda belum membuat _parseLocation, lihat instruksi di bawah kode ini*
+    LatLng? pos = _parseLocation(vehicle); 
+    
+    double lat = pos?.latitude ?? 0.0;
+    double lng = pos?.longitude ?? 0.0;
 
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
         return Container(
           padding: const EdgeInsets.all(20),
-          height: 320,
+          height: 350, // Sedikit dipertinggi agar muat
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header: Ikon & Nama Mobil
               Row(
                 children: [
                   const Icon(Icons.directions_car, size: 30, color: Colors.blue),
@@ -196,57 +224,56 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                       children: [
                         Text(displayName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         if (plat != null && model != null)
-                          Text(
-                            "$model • $plat",
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          )
-                        else if (plat != null)
-                          Text(
-                            plat,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          )
-                        else if (model != null)
-                          Text(
-                            model,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          )
+                          Text("$model • $plat", style: TextStyle(fontSize: 12, color: Colors.grey[600]))
                         else
-                          Text(
-                            "Device ID: $deviceId",
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          ),
+                          Text("ID: $deviceId", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                       ],
                     ),
                   ),
                 ],
               ),
               const Divider(),
+              
+              // Item 1: Kecepatan
               ListTile(
+                dense: true,
                 leading: const Icon(Icons.speed),
                 title: Text("${speed.toStringAsFixed(1)} km/h"),
                 subtitle: Text(
                   _getStatusText(speed, timestamp), 
                   style: TextStyle(
-                    color: _getStatusColor(speed, timestamp), // Warna teks menyesuaikan status
+                    color: _getStatusColor(speed, timestamp),
                     fontWeight: FontWeight.bold
                   )
                 ),
-                trailing: CircleAvatar(
-                  backgroundColor: _getStatusColor(speed, timestamp), 
-                  radius: 10
-                ),
               ),
+
+              // Item 2: Waktu Update
               ListTile(
+                dense: true,
                 leading: const Icon(Icons.access_time),
                 title: const Text("Terakhir Update"),
                 subtitle: Text(timestamp != null 
                     ? DateTime.parse(timestamp).toLocal().toString().split('.')[0] 
                     : "-"),
               ),
+
+              // Item 3: Koordinat (YANG DIPERBAIKI)
               ListTile(
+                dense: true,
                 leading: const Icon(Icons.location_on),
-                title: const Text("Posisi Terakhir"),
-                subtitle: Text("$lat, $lng"),
+                title: const Text("Posisi Koordinat"),
+                // Tampilkan lat, lng dengan 6 angka di belakang koma agar rapi
+                subtitle: Text("${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"),
+                trailing: IconButton(
+                  icon: const Icon(Icons.copy, size: 20),
+                  onPressed: () {
+                     // Opsional: Copy koordinat ke clipboard
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       const SnackBar(content: Text("Koordinat disalin!"))
+                     );
+                  },
+                ),
               ),
             ],
           ),
@@ -255,13 +282,54 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     );
   }
 
+  // Tambahkan fungsi helper ini di dalam class _ManagerDashboardTabState
+  // Fungsinya: Mencari koordinat dengan segala cara (GeoJSON atau Key-Value)
+  LatLng? _parseLocation(Map<String, dynamic> vehicle) {
+    try {
+      // Cek 1: Apakah ada field 'gps_location'?
+      if (vehicle['gps_location'] != null) {
+        final loc = vehicle['gps_location'];
+        
+        // Format A: { "lat": -7.0, "lng": 110.0 } (Standar Key-Value)
+        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
+          return LatLng(
+            (loc['lat'] as num).toDouble(),
+            (loc['lng'] as num).toDouble(),
+          );
+        }
+        
+        // Format B: GeoJSON { "coordinates": [110.0, -7.0] } (Perhatikan: Lng dulu!)
+        if (loc is Map && loc.containsKey('coordinates')) {
+          final List coords = loc['coordinates'];
+          if (coords.length >= 2) {
+            return LatLng(
+              (coords[1] as num).toDouble(), // Index 1 = Latitude
+              (coords[0] as num).toDouble(), // Index 0 = Longitude
+            );
+          }
+        }
+      }
+      
+      // Cek 2: Apakah lat/lng ada langsung di root dokumen?
+      if (vehicle.containsKey('lat') && vehicle.containsKey('lng')) {
+        return LatLng(
+          (vehicle['lat'] as num).toDouble(),
+          (vehicle['lng'] as num).toDouble(),
+        );
+      }
+    } catch (e) {
+      print("Error parsing lokasi untuk ${vehicle['plat']}: $e");
+    }
+    return null; // Gagal mendapatkan lokasi
+  }
+
   @override
   Widget build(BuildContext context) {
     return _activeVehicles.isEmpty
-        ? const Center(child: Text("Memuat data armada...")) 
+        ? const Center(child: Text("Memuat data armada..."))
         : FlutterMap(
             options: const MapOptions(
-              initialCenter: LatLng(-7.052219, 110.441481), 
+              initialCenter: LatLng(-7.052219, 110.441481), // Default Undip
               initialZoom: 14.0,
             ),
             children: [
@@ -271,19 +339,24 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
               ),
               MarkerLayer(
                 markers: _activeVehicles.map((vehicle) {
-                  double lat = 0;
-                  double lng = 0;
-                  double speed = 0;
-                  String? timestamp = vehicle['server_received_at']?.toString();
-
-                  if (vehicle['gps_location'] != null) {
-                    lat = (vehicle['gps_location']['lat'] as num).toDouble();
-                    lng = (vehicle['gps_location']['lng'] as num).toDouble();
+                  // GUNAKAN FUNGSI HELPER BARU KITA
+                  final LatLng? position = _parseLocation(vehicle);
+                  
+                  // Jika posisi null (tidak ada data GPS), JANGAN buat marker (skip)
+                  if (position == null) {
+                    return const Marker(
+                      point: LatLng(0, 0), 
+                      child: SizedBox(), // Marker kosong tak terlihat
+                    ); 
                   }
-                  speed = (vehicle['speed'] as num? ?? 0).toDouble();
+
+                  // Ambil data lainnya
+                  double speed = (vehicle['speed'] as num? ?? 0).toDouble();
+                  String? timestamp = vehicle['server_received_at']?.toString();
+                  String label = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? "?";
 
                   return Marker(
-                    point: LatLng(lat, lng),
+                    point: position, // Gunakan posisi yang valid
                     width: 60,
                     height: 60,
                     child: GestureDetector(
@@ -298,14 +371,14 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                                border: Border.all(color: Colors.black12)
                             ),
                             child: Text(
-                              vehicle['plat'] ?? vehicle['gps_1'] ?? vehicle['device_id'] ?? "?",
+                              label,
                               style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Icon(
                             Icons.directions_car_filled,
-                            color: _getStatusColor(speed, timestamp), 
+                            color: _getStatusColor(speed, timestamp),
                             size: 40,
                           ),
                         ],
