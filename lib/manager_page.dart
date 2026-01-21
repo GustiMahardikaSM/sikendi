@@ -104,38 +104,69 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
   final MapController _mapController = MapController();
   List<Map<String, dynamic>> _activeVehicles = [];
   Timer? _timer;
+  
+  // STATE BARU: Mode Tracking
+  // Jika true: Peta otomatis geser ke mobil & Marker di-highlight
+  // Jika false: Mode bebas (monitoring biasa)
+  bool _isTrackingMode = false;
 
   @override
   void initState() {
     super.initState();
+    
+    // LOGIKA: Jika halaman ini dibuka dengan membawa ID Device (dari tombol Lihat Posisi),
+    // maka aktifkan mode tracking sejak awal.
+    if (widget.focusDeviceId != null) {
+      _isTrackingMode = true;
+    }
+
     _fetchFleetData(); 
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _fetchFleetData();
     });
-    
-    // HAPUS atau abaikan bagian addPostFrameCallback yang lama
-    // karena kita akan menangani posisi langsung di MapOptions
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _mapController.dispose();
     super.dispose();
   }
 
+  // Fungsi Fetch Data (Disatukan logika trackingnya di sini)
   Future<void> _fetchFleetData() async {
-    try {
-      final data = await MongoService.getFleetDataForManager();
-      if (mounted) {
-        setState(() {
-          _activeVehicles = data;
-        });
+    final data = await MongoService.getFleetDataForManager();
+    
+    if (mounted) {
+      setState(() {
+        _activeVehicles = data;
+      });
+
+      // LOGIKA AUTO-FOLLOW (Jalan setiap 5 detik jika mode tracking aktif)
+      if (_isTrackingMode && widget.focusDeviceId != null) {
+        try {
+          // Cari mobil yang sedang ditrack di dalam list data terbaru
+          final targetCar = _activeVehicles.firstWhere(
+            (v) => v['device_id'] == widget.focusDeviceId || v['gps_1'] == widget.focusDeviceId,
+            orElse: () => <String, dynamic>{},
+          );
+
+          if (targetCar.isNotEmpty) {
+            final LatLng? pos = _parseLocation(targetCar);
+            if (pos != null) {
+              // Paksakan kamera peta pindah ke lokasi mobil baru
+              // Zoom 18.0 (Close up)
+              _mapController.move(pos, 18.0);
+            }
+          }
+        } catch (e) {
+          // Cegah error jika map controller belum siap
+          print("Map not ready for move: $e");
+        }
       }
-    } catch (e) {
-      debugPrint("Fetch Error in ManagerDashboardTab: $e");
     }
   }
-
+  
   // --- LOGIKA BARU: CEK APAKAH GPS OFFLINE ---
   bool _isGpsOffline(String? serverTimeStr) {
     if (serverTimeStr == null) return true; // Tidak ada waktu = Mati
@@ -155,17 +186,11 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     }
   }
 
-  // LOGIKA WARNA STATUS (UPDATE)
-  Color _getStatusColor(double speed, String? serverTimeStr) {
-    // 1. Cek dulu apakah GPS Mati (Offline)
-    if (_isGpsOffline(serverTimeStr)) {
-      return Colors.red; // MERAH (Offline/Mati)
-    }
-
-    // 2. Jika GPS Hidup, cek kecepatan
-    if (speed > 5) return Colors.green; // Sedang Jalan
-    if (speed > 0) return Colors.orange; // Idle (Mesin nyala, berhenti)
-    return Colors.red; // Parkir (Speed 0)
+  // Helper function
+  Color _getStatusColor(double speed, String? timestamp) {
+    if (_isGpsOffline(timestamp)) return Colors.red; 
+    if (speed > 5) return Colors.green; 
+    return Colors.orange; 
   }
 
   String _getStatusText(double speed, String? serverTimeStr) {
@@ -180,8 +205,46 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     if (speed > 0) return "Idle";
     return "Parkir";
   }
-
-  // POP-UP DETAIL KENDARAAN (DIPERBAIKI)
+  
+  LatLng? _parseLocation(Map<String, dynamic> vehicle) {
+    try {
+      // Cek 1: Apakah ada field 'gps_location'?
+      if (vehicle['gps_location'] != null) {
+        final loc = vehicle['gps_location'];
+        
+        // Format A: { "lat": -7.0, "lng": 110.0 } (Standar Key-Value)
+        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
+          return LatLng(
+            (loc['lat'] as num).toDouble(),
+            (loc['lng'] as num).toDouble(),
+          );
+        }
+        
+        // Format B: GeoJSON { "coordinates": [110.0, -7.0] } (Perhatikan: Lng dulu!)
+        if (loc is Map && loc.containsKey('coordinates')) {
+          final List coords = loc['coordinates'];
+          if (coords.length >= 2) {
+            return LatLng(
+              (coords[1] as num).toDouble(), // Index 1 = Latitude
+              (coords[0] as num).toDouble(), // Index 0 = Longitude
+            );
+          }
+        }
+      }
+      
+      // Cek 2: Apakah lat/lng ada langsung di root dokumen?
+      if (vehicle.containsKey('lat') && vehicle.containsKey('lng')) {
+        return LatLng(
+          (vehicle['lat'] as num).toDouble(),
+          (vehicle['lng'] as num).toDouble(),
+        );
+      }
+    } catch (e) {
+      print("Error parsing lokasi untuk ${vehicle['plat']}: $e");
+    }
+    return null; // Gagal mendapatkan lokasi
+  }
+  
   void _showVehicleDetail(BuildContext context, Map<String, dynamic> vehicle) {
     // 1. Ambil Nama & Identitas
     String displayName = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown Device";
@@ -193,8 +256,6 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     double speed = (vehicle['speed'] as num? ?? 0).toDouble();
     String? timestamp = vehicle['server_received_at']?.toString();
     
-    // 3. AMBIL KOORDINAT DENGAN CARA AMAN (Menggunakan fungsi helper _parseLocation)
-    // Jika Anda belum membuat _parseLocation, lihat instruksi di bawah kode ini*
     LatLng? pos = _parseLocation(vehicle); 
     
     double lat = pos?.latitude ?? 0.0;
@@ -278,67 +339,29 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     );
   }
 
-  // Tambahkan fungsi helper ini di dalam class _ManagerDashboardTabState
-  // Fungsinya: Mencari koordinat dengan segala cara (GeoJSON atau Key-Value)
-  LatLng? _parseLocation(Map<String, dynamic> vehicle) {
-    try {
-      // Cek 1: Apakah ada field 'gps_location'?
-      if (vehicle['gps_location'] != null) {
-        final loc = vehicle['gps_location'];
-        
-        // Format A: { "lat": -7.0, "lng": 110.0 } (Standar Key-Value)
-        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
-          return LatLng(
-            (loc['lat'] as num).toDouble(),
-            (loc['lng'] as num).toDouble(),
-          );
-        }
-        
-        // Format B: GeoJSON { "coordinates": [110.0, -7.0] } (Perhatikan: Lng dulu!)
-        if (loc is Map && loc.containsKey('coordinates')) {
-          final List coords = loc['coordinates'];
-          if (coords.length >= 2) {
-            return LatLng(
-              (coords[1] as num).toDouble(), // Index 1 = Latitude
-              (coords[0] as num).toDouble(), // Index 0 = Longitude
-            );
-          }
-        }
-      }
-      
-      // Cek 2: Apakah lat/lng ada langsung di root dokumen?
-      if (vehicle.containsKey('lat') && vehicle.containsKey('lng')) {
-        return LatLng(
-          (vehicle['lat'] as num).toDouble(),
-          (vehicle['lng'] as num).toDouble(),
-        );
-      }
-    } catch (e) {
-      print("Error parsing lokasi untuk ${vehicle['plat']}: $e");
-    }
-    return null; // Gagal mendapatkan lokasi
-  }
-
   @override
   Widget build(BuildContext context) {
     return _activeVehicles.isEmpty
         ? const Center(child: Text("Memuat data armada..."))
         : FlutterMap(
-            // 1. PENTING: Pasang controller agar bisa dikontrol secara programatik nanti
-            mapController: _mapController, 
-            
-            // 2. PERBAIKAN LOGIKA POSISI & ZOOM
+            mapController: _mapController,
             options: MapOptions(
-              // Jangan gunakan 'const'.
-              // Jika widget.initialCenter (dari tombol Lihat Posisi) ada, gunakan itu.
-              // Jika tidak, gunakan default Undip.
+              // Posisi awal: Jika tracking, gunakan posisi kiriman. Jika tidak, ke Undip.
               initialCenter: widget.initialCenter ?? const LatLng(-7.052219, 110.441481),
-              
-              // Jika tracking spesifik (Lihat Posisi), zoom level 18 (sangat dekat).
-              // Jika monitoring umum, zoom level 14 (area).
               initialZoom: widget.initialCenter != null ? 18.0 : 14.0,
+              
+              // FITUR UTAMA: DETEKSI GESERAN USER
+              onPositionChanged: (position, hasGesture) {
+                // Jika pergerakan peta disebabkan oleh jari user (hasGesture == true)
+                // DAN saat ini sedang mode tracking...
+                if (hasGesture && _isTrackingMode) {
+                  setState(() {
+                    _isTrackingMode = false; // Matikan tracking
+                    // "Mark akan lepas" dan "Monitor bekerja biasa"
+                  });
+                }
+              },
             ),
-            
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -346,50 +369,50 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
               ),
               MarkerLayer(
                 markers: _activeVehicles.map((vehicle) {
-                  // Gunakan helper _parseLocation yang sudah Anda buat/miliki
                   final LatLng? position = _parseLocation(vehicle);
-                  
-                  if (position == null) {
-                    return const Marker(
-                      point: LatLng(0, 0), 
-                      child: SizedBox(),
-                    ); 
-                  }
+                  if (position == null) return const Marker(point: LatLng(0,0), child: SizedBox());
 
                   double speed = (vehicle['speed'] as num? ?? 0).toDouble();
                   String? timestamp = vehicle['server_received_at']?.toString();
-                  // Ambil nama identitas kendaraan (prioritas: Plat -> Model -> Device ID)
                   String label = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? "?";
                   
-                  // Highlight marker jika ini adalah mobil yang sedang dicari
-                  bool isFocused = widget.focusDeviceId != null && 
+                  // LOGIKA MARK: Highlight hanya jika mode tracking MASIH AKTIF
+                  // Jika user geser peta (_isTrackingMode jadi false), highlight ini otomatis hilang
+                  bool isFocused = _isTrackingMode && 
+                                   widget.focusDeviceId != null && 
                                    (vehicle['gps_1'] == widget.focusDeviceId || vehicle['device_id'] == widget.focusDeviceId);
 
                   return Marker(
                     point: position,
-                    width: isFocused ? 80 : 60, // Perbesar marker jika difokuskan
+                    width: isFocused ? 80 : 60, // Mark Besar jika tracking
                     height: isFocused ? 80 : 60,
                     child: GestureDetector(
                       onTap: () => _showVehicleDetail(context, vehicle),
                       child: Column(
                         children: [
+                          // Label Plat Nomor (Kuning jika tracking, Putih jika biasa)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
-                               color: isFocused ? Colors.yellow : Colors.white, // Highlight label kuning jika fokus
+                               color: isFocused ? Colors.yellow : Colors.white, 
                                borderRadius: BorderRadius.circular(4),
                                border: Border.all(color: Colors.black12)
                             ),
                             child: Text(
                               label,
-                              style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 8, 
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black // Teks selalu hitam agar terbaca
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          // Icon Mobil
                           Icon(
                             Icons.directions_car_filled,
                             color: _getStatusColor(speed, timestamp),
-                            size: isFocused ? 50 : 40, // Ikon lebih besar jika fokus
+                            size: isFocused ? 50 : 40, // Icon membesar jika tracking
                           ),
                         ],
                       ),
