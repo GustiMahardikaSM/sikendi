@@ -2,7 +2,6 @@ import 'dart:async'; // Timer untuk refresh data otomatis
 import 'package:flutter/material.dart'; // UI Standar
 import 'package:flutter_map/flutter_map.dart'; // Peta
 import 'package:latlong2/latlong.dart'; // Koordinat
-import 'package:mongo_dart/mongo_dart.dart' as mongo; // Database
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/manager_vehicle_tab.dart';
 
@@ -20,29 +19,22 @@ class ManagerPage extends StatefulWidget {
 }
 
 class _ManagerPageState extends State<ManagerPage> {
-  int _selectedIndex = 0; // Mengatur Tab yang aktif
-
-  // Daftar Tab Halaman
-  late final List<Widget> _pages;
+  int _selectedIndex = 0;
+  
+  // 1. Buat variabel state lokal untuk menampung ID
+  String? _currentFocusId;
 
   @override
   void initState() {
     super.initState();
-    // Jika ada initialCenter, pastikan tab monitor yang terbuka
-    if (widget.initialCenter != null) {
+    // 2. Salin dari widget (param) ke state lokal saat pertama kali
+    _currentFocusId = widget.focusDeviceId;
+    
+    // Jika ada request tracking, paksa buka tab 0
+    if (_currentFocusId != null || widget.initialCenter != null) {
       _selectedIndex = 0;
     }
-    _pages = <Widget>[
-      ManagerDashboardTab(
-        initialCenter: widget.initialCenter,
-        focusDeviceId: widget.focusDeviceId,
-      ), // Tab 0: Peta Monitoring Armada
-      const ManagerVehicleManagementTab(), // Tab 1: Manajemen Kendaraan
-      const ManagerDriversTab(),   // Tab 2: Daftar & Profil Sopir
-      const ManagerAlertsTab(),    // Tab 3: Peringatan (Alert System)
-    ];
   }
-
 
   void _onItemTapped(int index) {
     setState(() {
@@ -52,15 +44,43 @@ class _ManagerPageState extends State<ManagerPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Daftar halaman
+    final List<Widget> pages = [
+      // TAB 0: MONITORING
+      ManagerDashboardTab(
+        // Kirim ID dari state lokal (yang nanti bisa kita null-kan)
+        focusDeviceId: _currentFocusId, 
+        initialCenter: widget.initialCenter, // Koordinat masih boleh tetap
+        
+        // 3. Callback: Saat dashboard selesai memakai ID ini, hapus dari state induk
+        onConsumeId: () {
+          // Cek dulu apakah _currentFocusId masih ada isinya agar tidak setState berulang kali
+          if (_currentFocusId != null) {
+            // Gunakan addPostFrameCallback agar tidak error saat build
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _currentFocusId = null; // HAPUS ID DARI MEMORI
+                });
+              }
+            });
+          }
+        },
+      ),
+      const ManagerVehicleManagementTab(),
+      const ManagerDriversTab(),
+      const ManagerAlertsTab(),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Manager Dashboard SiKenDi"),
-        backgroundColor: Colors.blue[900], // Warna Biru Tua (Korporat/Undip)
+        backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
-      body: _pages.elementAt(_selectedIndex),
+      body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // Ensure all items are visible
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.map_outlined),
@@ -93,8 +113,14 @@ class _ManagerPageState extends State<ManagerPage> {
 class ManagerDashboardTab extends StatefulWidget {
   final LatLng? initialCenter;
   final String? focusDeviceId;
+  final VoidCallback? onConsumeId; // &lt;--- Parameter Baru
 
-  const ManagerDashboardTab({super.key, this.initialCenter, this.focusDeviceId});
+  const ManagerDashboardTab({
+    super.key, 
+    this.initialCenter, 
+    this.focusDeviceId,
+    this.onConsumeId, // &lt;--- Terima di sini
+  });
 
   @override
   State<ManagerDashboardTab> createState() => _ManagerDashboardTabState();
@@ -105,19 +131,22 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
   List<Map<String, dynamic>> _activeVehicles = [];
   Timer? _timer;
   
-  // STATE BARU: Mode Tracking
-  // Jika true: Peta otomatis geser ke mobil & Marker di-highlight
-  // Jika false: Mode bebas (monitoring biasa)
   bool _isTrackingMode = false;
+  String? _localFocusId; // Variabel lokal untuk tab ini saja
 
   @override
   void initState() {
     super.initState();
     
-    // LOGIKA: Jika halaman ini dibuka dengan membawa ID Device (dari tombol Lihat Posisi),
-    // maka aktifkan mode tracking sejak awal.
+    // LOGIKA CONSUME ONCE
     if (widget.focusDeviceId != null) {
+      _localFocusId = widget.focusDeviceId;
       _isTrackingMode = true;
+
+      // Panggil callback ke parent: "Tolong lupakan ID ini untuk render berikutnya"
+      if (widget.onConsumeId != null) {
+        widget.onConsumeId!();
+      }
     }
 
     _fetchFleetData(); 
@@ -143,11 +172,11 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
       });
 
       // LOGIKA AUTO-FOLLOW (Jalan setiap 5 detik jika mode tracking aktif)
-      if (_isTrackingMode && widget.focusDeviceId != null) {
+      if (_isTrackingMode && _localFocusId != null) {
         try {
           // Cari mobil yang sedang ditrack di dalam list data terbaru
           final targetCar = _activeVehicles.firstWhere(
-            (v) => v['device_id'] == widget.focusDeviceId || v['gps_1'] == widget.focusDeviceId,
+            (v) => v['device_id'] == _localFocusId || v['gps_1'] == _localFocusId,
             orElse: () => <String, dynamic>{},
           );
 
@@ -346,18 +375,19 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
         : FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              // Posisi awal: Jika tracking, gunakan posisi kiriman. Jika tidak, ke Undip.
-              initialCenter: widget.initialCenter ?? const LatLng(-7.052219, 110.441481),
-              initialZoom: widget.initialCenter != null ? 18.0 : 14.0,
+              // Gunakan widget.initialCenter hanya jika Tracking Mode aktif
+              // Jika tidak (tracking sudah mati), biarkan map menggunakan posisi default/terakhir
+              initialCenter: (_isTrackingMode && widget.initialCenter != null) 
+                  ? widget.initialCenter! 
+                  : const LatLng(-7.052219, 110.441481), 
               
-              // FITUR UTAMA: DETEKSI GESERAN USER
+              initialZoom: (_isTrackingMode && widget.initialCenter != null) ? 18.0 : 14.0,
+
               onPositionChanged: (position, hasGesture) {
-                // Jika pergerakan peta disebabkan oleh jari user (hasGesture == true)
-                // DAN saat ini sedang mode tracking...
                 if (hasGesture && _isTrackingMode) {
                   setState(() {
-                    _isTrackingMode = false; // Matikan tracking
-                    // "Mark akan lepas" dan "Monitor bekerja biasa"
+                    _isTrackingMode = false;     
+                    _localFocusId = null;      
                   });
                 }
               },
@@ -376,11 +406,9 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                   String? timestamp = vehicle['server_received_at']?.toString();
                   String label = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? "?";
                   
-                  // LOGIKA MARK: Highlight hanya jika mode tracking MASIH AKTIF
-                  // Jika user geser peta (_isTrackingMode jadi false), highlight ini otomatis hilang
                   bool isFocused = _isTrackingMode && 
-                                   widget.focusDeviceId != null && 
-                                   (vehicle['gps_1'] == widget.focusDeviceId || vehicle['device_id'] == widget.focusDeviceId);
+                                   _localFocusId != null && 
+                                   (vehicle['gps_1'] == _localFocusId || vehicle['device_id'] == _localFocusId);
 
                   return Marker(
                     point: position,
