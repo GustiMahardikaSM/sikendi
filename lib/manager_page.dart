@@ -108,17 +108,13 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
   @override
   void initState() {
     super.initState();
-    _fetchFleetData(); // Initial fetch
-    // Refresh peta setiap 5 detik
+    _fetchFleetData(); 
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _fetchFleetData();
     });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.initialCenter != null) {
-        _mapController.move(widget.initialCenter!, 16.0);
-      }
-    });
+    
+    // HAPUS atau abaikan bagian addPostFrameCallback yang lama
+    // karena kita akan menangani posisi langsung di MapOptions
   }
 
   @override
@@ -328,10 +324,21 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     return _activeVehicles.isEmpty
         ? const Center(child: Text("Memuat data armada..."))
         : FlutterMap(
-            options: const MapOptions(
-              initialCenter: LatLng(-7.052219, 110.441481), // Default Undip
-              initialZoom: 14.0,
+            // 1. PENTING: Pasang controller agar bisa dikontrol secara programatik nanti
+            mapController: _mapController, 
+            
+            // 2. PERBAIKAN LOGIKA POSISI & ZOOM
+            options: MapOptions(
+              // Jangan gunakan 'const'.
+              // Jika widget.initialCenter (dari tombol Lihat Posisi) ada, gunakan itu.
+              // Jika tidak, gunakan default Undip.
+              initialCenter: widget.initialCenter ?? const LatLng(-7.052219, 110.441481),
+              
+              // Jika tracking spesifik (Lihat Posisi), zoom level 18 (sangat dekat).
+              // Jika monitoring umum, zoom level 14 (area).
+              initialZoom: widget.initialCenter != null ? 18.0 : 14.0,
             ),
+            
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -339,26 +346,29 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
               ),
               MarkerLayer(
                 markers: _activeVehicles.map((vehicle) {
-                  // GUNAKAN FUNGSI HELPER BARU KITA
+                  // Gunakan helper _parseLocation yang sudah Anda buat/miliki
                   final LatLng? position = _parseLocation(vehicle);
                   
-                  // Jika posisi null (tidak ada data GPS), JANGAN buat marker (skip)
                   if (position == null) {
                     return const Marker(
                       point: LatLng(0, 0), 
-                      child: SizedBox(), // Marker kosong tak terlihat
+                      child: SizedBox(),
                     ); 
                   }
 
-                  // Ambil data lainnya
                   double speed = (vehicle['speed'] as num? ?? 0).toDouble();
                   String? timestamp = vehicle['server_received_at']?.toString();
+                  // Ambil nama identitas kendaraan (prioritas: Plat -> Model -> Device ID)
                   String label = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? "?";
+                  
+                  // Highlight marker jika ini adalah mobil yang sedang dicari
+                  bool isFocused = widget.focusDeviceId != null && 
+                                   (vehicle['gps_1'] == widget.focusDeviceId || vehicle['device_id'] == widget.focusDeviceId);
 
                   return Marker(
-                    point: position, // Gunakan posisi yang valid
-                    width: 60,
-                    height: 60,
+                    point: position,
+                    width: isFocused ? 80 : 60, // Perbesar marker jika difokuskan
+                    height: isFocused ? 80 : 60,
                     child: GestureDetector(
                       onTap: () => _showVehicleDetail(context, vehicle),
                       child: Column(
@@ -366,7 +376,7 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
-                               color: Colors.white,
+                               color: isFocused ? Colors.yellow : Colors.white, // Highlight label kuning jika fokus
                                borderRadius: BorderRadius.circular(4),
                                border: Border.all(color: Colors.black12)
                             ),
@@ -379,7 +389,7 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
                           Icon(
                             Icons.directions_car_filled,
                             color: _getStatusColor(speed, timestamp),
-                            size: 40,
+                            size: isFocused ? 50 : 40, // Ikon lebih besar jika fokus
                           ),
                         ],
                       ),
