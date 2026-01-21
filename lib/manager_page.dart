@@ -2,7 +2,6 @@ import 'dart:async'; // Timer untuk refresh data otomatis
 import 'package:flutter/material.dart'; // UI Standar
 import 'package:flutter_map/flutter_map.dart'; // Peta
 import 'package:latlong2/latlong.dart'; // Koordinat
-import 'package:mongo_dart/mongo_dart.dart' as mongo; // Database
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/manager_vehicle_tab.dart';
 
@@ -20,29 +19,22 @@ class ManagerPage extends StatefulWidget {
 }
 
 class _ManagerPageState extends State<ManagerPage> {
-  int _selectedIndex = 0; // Mengatur Tab yang aktif
-
-  // Daftar Tab Halaman
-  late final List<Widget> _pages;
+  int _selectedIndex = 0;
+  
+  // 1. Buat variabel state lokal untuk menampung ID
+  String? _currentFocusId;
 
   @override
   void initState() {
     super.initState();
-    // Jika ada initialCenter, pastikan tab monitor yang terbuka
-    if (widget.initialCenter != null) {
+    // 2. Salin dari widget (param) ke state lokal saat pertama kali
+    _currentFocusId = widget.focusDeviceId;
+    
+    // Jika ada request tracking, paksa buka tab 0
+    if (_currentFocusId != null || widget.initialCenter != null) {
       _selectedIndex = 0;
     }
-    _pages = <Widget>[
-      ManagerDashboardTab(
-        initialCenter: widget.initialCenter,
-        focusDeviceId: widget.focusDeviceId,
-      ), // Tab 0: Peta Monitoring Armada
-      const ManagerVehicleManagementTab(), // Tab 1: Manajemen Kendaraan
-      const ManagerDriversTab(),   // Tab 2: Daftar & Profil Sopir
-      const ManagerAlertsTab(),    // Tab 3: Peringatan (Alert System)
-    ];
   }
-
 
   void _onItemTapped(int index) {
     setState(() {
@@ -52,15 +44,43 @@ class _ManagerPageState extends State<ManagerPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Daftar halaman
+    final List<Widget> pages = [
+      // TAB 0: MONITORING
+      ManagerDashboardTab(
+        // Kirim ID dari state lokal (yang nanti bisa kita null-kan)
+        focusDeviceId: _currentFocusId, 
+        initialCenter: widget.initialCenter, // Koordinat masih boleh tetap
+        
+        // 3. Callback: Saat dashboard selesai memakai ID ini, hapus dari state induk
+        onConsumeId: () {
+          // Cek dulu apakah _currentFocusId masih ada isinya agar tidak setState berulang kali
+          if (_currentFocusId != null) {
+            // Gunakan addPostFrameCallback agar tidak error saat build
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _currentFocusId = null; // HAPUS ID DARI MEMORI
+                });
+              }
+            });
+          }
+        },
+      ),
+      const ManagerVehicleManagementTab(),
+      const ManagerDriversTab(),
+      const ManagerAlertsTab(),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Manager Dashboard SiKenDi"),
-        backgroundColor: Colors.blue[900], // Warna Biru Tua (Korporat/Undip)
+        backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
-      body: _pages.elementAt(_selectedIndex),
+      body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // Ensure all items are visible
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.map_outlined),
@@ -93,8 +113,14 @@ class _ManagerPageState extends State<ManagerPage> {
 class ManagerDashboardTab extends StatefulWidget {
   final LatLng? initialCenter;
   final String? focusDeviceId;
+  final VoidCallback? onConsumeId; // &lt;--- Parameter Baru
 
-  const ManagerDashboardTab({super.key, this.initialCenter, this.focusDeviceId});
+  const ManagerDashboardTab({
+    super.key, 
+    this.initialCenter, 
+    this.focusDeviceId,
+    this.onConsumeId, // &lt;--- Terima di sini
+  });
 
   @override
   State<ManagerDashboardTab> createState() => _ManagerDashboardTabState();
@@ -104,42 +130,72 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
   final MapController _mapController = MapController();
   List<Map<String, dynamic>> _activeVehicles = [];
   Timer? _timer;
+  
+  bool _isTrackingMode = false;
+  String? _localFocusId; // Variabel lokal untuk tab ini saja
 
   @override
   void initState() {
     super.initState();
-    _fetchFleetData(); // Initial fetch
-    // Refresh peta setiap 5 detik
+    
+    // LOGIKA CONSUME ONCE
+    if (widget.focusDeviceId != null) {
+      _localFocusId = widget.focusDeviceId;
+      _isTrackingMode = true;
+
+      // Panggil callback ke parent: "Tolong lupakan ID ini untuk render berikutnya"
+      if (widget.onConsumeId != null) {
+        widget.onConsumeId!();
+      }
+    }
+
+    _fetchFleetData(); 
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _fetchFleetData();
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.initialCenter != null) {
-        _mapController.move(widget.initialCenter!, 16.0);
-      }
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _mapController.dispose();
     super.dispose();
   }
 
+  // Fungsi Fetch Data (Disatukan logika trackingnya di sini)
   Future<void> _fetchFleetData() async {
-    try {
-      final data = await MongoService.getFleetDataForManager();
-      if (mounted) {
-        setState(() {
-          _activeVehicles = data;
-        });
+    final data = await MongoService.getFleetDataForManager();
+    
+    if (mounted) {
+      setState(() {
+        _activeVehicles = data;
+      });
+
+      // LOGIKA AUTO-FOLLOW (Jalan setiap 5 detik jika mode tracking aktif)
+      if (_isTrackingMode && _localFocusId != null) {
+        try {
+          // Cari mobil yang sedang ditrack di dalam list data terbaru
+          final targetCar = _activeVehicles.firstWhere(
+            (v) => v['device_id'] == _localFocusId || v['gps_1'] == _localFocusId,
+            orElse: () => <String, dynamic>{},
+          );
+
+          if (targetCar.isNotEmpty) {
+            final LatLng? pos = _parseLocation(targetCar);
+            if (pos != null) {
+              // Paksakan kamera peta pindah ke lokasi mobil baru
+              // Zoom 18.0 (Close up)
+              _mapController.move(pos, 18.0);
+            }
+          }
+        } catch (e) {
+          // Cegah error jika map controller belum siap
+          print("Map not ready for move: $e");
+        }
       }
-    } catch (e) {
-      debugPrint("Fetch Error in ManagerDashboardTab: $e");
     }
   }
-
+  
   // --- LOGIKA BARU: CEK APAKAH GPS OFFLINE ---
   bool _isGpsOffline(String? serverTimeStr) {
     if (serverTimeStr == null) return true; // Tidak ada waktu = Mati
@@ -159,17 +215,11 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     }
   }
 
-  // LOGIKA WARNA STATUS (UPDATE)
-  Color _getStatusColor(double speed, String? serverTimeStr) {
-    // 1. Cek dulu apakah GPS Mati (Offline)
-    if (_isGpsOffline(serverTimeStr)) {
-      return Colors.red; // MERAH (Offline/Mati)
-    }
-
-    // 2. Jika GPS Hidup, cek kecepatan
-    if (speed > 5) return Colors.green; // Sedang Jalan
-    if (speed > 0) return Colors.orange; // Idle (Mesin nyala, berhenti)
-    return Colors.red; // Parkir (Speed 0)
+  // Helper function
+  Color _getStatusColor(double speed, String? timestamp) {
+    if (_isGpsOffline(timestamp)) return Colors.red; 
+    if (speed > 5) return Colors.green; 
+    return Colors.orange; 
   }
 
   String _getStatusText(double speed, String? serverTimeStr) {
@@ -184,8 +234,46 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     if (speed > 0) return "Idle";
     return "Parkir";
   }
-
-  // POP-UP DETAIL KENDARAAN (DIPERBAIKI)
+  
+  LatLng? _parseLocation(Map<String, dynamic> vehicle) {
+    try {
+      // Cek 1: Apakah ada field 'gps_location'?
+      if (vehicle['gps_location'] != null) {
+        final loc = vehicle['gps_location'];
+        
+        // Format A: { "lat": -7.0, "lng": 110.0 } (Standar Key-Value)
+        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
+          return LatLng(
+            (loc['lat'] as num).toDouble(),
+            (loc['lng'] as num).toDouble(),
+          );
+        }
+        
+        // Format B: GeoJSON { "coordinates": [110.0, -7.0] } (Perhatikan: Lng dulu!)
+        if (loc is Map && loc.containsKey('coordinates')) {
+          final List coords = loc['coordinates'];
+          if (coords.length >= 2) {
+            return LatLng(
+              (coords[1] as num).toDouble(), // Index 1 = Latitude
+              (coords[0] as num).toDouble(), // Index 0 = Longitude
+            );
+          }
+        }
+      }
+      
+      // Cek 2: Apakah lat/lng ada langsung di root dokumen?
+      if (vehicle.containsKey('lat') && vehicle.containsKey('lng')) {
+        return LatLng(
+          (vehicle['lat'] as num).toDouble(),
+          (vehicle['lng'] as num).toDouble(),
+        );
+      }
+    } catch (e) {
+      print("Error parsing lokasi untuk ${vehicle['plat']}: $e");
+    }
+    return null; // Gagal mendapatkan lokasi
+  }
+  
   void _showVehicleDetail(BuildContext context, Map<String, dynamic> vehicle) {
     // 1. Ambil Nama & Identitas
     String displayName = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown Device";
@@ -197,8 +285,6 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     double speed = (vehicle['speed'] as num? ?? 0).toDouble();
     String? timestamp = vehicle['server_received_at']?.toString();
     
-    // 3. AMBIL KOORDINAT DENGAN CARA AMAN (Menggunakan fungsi helper _parseLocation)
-    // Jika Anda belum membuat _parseLocation, lihat instruksi di bawah kode ini*
     LatLng? pos = _parseLocation(vehicle); 
     
     double lat = pos?.latitude ?? 0.0;
@@ -282,55 +368,29 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
     );
   }
 
-  // Tambahkan fungsi helper ini di dalam class _ManagerDashboardTabState
-  // Fungsinya: Mencari koordinat dengan segala cara (GeoJSON atau Key-Value)
-  LatLng? _parseLocation(Map<String, dynamic> vehicle) {
-    try {
-      // Cek 1: Apakah ada field 'gps_location'?
-      if (vehicle['gps_location'] != null) {
-        final loc = vehicle['gps_location'];
-        
-        // Format A: { "lat": -7.0, "lng": 110.0 } (Standar Key-Value)
-        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
-          return LatLng(
-            (loc['lat'] as num).toDouble(),
-            (loc['lng'] as num).toDouble(),
-          );
-        }
-        
-        // Format B: GeoJSON { "coordinates": [110.0, -7.0] } (Perhatikan: Lng dulu!)
-        if (loc is Map && loc.containsKey('coordinates')) {
-          final List coords = loc['coordinates'];
-          if (coords.length >= 2) {
-            return LatLng(
-              (coords[1] as num).toDouble(), // Index 1 = Latitude
-              (coords[0] as num).toDouble(), // Index 0 = Longitude
-            );
-          }
-        }
-      }
-      
-      // Cek 2: Apakah lat/lng ada langsung di root dokumen?
-      if (vehicle.containsKey('lat') && vehicle.containsKey('lng')) {
-        return LatLng(
-          (vehicle['lat'] as num).toDouble(),
-          (vehicle['lng'] as num).toDouble(),
-        );
-      }
-    } catch (e) {
-      print("Error parsing lokasi untuk ${vehicle['plat']}: $e");
-    }
-    return null; // Gagal mendapatkan lokasi
-  }
-
   @override
   Widget build(BuildContext context) {
     return _activeVehicles.isEmpty
         ? const Center(child: Text("Memuat data armada..."))
         : FlutterMap(
-            options: const MapOptions(
-              initialCenter: LatLng(-7.052219, 110.441481), // Default Undip
-              initialZoom: 14.0,
+            mapController: _mapController,
+            options: MapOptions(
+              // Gunakan widget.initialCenter hanya jika Tracking Mode aktif
+              // Jika tidak (tracking sudah mati), biarkan map menggunakan posisi default/terakhir
+              initialCenter: (_isTrackingMode && widget.initialCenter != null) 
+                  ? widget.initialCenter! 
+                  : const LatLng(-7.052219, 110.441481), 
+              
+              initialZoom: (_isTrackingMode && widget.initialCenter != null) ? 18.0 : 14.0,
+
+              onPositionChanged: (position, hasGesture) {
+                if (hasGesture && _isTrackingMode) {
+                  setState(() {
+                    _isTrackingMode = false;     
+                    _localFocusId = null;      
+                  });
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -339,47 +399,48 @@ class _ManagerDashboardTabState extends State<ManagerDashboardTab> {
               ),
               MarkerLayer(
                 markers: _activeVehicles.map((vehicle) {
-                  // GUNAKAN FUNGSI HELPER BARU KITA
                   final LatLng? position = _parseLocation(vehicle);
-                  
-                  // Jika posisi null (tidak ada data GPS), JANGAN buat marker (skip)
-                  if (position == null) {
-                    return const Marker(
-                      point: LatLng(0, 0), 
-                      child: SizedBox(), // Marker kosong tak terlihat
-                    ); 
-                  }
+                  if (position == null) return const Marker(point: LatLng(0,0), child: SizedBox());
 
-                  // Ambil data lainnya
                   double speed = (vehicle['speed'] as num? ?? 0).toDouble();
                   String? timestamp = vehicle['server_received_at']?.toString();
                   String label = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? "?";
+                  
+                  bool isFocused = _isTrackingMode && 
+                                   _localFocusId != null && 
+                                   (vehicle['gps_1'] == _localFocusId || vehicle['device_id'] == _localFocusId);
 
                   return Marker(
-                    point: position, // Gunakan posisi yang valid
-                    width: 60,
-                    height: 60,
+                    point: position,
+                    width: isFocused ? 80 : 60, // Mark Besar jika tracking
+                    height: isFocused ? 80 : 60,
                     child: GestureDetector(
                       onTap: () => _showVehicleDetail(context, vehicle),
                       child: Column(
                         children: [
+                          // Label Plat Nomor (Kuning jika tracking, Putih jika biasa)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
-                               color: Colors.white,
+                               color: isFocused ? Colors.yellow : Colors.white, 
                                borderRadius: BorderRadius.circular(4),
                                border: Border.all(color: Colors.black12)
                             ),
                             child: Text(
                               label,
-                              style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 8, 
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black // Teks selalu hitam agar terbaca
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          // Icon Mobil
                           Icon(
                             Icons.directions_car_filled,
                             color: _getStatusColor(speed, timestamp),
-                            size: 40,
+                            size: isFocused ? 50 : 40, // Icon membesar jika tracking
                           ),
                         ],
                       ),

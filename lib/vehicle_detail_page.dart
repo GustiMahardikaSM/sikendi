@@ -132,6 +132,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     return null;
   }
 
+  // FUNGSI NAVIGASI KE PETA
   void _bukaDiPeta(BuildContext context) {
     if (vehicleData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,42 +151,41 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     }
 
     try {
-      double lat, lng;
+      double lat = 0.0; 
+      double lng = 0.0;
 
+      // Parsing Koordinat yang Aman (Support GeoJSON & Simple LatLng)
       if (gpsLoc is Map && gpsLoc.containsKey('lat') && gpsLoc.containsKey('lng')) {
-        // FORMAT 1: Key-Value { "lat": ..., "lng": ... }
         lat = (gpsLoc['lat'] as num).toDouble();
         lng = (gpsLoc['lng'] as num).toDouble();
       } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
-        // FORMAT 2: GeoJSON { "coordinates": [lng, lat] }
         final List coords = gpsLoc['coordinates'];
-        if (coords.length == 2) {
-          lng = (coords[0] as num).toDouble();
+        if (coords.length >= 2) {
+          lng = (coords[0] as num).toDouble(); // MongoDB GeoJSON: [lng, lat]
           lat = (coords[1] as num).toDouble();
-        } else {
-          throw Exception("Format koordinat GeoJSON tidak valid (bukan 2 elemen).");
         }
-      } else {
-        throw Exception("Format lokasi tidak dikenali. Diharapkan 'lat'/'lng' atau 'coordinates'.");
       }
       
+      // Ambil ID Device untuk keperluan data
       final String devId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? '';
 
+      // Navigasi ke Manager Page
+      // Menggunakan pushAndRemoveUntil agar tombol Back tidak membingungkan
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => ManagerPage(
-            initialCenter: LatLng(lat, lng),
+            initialCenter: LatLng(lat, lng), // Kirim koordinat pusat
             focusDeviceId: devId,
           ),
         ),
-        (route) => false,
+        (route) => false, // Hapus stack halaman sebelumnya
       );
 
     } catch (e) {
-      print("Error parsing coordinates for map: $e");
+      print("Error parsing coordinates: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal membuka peta: ${e.toString()}")),
+        const SnackBar(content: Text("Gagal membuka peta: Format koordinat salah")),
       );
     }
   }
