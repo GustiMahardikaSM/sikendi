@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:sikendi/jadwal_sopir_page.dart';
+import 'package:sikendi/main.dart';
 import 'package:sikendi/mongodb_service.dart';
 
 // ==========================================================
@@ -38,6 +39,35 @@ class _DriverPageState extends State<DriverPage> {
       _selectedIndex = index;
     });
   }
+  
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Konfirmasi Logout"),
+        content: const Text("Apakah Anda yakin ingin keluar? Tracking akan berhenti."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.of(ctx).pop(); 
+              
+              // Kembali ke halaman awal & hapus riwayat navigasi
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const RoleSelectionPage()),
+                (route) => false,
+              );
+            },
+            child: const Text("Keluar", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +76,13 @@ class _DriverPageState extends State<DriverPage> {
         title: const Text("Dashboard Sopir SiKenDi"),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: "Logout",
+            onPressed: () => _handleLogout(context),
+          ),
+        ],
       ),
       body: IndexedStack(
         index: _selectedIndex,

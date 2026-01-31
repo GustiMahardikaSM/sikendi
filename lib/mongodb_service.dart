@@ -816,18 +816,46 @@ class MongoService {
   // BAGIAN TRACKING
   // =================================================================
   
-  // Mengambil 1 data GPS paling baru dari collection
+  // =================================================================
+  // BAGIAN TRACKING (DIPERBAIKI)
+  // =================================================================
+  
+  // Mengambil 1 data GPS paling baru dari collection dengan Auto-Reconnect
   static Future<Map<String, dynamic>?> getLatestGpsData() async {
     try {
+      // 1. CEK KONEKSI: Jika db belum ada atau statusnya tidak connected
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) {
+        print("⚠️ Koneksi GPS terputus/belum siap. Mencoba connect ulang...");
+        await connect();
+        
+        // Jika setelah dicoba connect masih gagal, return null agar tidak crash
+        if (_dbLokasi == null || !_dbLokasi!.isConnected) {
+          print("❌ Gagal reconnect di getLatestGpsData.");
+          return null;
+        }
+      }
+
+      // 2. Pastikan collection sudah terdefinisi
+      _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
+
+      // 3. Eksekusi Query
       final data = await _collectionLokasi!
           .find(where.sortBy('server_received_at', descending: true).limit(1))
           .toList();
+
       if (data.isNotEmpty) {
         return data.first;
       }
       return null;
+
     } catch (e) {
       print("Error get latest GPS data: $e");
+      
+      // DETEKSI KHUSUS: Jika errornya "No master connection", paksa reset koneksi untuk request berikutnya
+      if (e.toString().contains("No master connection") || e.toString().contains("Closed")) {
+        print("♻️ Mendeteksi broken pipe, mereset koneksi database...");
+        _dbLokasi = null; // Set null agar connect() dipanggil ulang di request berikutnya
+      }
       return null;
     }
   }

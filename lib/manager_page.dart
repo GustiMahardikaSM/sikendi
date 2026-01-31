@@ -2,6 +2,7 @@ import 'dart:async'; // Timer untuk refresh data otomatis
 import 'package:flutter/material.dart'; // UI Standar
 import 'package:flutter_map/flutter_map.dart'; // Peta
 import 'package:latlong2/latlong.dart'; // Koordinat
+import 'package:sikendi/main.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/manager_vehicle_tab.dart';
 
@@ -41,6 +42,35 @@ class _ManagerPageState extends State<ManagerPage> {
       _selectedIndex = index;
     });
   }
+  
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Konfirmasi Logout"),
+        content: const Text("Apakah Anda yakin ingin keluar dari halaman Manajer?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(), // Tutup dialog
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.of(ctx).pop(); // Tutup dialog
+              
+              // Hapus semua rute dan kembali ke halaman pemilihan peran
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const RoleSelectionPage()),
+                (route) => false,
+              );
+            },
+            child: const Text("Keluar", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +107,13 @@ class _ManagerPageState extends State<ManagerPage> {
         title: const Text("Manager Dashboard SiKenDi"),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: "Logout",
+            onPressed: () => _handleLogout(context),
+          ),
+        ],
       ),
       body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
