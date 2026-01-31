@@ -76,6 +76,7 @@ class _DriverPageState extends State<DriverPage> {
         title: const Text("Dashboard Sopir SiKenDi"),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
