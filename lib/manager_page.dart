@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:sikendi/main.dart';
-import 'package:sikendi/manager_jadwal_page.dart';
 import 'package:sikendi/manager_map_page.dart';
+import 'package:sikendi/manager_peringatan_page.dart';
+import 'package:sikendi/manager_sopir_page.dart';
 import 'package:sikendi/manager_vehicle_page.dart';
-import 'package:sikendi/mongodb_service.dart'; // Import mongodb_service
-import 'package:sikendi/signup_page.dart';
+import 'package:sikendi/mongodb_service.dart';
 
 class ManagerPage extends StatefulWidget {
   final String? focusDeviceId;
@@ -16,7 +16,7 @@ class ManagerPage extends StatefulWidget {
 }
 
 class _ManagerPageState extends State<ManagerPage> {
-  // Variabel menu dari langkah sebelumnya
+  // Definisi item menu baru sesuai permintaan
   final List<Map<String, dynamic>> _menuItems = [
     {
       'title': 'Monitoring Peta',
@@ -31,20 +31,19 @@ class _ManagerPageState extends State<ManagerPage> {
       'page': () => const ManagerVehiclePage(),
     },
     {
-      'title': 'Jadwal Sopir',
-      'icon': Icons.calendar_month,
-      'color': Colors.green,
-      'page': () => const ManagerJadwalPage(),
+      'title': 'Data Sopir',
+      'icon': Icons.people_alt_outlined,
+      'color': Colors.teal,
+      'page': () => const ManagerSopirPage(),
     },
     {
-      'title': 'Registrasi Akun',
-      'icon': Icons.person_add_alt_1,
-      'color': Colors.purpleAccent,
-      'page': () => const SignUpPage(),
+      'title': 'Peringatan',
+      'icon': Icons.notifications_active_outlined,
+      'color': Colors.amber,
+      'page': () => const ManagerPeringatanPage(),
     },
   ];
 
-  // State untuk data ringkasan dari Langkah 5.1
   Map<String, int> _summaryData = {'total': 0, 'dipakai': 0, 'tersedia': 0};
   bool _isLoadingSummary = true;
 
@@ -54,7 +53,6 @@ class _ManagerPageState extends State<ManagerPage> {
     _refreshDashboard();
   }
 
-  // Fungsi untuk mengambil/refresh data dari Langkah 5.1
   Future<void> _refreshDashboard() async {
     setState(() => _isLoadingSummary = true);
     final data = await MongoService.getDashboardSummary();
@@ -93,7 +91,6 @@ class _ManagerPageState extends State<ManagerPage> {
     );
   }
 
-  // Widget kartu menu dari Langkah 4
   Widget _buildMenuCard(Map<String, dynamic> item) {
     return Card(
       elevation: 4,
@@ -129,7 +126,6 @@ class _ManagerPageState extends State<ManagerPage> {
     );
   }
 
-  // Widget kartu statistik dari Langkah 5.2
   Widget _buildSummaryCard(String title, String value, Color color, IconData icon) {
     return Expanded(
       child: Container(
@@ -173,7 +169,6 @@ class _ManagerPageState extends State<ManagerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar dari Langkah 5.3
       appBar: AppBar(
         title: const Text("Dashboard Manajer"),
         backgroundColor: Colors.blue[900],
@@ -193,7 +188,6 @@ class _ManagerPageState extends State<ManagerPage> {
           ),
         ],
       ),
-      // Body dengan struktur dari Langkah 5.4
       body: RefreshIndicator(
         onRefresh: _refreshDashboard,
         child: SingleChildScrollView(
@@ -201,7 +195,6 @@ class _ManagerPageState extends State<ManagerPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Sapaan dan header section
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -220,7 +213,6 @@ class _ManagerPageState extends State<ManagerPage> {
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     const SizedBox(height: 16),
-                    // Bagian Kartu Statistik
                     Row(
                       children: [
                         _buildSummaryCard(
@@ -256,7 +248,6 @@ class _ManagerPageState extends State<ManagerPage> {
                 ),
               ),
 
-              // Bagian Grid Menu
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
