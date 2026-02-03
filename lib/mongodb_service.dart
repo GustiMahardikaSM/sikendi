@@ -698,6 +698,42 @@ class MongoService {
     }
   }
 
+  /// Mengambil ringkasan data untuk Dashboard Manager
+  /// Mengembalikan Map berisi: 'total', 'dipakai', 'tersedia'
+  static Future<Map<String, int>> getDashboardSummary() async {
+    try {
+      // Pastikan koneksi dan koleksi siap
+      if (_dbLokasi == null || _collectionKendaraan == null) {
+        await connect(); // Coba koneksi jika belum siap
+        if (_collectionKendaraan == null) {
+           print("❌ Gagal mendapatkan koleksi kendaraan untuk summary.");
+           return {'total': 0, 'dipakai': 0, 'tersedia': 0};
+        }
+      }
+
+      final collection = _collectionKendaraan!;
+
+      // 1. Hitung Total Kendaraan
+      // count() adalah operasi ringan di MongoDB, tidak mendownload isi data
+      final total = await collection.count(where.exists('plat')); // Hitung yang punya plat saja
+
+      // 2. Hitung Kendaraan yang Sedang 'Dipakai'
+      final dipakai = await collection.count(where.eq('status', 'Dipakai'));
+
+      // 3. Hitung Kendaraan yang 'Tersedia'
+      final tersedia = await collection.count(where.eq('status', 'Tersedia'));
+
+      return {
+        'total': total,
+        'dipakai': dipakai,
+        'tersedia': tersedia,
+      };
+    } catch (e) {
+      print("Error mengambil summary dashboard: $e");
+      return {'total': 0, 'dipakai': 0, 'tersedia': 0};
+    }
+  }
+
   // =================================================================
   // BAGIAN SOPIR
   // (Sopir hanya melihat yg tersedia & pekerjaannya sendiri)

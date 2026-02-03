@@ -5,14 +5,14 @@ import 'package:sikendi/vehicle_detail_page.dart';
 // ==========================================================
 // TAB 4: MANAJEMEN KENDARAAN (REFACTORED - Dua Bagian)
 // ==========================================================
-class ManagerVehicleManagementTab extends StatefulWidget {
-  const ManagerVehicleManagementTab({super.key});
+class ManagerVehiclePage extends StatefulWidget {
+  const ManagerVehiclePage({super.key});
 
   @override
-  State<ManagerVehicleManagementTab> createState() => _ManagerVehicleManagementTabState();
+  State<ManagerVehiclePage> createState() => _ManagerVehiclePageState();
 }
 
-class _ManagerVehicleManagementTabState extends State<ManagerVehicleManagementTab> {
+class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
   late Future<Map<String, List<Map<String, dynamic>>>> _vehiclesFuture;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -96,6 +96,11 @@ class _ManagerVehicleManagementTabState extends State<ManagerVehicleManagementTa
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Data Kendaraan'),
+        backgroundColor: Colors.blue[900],
+        foregroundColor: Colors.white,
+      ),
       body: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
         future: _vehiclesFuture,
         builder: (context, snapshot) {

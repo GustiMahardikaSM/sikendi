@@ -2,6 +2,7 @@ import 'dart:convert'; // Untuk Base64
 import 'dart:io';      // Untuk File
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Plugin ambil gambar
+import 'package:sikendi/manager_map_page.dart';
 import 'package:sikendi/manager_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:intl/intl.dart';
@@ -169,17 +170,15 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       // Ambil ID Device untuk keperluan data
       final String devId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? '';
 
-      // Navigasi ke Manager Page
-      // Menggunakan pushAndRemoveUntil agar tombol Back tidak membingungkan
-      Navigator.pushAndRemoveUntil(
+      // Navigasi ke ManagerMapPage dengan parameter yang benar
+      Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ManagerPage(
+          builder: (context) => ManagerMapPage(
             initialCenter: LatLng(lat, lng), // Kirim koordinat pusat
             focusDeviceId: devId,
           ),
         ),
-        (route) => false, // Hapus stack halaman sebelumnya
       );
 
     } catch (e) {
