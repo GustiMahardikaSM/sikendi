@@ -1,5 +1,5 @@
 import 'dart:convert'; // Untuk Base64
-import 'dart:io';      // Untuk File
+import 'dart:io'; // Untuk File
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Plugin ambil gambar
 import 'package:sikendi/manager_map_page.dart';
@@ -14,10 +14,7 @@ import 'package:latlong2/latlong.dart';
 class VehicleDetailPage extends StatefulWidget {
   final String deviceId; // gps_1 atau device_id
 
-  const VehicleDetailPage({
-    super.key,
-    required this.deviceId,
-  });
+  const VehicleDetailPage({super.key, required this.deviceId});
 
   @override
   State<VehicleDetailPage> createState() => _VehicleDetailPageState();
@@ -72,32 +69,41 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 40, // Kompres kualitas agar ringan di DB
-        maxWidth: 800,    // Resize lebar maksimal
+        maxWidth: 800, // Resize lebar maksimal
       );
 
       if (image != null) {
         setState(() => _isUploadingPhoto = true);
-        
+
         File imageFile = File(image.path);
         List<int> imageBytes = await imageFile.readAsBytes();
         String base64Image = base64Encode(imageBytes);
-        
+
         // Tambahkan prefix agar kita tahu ini Base64
         String dataToSave = "BASE64:$base64Image";
 
         final deviceId = widget.deviceId;
-        bool success = await MongoService.updateFotoKendaraan(deviceId, dataToSave);
+        bool success = await MongoService.updateFotoKendaraan(
+          deviceId,
+          dataToSave,
+        );
 
         if (mounted) {
           setState(() => _isUploadingPhoto = false);
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Foto berhasil disimpan!"), backgroundColor: Colors.green)
+              const SnackBar(
+                content: Text("Foto berhasil disimpan!"),
+                backgroundColor: Colors.green,
+              ),
             );
             _loadVehicleDetail(); // Refresh halaman
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Gagal menyimpan foto."), backgroundColor: Colors.red)
+              const SnackBar(
+                content: Text("Gagal menyimpan foto."),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         }
@@ -107,7 +113,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       if (mounted) {
         setState(() => _isUploadingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
       }
     }
@@ -118,7 +124,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     if (fotoData == null || fotoData.isEmpty) {
       return null;
     }
-    
+
     try {
       if (fotoData.startsWith('BASE64:')) {
         String rawBase64 = fotoData.substring(7); // Buang prefix 'BASE64:'
@@ -129,7 +135,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     } catch (e) {
       print("Error loading image: $e");
     }
-    
+
     return null;
   }
 
@@ -152,11 +158,13 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     }
 
     try {
-      double lat = 0.0; 
+      double lat = 0.0;
       double lng = 0.0;
 
       // Parsing Koordinat yang Aman (Support GeoJSON & Simple LatLng)
-      if (gpsLoc is Map && gpsLoc.containsKey('lat') && gpsLoc.containsKey('lng')) {
+      if (gpsLoc is Map &&
+          gpsLoc.containsKey('lat') &&
+          gpsLoc.containsKey('lng')) {
         lat = (gpsLoc['lat'] as num).toDouble();
         lng = (gpsLoc['lng'] as num).toDouble();
       } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
@@ -166,9 +174,10 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           lat = (coords[1] as num).toDouble();
         }
       }
-      
+
       // Ambil ID Device untuk keperluan data
-      final String devId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? '';
+      final String devId =
+          vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? '';
 
       // Navigasi ke ManagerMapPage dengan parameter yang benar
       Navigator.push(
@@ -180,11 +189,12 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           ),
         ),
       );
-
     } catch (e) {
       print("Error parsing coordinates: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal membuka peta: Format koordinat salah")),
+        const SnackBar(
+          content: Text("Gagal membuka peta: Format koordinat salah"),
+        ),
       );
     }
   }
@@ -260,8 +270,11 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.directions_car_outlined,
-                      size: 64, color: Colors.grey),
+                  const Icon(
+                    Icons.directions_car_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Data kendaraan tidak ditemukan',
@@ -285,7 +298,10 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           // Ambil data dari vehicle
           final plat = vehicleData!['plat'] ?? '-';
           final model = vehicleData!['model'] ?? '-';
-          final deviceId = vehicleData!['device_id'] ?? vehicleData!['gps_1'] ?? widget.deviceId;
+          final deviceId =
+              vehicleData!['device_id'] ??
+              vehicleData!['gps_1'] ??
+              widget.deviceId;
           final status = vehicleData!['status'] ?? '-';
           final peminjam = vehicleData!['peminjam'] ?? null;
           final waktuAmbil = vehicleData!['waktu_ambil']?.toString();
@@ -310,14 +326,16 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
           // Ambil data foto
           final fotoUrl = vehicleData!['foto_url'];
-          
+
           // Ambil lokasi & speed jika ada
           double lat = 0, lng = 0, speed = 0;
           if (vehicleData!['gps_location'] != null &&
               vehicleData!['gps_location']['coordinates'] != null &&
               vehicleData!['gps_location']['coordinates'].length == 2) {
-            lng = (vehicleData!['gps_location']['coordinates'][0] as num? ?? 0).toDouble();
-            lat = (vehicleData!['gps_location']['coordinates'][1] as num? ?? 0).toDouble();
+            lng = (vehicleData!['gps_location']['coordinates'][0] as num? ?? 0)
+                .toDouble();
+            lat = (vehicleData!['gps_location']['coordinates'][1] as num? ?? 0)
+                .toDouble();
           }
           speed = (vehicleData!['speed'] as num? ?? 0).toDouble();
           final gpsTime = vehicleData!['server_received_at'] ?? '-';
@@ -340,7 +358,10 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: Colors.grey[300],
-                          image: (fotoUrl != null && fotoUrl.toString().isNotEmpty && _getImageProvider(fotoUrl.toString()) != null)
+                          image:
+                              (fotoUrl != null &&
+                                  fotoUrl.toString().isNotEmpty &&
+                                  _getImageProvider(fotoUrl.toString()) != null)
                               ? DecorationImage(
                                   image: _getImageProvider(fotoUrl.toString())!,
                                   fit: BoxFit.cover, // Gambar memenuhi kotak
@@ -350,14 +371,24 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                                 )
                               : null,
                         ),
-                        child: (fotoUrl == null || fotoUrl.toString().isEmpty || _getImageProvider(fotoUrl.toString()) == null)
+                        child:
+                            (fotoUrl == null ||
+                                fotoUrl.toString().isEmpty ||
+                                _getImageProvider(fotoUrl.toString()) == null)
                             ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.directions_car, size: 80, color: Colors.grey[400]),
+                                    Icon(
+                                      Icons.directions_car,
+                                      size: 80,
+                                      color: Colors.grey[400],
+                                    ),
                                     const SizedBox(height: 8),
-                                    Text("Belum ada foto", style: TextStyle(color: Colors.grey[600])),
+                                    Text(
+                                      "Belum ada foto",
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
                                   ],
                                 ),
                               )
@@ -366,14 +397,19 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
                       // 2. Gradient Overlay (Agar teks putih terbaca)
                       Positioned(
-                        bottom: 0, left: 0, right: 0,
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
                         child: Container(
                           height: 100,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.bottomCenter,
                               end: Alignment.topCenter,
-                              colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                              colors: [
+                                Colors.black.withOpacity(0.8),
+                                Colors.transparent,
+                              ],
                             ),
                           ),
                         ),
@@ -381,33 +417,40 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
                       // 3. Informasi Utama (Model & Plat) di atas gambar
                       Positioned(
-                        bottom: 16, left: 16, right: 80, // Ada sisa kanan utk tombol edit
+                        bottom: 16,
+                        left: 16,
+                        right: 80, // Ada sisa kanan utk tombol edit
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               model.toString(),
                               style: const TextStyle(
-                                color: Colors.white, 
-                                fontSize: 24, 
+                                color: Colors.white,
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                shadows: [Shadow(color: Colors.black, blurRadius: 4)]
+                                shadows: [
+                                  Shadow(color: Colors.black, blurRadius: 4),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.white70)
+                                border: Border.all(color: Colors.white70),
                               ),
                               child: Text(
                                 plat.toString(),
                                 style: const TextStyle(
-                                  color: Colors.white, 
-                                  fontSize: 16, 
-                                  fontWeight: FontWeight.w500
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
@@ -417,7 +460,8 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
                       // 4. Tombol Edit Foto (Pojok Kanan Bawah Header)
                       Positioned(
-                        bottom: 16, right: 16,
+                        bottom: 16,
+                        right: 16,
                         child: _isUploadingPhoto
                             ? Container(
                                 padding: const EdgeInsets.all(12),
@@ -428,34 +472,56 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                                 child: const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               )
                             : FloatingActionButton.small(
                                 onPressed: _pickAndUploadImage,
                                 backgroundColor: Colors.white,
-                                child: const Icon(Icons.add_a_photo, color: Colors.blue),
+                                child: const Icon(
+                                  Icons.add_a_photo,
+                                  color: Colors.blue,
+                                ),
                               ),
                       ),
 
                       // 5. Badge Status (Pojok Kiri Atas)
                       Positioned(
-                        top: 16, left: 16,
+                        top: 16,
+                        left: 16,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: statusColor,
                             borderRadius: BorderRadius.circular(20),
-                            boxShadow: [const BoxShadow(color: Colors.black26, blurRadius: 4)],
+                            boxShadow: [
+                              const BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.info_outline, color: Colors.white, size: 14),
+                              const Icon(
+                                Icons.info_outline,
+                                color: Colors.white,
+                                size: 14,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 status.toString().toUpperCase(),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
                             ],
                           ),
@@ -463,7 +529,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                       ),
                     ],
                   ),
-                  
+
                   // ====================================================
                   // INFORMASI DETAIL (FITUR LAIN TETAP ADA)
                   // ====================================================
@@ -523,35 +589,36 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
                         // --- TAMBAHAN BARU: TAMPILKAN KOORDINAT ---
                         Builder(
-                            builder: (context) {
-                              // Logika ekstraksi koordinat agar aman
-                              String lat = "0";
-                              String lng = "0";
-                              
-                              var gpsLoc = vehicleData!['gps_location'];
-                              if (gpsLoc != null) {
-                                if (gpsLoc is Map && gpsLoc.containsKey('lat')) {
-                                  lat = gpsLoc['lat'].toString();
-                                  lng = gpsLoc['lng'].toString();
-                                } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
-                                  // Handle GeoJSON [lng, lat]
-                                  List coords = gpsLoc['coordinates'];
-                                  if (coords.length >= 2) {
-                                    lng = coords[0].toString();
-                                    lat = coords[1].toString();
-                                  }
+                          builder: (context) {
+                            // Logika ekstraksi koordinat agar aman
+                            String lat = "0";
+                            String lng = "0";
+
+                            var gpsLoc = vehicleData!['gps_location'];
+                            if (gpsLoc != null) {
+                              if (gpsLoc is Map && gpsLoc.containsKey('lat')) {
+                                lat = gpsLoc['lat'].toString();
+                                lng = gpsLoc['lng'].toString();
+                              } else if (gpsLoc is Map &&
+                                  gpsLoc.containsKey('coordinates')) {
+                                // Handle GeoJSON [lng, lat]
+                                List coords = gpsLoc['coordinates'];
+                                if (coords.length >= 2) {
+                                  lng = coords[0].toString();
+                                  lat = coords[1].toString();
                                 }
                               }
-                              
-                              return _buildInfoCard(
-                                icon: Icons.map, // Ikon Peta
-                                label: 'Lokasi Terkini (Lat, Lng)',
-                                value: "$lat, $lng",
-                              );
                             }
-                        ),
-                        // --- AKHIR TAMBAHAN ---
 
+                            return _buildInfoCard(
+                              icon: Icons.map, // Ikon Peta
+                              label: 'Lokasi Terkini (Lat, Lng)',
+                              value: "$lat, $lng",
+                            );
+                          },
+                        ),
+
+                        // --- AKHIR TAMBAHAN ---
                         const SizedBox(height: 12),
                         _buildInfoCard(
                           icon: Icons.person,
@@ -718,8 +785,11 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     String fieldType,
     VoidCallback onUpdate,
   ) {
-    final TextEditingController controller = TextEditingController(text: currentValue == '-' ? '' : currentValue);
-    final deviceId = vehicle['device_id'] ?? vehicle['gps_1'] ?? widget.deviceId;
+    final TextEditingController controller = TextEditingController(
+      text: currentValue == '-' ? '' : currentValue,
+    );
+    final deviceId =
+        vehicle['device_id'] ?? vehicle['gps_1'] ?? widget.deviceId;
     bool isLoading = false;
 
     showDialog(
@@ -736,84 +806,95 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                   hintText: 'Masukkan $label',
                   border: const OutlineInputBorder(),
                 ),
-                textCapitalization: fieldType == 'plat' 
-                    ? TextCapitalization.characters 
+                textCapitalization: fieldType == 'plat'
+                    ? TextCapitalization.characters
                     : TextCapitalization.words,
                 enabled: !isLoading,
               ),
               actions: [
                 TextButton(
-                  onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(context).pop(),
                   child: const Text('Batal'),
                 ),
                 ElevatedButton(
-                  onPressed: isLoading ? null : () async {
-                    final newValue = controller.text.trim();
-                    if (newValue.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('$label tidak boleh kosong'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final newValue = controller.text.trim();
+                          if (newValue.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('$label tidak boleh kosong'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
 
-                    setState(() => isLoading = true);
+                          setState(() => isLoading = true);
 
-                    try {
-                      // Ambil nilai current untuk kedua field
-                      final currentPlat = (vehicle['plat'] ?? '').toString();
-                      final currentModel = (vehicle['model'] ?? '').toString();
-                      
-                      // Update sesuai field yang diubah
-                      final updatedPlat = fieldType == 'plat' 
-                          ? newValue.toUpperCase() 
-                          : (currentPlat.isEmpty || currentPlat == '-') ? '' : currentPlat;
-                      final updatedModel = fieldType == 'model' 
-                          ? newValue 
-                          : (currentModel.isEmpty || currentModel == '-') ? '' : currentModel;
-                      
-                      final success = await MongoService.updateKendaraanDetail(
-                        deviceId.toString(),
-                        updatedPlat,
-                        updatedModel,
-                      );
+                          try {
+                            // Ambil nilai current untuk kedua field
+                            final currentPlat = (vehicle['plat'] ?? '')
+                                .toString();
+                            final currentModel = (vehicle['model'] ?? '')
+                                .toString();
 
-                      if (context.mounted) {
-                        if (success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Data berhasil diperbarui'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          Navigator.of(context).pop();
-                          onUpdate();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Gagal memperbarui data'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    } finally {
-                      if (context.mounted) {
-                        setState(() => isLoading = false);
-                      }
-                    }
-                  },
+                            // Update sesuai field yang diubah
+                            final updatedPlat = fieldType == 'plat'
+                                ? newValue.toUpperCase()
+                                : (currentPlat.isEmpty || currentPlat == '-')
+                                ? ''
+                                : currentPlat;
+                            final updatedModel = fieldType == 'model'
+                                ? newValue
+                                : (currentModel.isEmpty || currentModel == '-')
+                                ? ''
+                                : currentModel;
+
+                            final success =
+                                await MongoService.updateKendaraanDetail(
+                                  deviceId.toString(),
+                                  updatedPlat,
+                                  updatedModel,
+                                );
+
+                            if (context.mounted) {
+                              if (success) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Data berhasil diperbarui'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                Navigator.of(context).pop();
+                                onUpdate();
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Gagal memperbarui data'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (context.mounted) {
+                              setState(() => isLoading = false);
+                            }
+                          }
+                        },
                   child: isLoading
                       ? const SizedBox(
                           width: 20,

@@ -21,7 +21,7 @@ class DriverPage extends StatefulWidget {
 
 class _DriverPageState extends State<DriverPage> {
   int _selectedIndex = 0;
-  
+
   late final List<Widget> _pages;
 
   @override
@@ -39,13 +39,15 @@ class _DriverPageState extends State<DriverPage> {
       _selectedIndex = index;
     });
   }
-  
+
   void _handleLogout(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Konfirmasi Logout"),
-        content: const Text("Apakah Anda yakin ingin keluar? Tracking akan berhenti."),
+        content: const Text(
+          "Apakah Anda yakin ingin keluar? Tracking akan berhenti.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -54,11 +56,13 @@ class _DriverPageState extends State<DriverPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              Navigator.of(ctx).pop(); 
-              
+              Navigator.of(ctx).pop();
+
               // Kembali ke halaman awal & hapus riwayat navigasi
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const RoleSelectionPage()),
+                MaterialPageRoute(
+                  builder: (context) => const RoleSelectionPage(),
+                ),
                 (route) => false,
               );
             },
@@ -85,16 +89,10 @@ class _DriverPageState extends State<DriverPage> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Tracking',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Tracking'),
           BottomNavigationBarItem(
             icon: Icon(Icons.directions_car),
             label: 'Kendaraan',
@@ -122,12 +120,13 @@ class DriverTrackingTab extends StatefulWidget {
   State<DriverTrackingTab> createState() => _DriverTrackingTabState();
 }
 
-class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKeepAliveClientMixin {
+class _DriverTrackingTabState extends State<DriverTrackingTab>
+    with AutomaticKeepAliveClientMixin {
   LatLng? _currentPosition;
   double _currentSpeed = 0.0;
   Timer? _timer;
-  
-  final double _speedLimit = 60.0; 
+
+  final double _speedLimit = 60.0;
   bool _isOverspeeding = false;
 
   @override
@@ -193,7 +192,7 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
           if (!_isOverspeeding) {
             _isOverspeeding = true;
             // Avoid showing snackbar if widget is not in the tree
-            if(mounted) {
+            if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   backgroundColor: Colors.red,
@@ -202,8 +201,10 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
                     children: const [
                       Icon(Icons.warning, color: Colors.white),
                       SizedBox(width: 10),
-                      Text("BAHAYA! Anda melewati batas kecepatan!",
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        "BAHAYA! Anda melewati batas kecepatan!",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                 ),
@@ -231,7 +232,8 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.sikendi.driver',
                   ),
                   MarkerLayer(
@@ -240,7 +242,11 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
                         point: _currentPosition!,
                         width: 80,
                         height: 80,
-                        child: const Icon(Icons.directions_car, color: Colors.green, size: 40),
+                        child: const Icon(
+                          Icons.directions_car,
+                          color: Colors.green,
+                          size: 40,
+                        ),
                       ),
                     ],
                   ),
@@ -252,9 +258,11 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _isOverspeeding ? Colors.red : Colors.white, 
+              color: _isOverspeeding ? Colors.red : Colors.white,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: const [BoxShadow(blurRadius: 5, color: Colors.black26)],
+              boxShadow: const [
+                BoxShadow(blurRadius: 5, color: Colors.black26),
+              ],
             ),
             child: Column(
               children: [
@@ -262,7 +270,7 @@ class _DriverTrackingTabState extends State<DriverTrackingTab> with AutomaticKee
                 Text(
                   "${_currentSpeed.toStringAsFixed(1)} km/h",
                   style: TextStyle(
-                    fontSize: 24, 
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: _isOverspeeding ? Colors.white : Colors.black,
                   ),
@@ -290,8 +298,8 @@ class DriverVehicleTab extends StatefulWidget {
   State<DriverVehicleTab> createState() => _DriverVehicleTabState();
 }
 
-class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepAliveClientMixin {
-  
+class _DriverVehicleTabState extends State<DriverVehicleTab>
+    with AutomaticKeepAliveClientMixin {
   late Future<List<Map<String, dynamic>>> _vehiclesFuture;
   Map<String, dynamic>? _selectedCar;
 
@@ -305,14 +313,16 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
     setState(() {
       _vehiclesFuture = MongoService.getKendaraanTersedia();
       // Also check if the driver already has an active job
-      _loadMyJob(); 
+      _loadMyJob();
     });
   }
 
   // Load the current driver's active job
   void _loadMyJob() async {
-    final myJobs = await MongoService.getPekerjaanSaya(widget.user['nama_lengkap']);
-    if(myJobs.isNotEmpty && mounted) {
+    final myJobs = await MongoService.getPekerjaanSaya(
+      widget.user['nama_lengkap'],
+    );
+    if (myJobs.isNotEmpty && mounted) {
       setState(() {
         _selectedCar = myJobs.first;
       });
@@ -320,11 +330,12 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
   }
 
   void _handleCheckIn(Map<String, dynamic> car) async {
-    final namaSopir = widget.user['nama_lengkap'] as String? ?? 'Nama Tidak Ditemukan';
+    final namaSopir =
+        widget.user['nama_lengkap'] as String? ?? 'Nama Tidak Ditemukan';
     final carId = car['_id'] as mongo.ObjectId;
 
     await MongoService.ambilKendaraan(carId, namaSopir);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -362,7 +373,10 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Status Tanggung Jawab", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text(
+            "Status Tanggung Jawab",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 10),
 
           if (_selectedCar == null)
@@ -389,11 +403,27 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    const Text("KENDARAAN AKTIF", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "KENDARAAN AKTIF",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Divider(),
                     ListTile(
-                      leading: const Icon(Icons.directions_car, size: 40, color: Colors.blue),
-                      title: Text(_selectedCar!['model']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      leading: const Icon(
+                        Icons.directions_car,
+                        size: 40,
+                        color: Colors.blue,
+                      ),
+                      title: Text(
+                        _selectedCar!['model']!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
                       subtitle: Text(_selectedCar!['plat']!),
                     ),
                     const SizedBox(height: 10),
@@ -402,10 +432,12 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.exit_to_app),
                         label: const Text("LEPAS TANGGUNG JAWAB (Check-out)"),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
                         onPressed: _handleCheckOut,
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -415,7 +447,10 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Daftar Kendaraan Tersedia", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Daftar Kendaraan Tersedia",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: _loadVehicles,
@@ -436,7 +471,9 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
                   return Center(child: Text("Error: ${snapshot.error}"));
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text("Tidak ada kendaraan tersedia saat ini."));
+                  return const Center(
+                    child: Text("Tidak ada kendaraan tersedia saat ini."),
+                  );
                 }
 
                 final vehicles = snapshot.data!;
@@ -446,11 +483,16 @@ class _DriverVehicleTabState extends State<DriverVehicleTab> with AutomaticKeepA
                     var car = vehicles[index];
                     return Card(
                       child: ListTile(
-                        leading: const Icon(Icons.car_rental, color: Colors.green),
+                        leading: const Icon(
+                          Icons.car_rental,
+                          color: Colors.green,
+                        ),
                         title: Text(car['model']!),
                         subtitle: Text("${car['plat']} • ${car['status']}"),
                         trailing: ElevatedButton(
-                          onPressed: (_selectedCar == null) ? () => _handleCheckIn(car) : null,
+                          onPressed: (_selectedCar == null)
+                              ? () => _handleCheckIn(car)
+                              : null,
                           child: const Text("Pilih"),
                         ),
                       ),

@@ -92,7 +92,6 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
           // Sort by date
           kegiatanList.sort((a, b) => b.waktu.compareTo(a.waktu));
 
-
           return RefreshIndicator(
             onRefresh: () async => _loadKegiatan(),
             child: ListView.builder(
@@ -188,14 +187,23 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
   late String _selectedStatus;
   bool _isLoading = false;
 
-  final List<String> _statusOptions = ['Belum', 'Dalam Perjalanan', 'Selesai', 'Batal'];
+  final List<String> _statusOptions = [
+    'Belum',
+    'Dalam Perjalanan',
+    'Selesai',
+    'Batal',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _judulController = TextEditingController(text: widget.kegiatan?.judul ?? '');
+    _judulController = TextEditingController(
+      text: widget.kegiatan?.judul ?? '',
+    );
     _selectedDate = widget.kegiatan?.waktu ?? DateTime.now();
-    _selectedTime = TimeOfDay.fromDateTime(widget.kegiatan?.waktu ?? DateTime.now());
+    _selectedTime = TimeOfDay.fromDateTime(
+      widget.kegiatan?.waktu ?? DateTime.now(),
+    );
     _selectedStatus = widget.kegiatan?.status ?? 'Belum';
   }
 
@@ -215,92 +223,109 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
 
   Future<void> _pickTime() async {
     TimeOfDay? newTime = await showDialog<TimeOfDay>(
-        context: context,
-        builder: (BuildContext context) {
-          int tempHour = _selectedTime.hour;
-          int tempMinute = _selectedTime.minute;
-          return StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: const Text('Pilih Waktu'),
-                content: SizedBox(
-                  height: 200,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ListWheelScrollView.useDelegate(
-                              controller: FixedExtentScrollController(initialItem: tempHour),
-                              itemExtent: 32.0,
-                              physics: const FixedExtentScrollPhysics(),
-                              useMagnifier: true,
-                              magnification: 1.2,
-                              onSelectedItemChanged: (int index) {
-                                setState(() {
-                                  tempHour = index % 24;
-                                });
-                              },
-                              childDelegate: ListWheelChildLoopingListDelegate(
-                                children: List<Widget>.generate(24, (int index) {
-                                  return Center(child: Text(index.toString().padLeft(2, '0')));
-                                }),
-                              ),
+      context: context,
+      builder: (BuildContext context) {
+        int tempHour = _selectedTime.hour;
+        int tempMinute = _selectedTime.minute;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Pilih Waktu'),
+              content: SizedBox(
+                height: 200,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ListWheelScrollView.useDelegate(
+                            controller: FixedExtentScrollController(
+                              initialItem: tempHour,
+                            ),
+                            itemExtent: 32.0,
+                            physics: const FixedExtentScrollPhysics(),
+                            useMagnifier: true,
+                            magnification: 1.2,
+                            onSelectedItemChanged: (int index) {
+                              setState(() {
+                                tempHour = index % 24;
+                              });
+                            },
+                            childDelegate: ListWheelChildLoopingListDelegate(
+                              children: List<Widget>.generate(24, (int index) {
+                                return Center(
+                                  child: Text(index.toString().padLeft(2, '0')),
+                                );
+                              }),
                             ),
                           ),
-                          const Text(' : '),
-                          Expanded(
-                            child: ListWheelScrollView.useDelegate(
-                              controller: FixedExtentScrollController(initialItem: tempMinute),
-                              itemExtent: 32.0,
-                              physics: const FixedExtentScrollPhysics(),
-                              useMagnifier: true,
-                              magnification: 1.2,
-                              onSelectedItemChanged: (int index) {
-                                 setState(() {
-                                  tempMinute = index % 60;
-                                });
-                              },
-                              childDelegate: ListWheelChildLoopingListDelegate(
-                                children: List<Widget>.generate(60, (int index) {
-                                  return Center(child: Text(index.toString().padLeft(2, '0')));
-                                }),
-                              ),
+                        ),
+                        const Text(' : '),
+                        Expanded(
+                          child: ListWheelScrollView.useDelegate(
+                            controller: FixedExtentScrollController(
+                              initialItem: tempMinute,
+                            ),
+                            itemExtent: 32.0,
+                            physics: const FixedExtentScrollPhysics(),
+                            useMagnifier: true,
+                            magnification: 1.2,
+                            onSelectedItemChanged: (int index) {
+                              setState(() {
+                                tempMinute = index % 60;
+                              });
+                            },
+                            childDelegate: ListWheelChildLoopingListDelegate(
+                              children: List<Widget>.generate(60, (int index) {
+                                return Center(
+                                  child: Text(index.toString().padLeft(2, '0')),
+                                );
+                              }),
                             ),
                           ),
-                        ],
-                      ),
-                      Container(
-                        height: 32.0, // Match the itemExtent
-                        decoration: BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: Colors.grey.shade400, width: 1.0),
-                            bottom: BorderSide(color: Colors.grey.shade400, width: 1.0),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      height: 32.0, // Match the itemExtent
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.grey.shade400,
+                            width: 1.0,
+                          ),
+                          bottom: BorderSide(
+                            color: Colors.grey.shade400,
+                            width: 1.0,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                actions: [
-                  TextButton(
-                    child: const Text('Batal'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  TextButton(
-                    child: const Text('Pilih'),
-                    onPressed: () {
-                      Navigator.of(context).pop(TimeOfDay(hour: tempHour, minute: tempMinute));
-                    },
-                  ),
-                ],
-              );
-            }
-          );
-        });
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Batal'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: const Text('Pilih'),
+                  onPressed: () {
+                    Navigator.of(
+                      context,
+                    ).pop(TimeOfDay(hour: tempHour, minute: tempMinute));
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
 
     if (newTime != null) {
       setState(() {
@@ -323,28 +348,29 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
         _selectedTime.minute,
       );
 
-      widget.onSave(
-        _judulController.text,
-        combinedDateTime,
-        _selectedStatus,
-      ).then((_) {
-        if(mounted){
-          Navigator.of(context).pop();
-        }
-      }).catchError((_){
-         if(mounted){
-          setState(() {
-            _isLoading = false;
+      widget
+          .onSave(_judulController.text, combinedDateTime, _selectedStatus)
+          .then((_) {
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          })
+          .catchError((_) {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
           });
-         }
-      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.kegiatan == null ? 'Tambah Kegiatan' : 'Edit Kegiatan'),
+      title: Text(
+        widget.kegiatan == null ? 'Tambah Kegiatan' : 'Edit Kegiatan',
+      ),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -365,21 +391,17 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
                       'Tanggal: ${DateFormat('d MMM yyyy').format(_selectedDate)}',
                     ),
                   ),
-                  TextButton(
-                    onPressed: _pickDate,
-                    child: const Text('Pilih'),
-                  ),
+                  TextButton(onPressed: _pickDate, child: const Text('Pilih')),
                 ],
               ),
               Row(
                 children: [
                   Expanded(
-                    child: Text('Waktu: ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}'),
+                    child: Text(
+                      'Waktu: ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                    ),
                   ),
-                  TextButton(
-                    onPressed: _pickTime,
-                    child: const Text('Pilih'),
-                  ),
+                  TextButton(onPressed: _pickTime, child: const Text('Pilih')),
                 ],
               ),
               if (widget.kegiatan != null) ...[
@@ -388,10 +410,7 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
                   value: _selectedStatus,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: _statusOptions.map((status) {
-                    return DropdownMenuItem(
-                      value: status,
-                      child: Text(status),
-                    );
+                    return DropdownMenuItem(value: status, child: Text(status));
                   }).toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -413,7 +432,9 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _submit,
-          child: _isLoading ? const CircularProgressIndicator(strokeWidth: 2) : const Text('Simpan'),
+          child: _isLoading
+              ? const CircularProgressIndicator(strokeWidth: 2)
+              : const Text('Simpan'),
         ),
       ],
     );

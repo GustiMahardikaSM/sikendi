@@ -46,7 +46,7 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
 
   Future<void> _fetchFleetData() async {
     final data = await MongoService.getFleetDataForManager();
-    
+
     if (mounted) {
       setState(() {
         _activeVehicles = data;
@@ -55,7 +55,8 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
       if (_isTrackingMode && _localFocusId != null) {
         try {
           final targetCar = _activeVehicles.firstWhere(
-            (v) => v['device_id'] == _localFocusId || v['gps_1'] == _localFocusId,
+            (v) =>
+                v['device_id'] == _localFocusId || v['gps_1'] == _localFocusId,
             orElse: () => <String, dynamic>{},
           );
 
@@ -134,14 +135,19 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
   }
 
   void _showVehicleDetail(BuildContext context, Map<String, dynamic> vehicle) {
-    String displayName = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown Device";
+    String displayName =
+        vehicle['plat'] ??
+        vehicle['model'] ??
+        vehicle['gps_1'] ??
+        vehicle['device_id'] ??
+        "Unknown Device";
     String? plat = vehicle['plat'];
     String? model = vehicle['model'];
     String deviceId = vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown";
-    
+
     double speed = (vehicle['speed'] as num? ?? 0).toDouble();
     String? timestamp = vehicle['server_received_at']?.toString();
-    
+
     LatLng? pos = _parseLocation(vehicle);
     double lat = pos?.latitude ?? 0.0;
     double lng = pos?.longitude ?? 0.0;
@@ -157,17 +163,39 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.directions_car, size: 30, color: Colors.blue),
+                  const Icon(
+                    Icons.directions_car,
+                    size: 30,
+                    color: Colors.blue,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(displayName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(
+                          displayName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         if (plat != null && model != null)
-                          Text("$model • $plat", style: TextStyle(fontSize: 12, color: Colors.grey[600]))
+                          Text(
+                            "$model • $plat",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          )
                         else
-                          Text("ID: $deviceId", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          Text(
+                            "ID: $deviceId",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -182,29 +210,35 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
                   _getStatusText(speed, timestamp),
                   style: TextStyle(
                     color: _getStatusColor(speed, timestamp),
-                    fontWeight: FontWeight.bold
-                  )
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               ListTile(
                 dense: true,
                 leading: const Icon(Icons.access_time),
                 title: const Text("Terakhir Update"),
-                subtitle: Text(timestamp != null
-                    ? DateTime.parse(timestamp).toLocal().toString().split('.')[0]
-                    : "-"),
+                subtitle: Text(
+                  timestamp != null
+                      ? DateTime.parse(
+                          timestamp,
+                        ).toLocal().toString().split('.')[0]
+                      : "-",
+                ),
               ),
               ListTile(
                 dense: true,
                 leading: const Icon(Icons.location_on),
                 title: const Text("Posisi Koordinat"),
-                subtitle: Text("${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"),
+                subtitle: Text(
+                  "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}",
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.copy, size: 20),
                   onPressed: () {
-                     ScaffoldMessenger.of(context).showSnackBar(
-                       const SnackBar(content: Text("Koordinat disalin!"))
-                     );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Koordinat disalin!")),
+                    );
                   },
                 ),
               ),
@@ -231,7 +265,9 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
                 initialCenter: (_isTrackingMode && widget.initialCenter != null)
                     ? widget.initialCenter!
                     : const LatLng(-7.052219, 110.441481),
-                initialZoom: (_isTrackingMode && widget.initialCenter != null) ? 18.0 : 14.0,
+                initialZoom: (_isTrackingMode && widget.initialCenter != null)
+                    ? 18.0
+                    : 14.0,
                 onPositionChanged: (position, hasGesture) {
                   if (hasGesture && _isTrackingMode) {
                     setState(() {
@@ -249,15 +285,26 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
                 MarkerLayer(
                   markers: _activeVehicles.map((vehicle) {
                     final LatLng? position = _parseLocation(vehicle);
-                    if (position == null) return const Marker(point: LatLng(0,0), child: SizedBox());
+                    if (position == null)
+                      return const Marker(
+                        point: LatLng(0, 0),
+                        child: SizedBox(),
+                      );
 
                     double speed = (vehicle['speed'] as num? ?? 0).toDouble();
-                    String? timestamp = vehicle['server_received_at']?.toString();
-                    String label = vehicle['plat'] ?? vehicle['model'] ?? vehicle['gps_1'] ?? "?";
-                    
-                    bool isFocused = _isTrackingMode &&
-                                     _localFocusId != null &&
-                                     (vehicle['gps_1'] == _localFocusId || vehicle['device_id'] == _localFocusId);
+                    String? timestamp = vehicle['server_received_at']
+                        ?.toString();
+                    String label =
+                        vehicle['plat'] ??
+                        vehicle['model'] ??
+                        vehicle['gps_1'] ??
+                        "?";
+
+                    bool isFocused =
+                        _isTrackingMode &&
+                        _localFocusId != null &&
+                        (vehicle['gps_1'] == _localFocusId ||
+                            vehicle['device_id'] == _localFocusId);
 
                     return Marker(
                       point: position,
@@ -268,18 +315,21 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
                         child: Column(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                 color: isFocused ? Colors.yellow : Colors.white,
-                                 borderRadius: BorderRadius.circular(4),
-                                 border: Border.all(color: Colors.black12)
+                                color: isFocused ? Colors.yellow : Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.black12),
                               ),
                               child: Text(
                                 label,
                                 style: TextStyle(
                                   fontSize: 8,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black
+                                  color: Colors.black,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),

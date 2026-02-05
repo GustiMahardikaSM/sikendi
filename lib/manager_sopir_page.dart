@@ -57,16 +57,25 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
                 final hp = sopir['no_hp'] ?? '-';
 
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: Colors.teal[100],
                       child: Text(
                         nama.isNotEmpty ? nama[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.teal,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    title: Text(nama, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(
+                      nama,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

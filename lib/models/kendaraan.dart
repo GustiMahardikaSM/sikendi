@@ -28,24 +28,24 @@ class Kendaraan {
   });
 
   factory Kendaraan.fromJson(Map<String, dynamic> json) => Kendaraan(
-        id: json["_id"],
-        plat: json["plat"],
-        model: json["model"],
-        deviceId: json["device_id"],
-        status: json["status"],
-        peminjam: json["peminjam"],
-        waktuAmbil: json["waktu_ambil"] == null
-            ? null
-            : DateTime.parse(json["waktu_ambil"]),
-      );
+    id: json["_id"],
+    plat: json["plat"],
+    model: json["model"],
+    deviceId: json["device_id"],
+    status: json["status"],
+    peminjam: json["peminjam"],
+    waktuAmbil: json["waktu_ambil"] == null
+        ? null
+        : DateTime.parse(json["waktu_ambil"]),
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "plat": plat,
-        "model": model,
-        "device_id": deviceId,
-        "status": status,
-        "peminjam": peminjam,
-        "waktu_ambil": waktuAmbil?.toIso8601String(),
-      };
+    "_id": id,
+    "plat": plat,
+    "model": model,
+    "device_id": deviceId,
+    "status": status,
+    "peminjam": peminjam,
+    "waktu_ambil": waktuAmbil?.toIso8601String(),
+  };
 }

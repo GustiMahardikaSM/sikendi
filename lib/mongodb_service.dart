@@ -6,7 +6,7 @@ class MongoService {
   // --- KONFIGURASI DB LOKASI---
   static final String _mongoLokasiUrl =
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
-  
+
   static final String _collectionLokasiName = "gps_location";
   static final String _collectionKendaraanName = "kendaraan";
 
@@ -24,7 +24,6 @@ class MongoService {
   static DbCollection? _collectionJadwal;
   static DbCollection? _collectionSopir;
 
-
   // 1. KONEKSI DATABASE LOKASI
   static Future<void> connect() async {
     try {
@@ -33,7 +32,9 @@ class MongoService {
       inspect(_dbLokasi);
       _collectionLokasi = _dbLokasi!.collection(_collectionLokasiName);
       _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
-      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location & kendaraan)");
+      print(
+        "✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location & kendaraan)",
+      );
     } catch (e) {
       print("❌ Gagal Koneksi ke gps_location: $e");
     }
@@ -80,7 +81,9 @@ class MongoService {
   // READ: Ambil semua kegiatan untuk sopir tertentu
   static Future<List<KegiatanSopir>> getKegiatan(String email) async {
     try {
-      final data = await _collectionJadwal!.find(where.eq('email', email)).toList();
+      final data = await _collectionJadwal!
+          .find(where.eq('email', email))
+          .toList();
       return data.map((map) => KegiatanSopir.fromMap(map)).toList();
     } catch (e) {
       print('Error getting kegiatan: $e');
@@ -109,10 +112,7 @@ class MongoService {
     try {
       await _collectionJadwal!.update(
         where.id(id),
-        modify
-          .set('judul', judul)
-          .set('waktu', waktu)
-          .set('status', status),
+        modify.set('judul', judul).set('waktu', waktu).set('status', status),
       );
     } catch (e) {
       print('Error updating kegiatan: $e');
@@ -136,7 +136,9 @@ class MongoService {
   static Future<List<Map<String, dynamic>>> getSemuaSopir() async {
     try {
       if (_collectionSopir == null) {
-        print('Collection sopir belum ter-inisialisasi. Memanggil connectJadwal()...');
+        print(
+          'Collection sopir belum ter-inisialisasi. Memanggil connectJadwal()...',
+        );
         await connectJadwal();
         if (_collectionSopir == null) {
           print('Gagal inisialisasi collection sopir setelah connectJadwal().');
@@ -155,6 +157,62 @@ class MongoService {
     }
   }
 
+  // READ: Ambil sopir yang statusnya pending untuk verifikasi
+  static Future<List<Map<String, dynamic>>> getPendingDrivers() async {
+    try {
+      if (_collectionSopir == null) await connectJadwal();
+
+      // Logika Query: filter status & urutkan berdasarkan tanggal daftar
+      final data = await _collectionSopir!
+          .find(where.eq('status_akun', 'pending').sortBy('tgl_daftar'))
+          .toList();
+      return data;
+    } catch (e) {
+      print('Error getting pending drivers: $e');
+      return [];
+    }
+  }
+
+  /// B. Fungsi approveDriver(ObjectId id)
+  /// Menyetujui pendaftaran sopir dan menghapus field data foto.
+  static Future<bool> approveDriver(ObjectId driverId) async {
+    try {
+      if (_collectionSopir == null) await connectJadwal();
+
+      // Teknis Query: $set untuk status, $unset untuk menghapus field foto
+      var result = await _collectionSopir!.update(
+        where.id(driverId),
+        modify
+            .set('status_akun', 'aktif')
+            .set('tgl_verifikasi', DateTime.now())
+            .unset('foto_selfie_temp') // Hapus field, lebih bersih dari set null
+            .unset('foto_ktp_temp'),   // Hapus field, lebih bersih dari set null
+      );
+      
+      // Check if the update was successful. 'nModified' indicates a change.
+      return result['nModified'] != null && result['nModified'] > 0;
+    } catch (e) {
+      print('Error approving driver: $e');
+      return false;
+    }
+  }
+
+  /// C. Fungsi rejectDriver(ObjectId id)
+  /// Menolak dan menghapus permanen data pendaftar.
+  static Future<bool> rejectDriver(ObjectId driverId) async {
+    try {
+      if (_collectionSopir == null) await connectJadwal();
+      
+      // Teknis Query: Hapus seluruh dokumen
+      var result = await _collectionSopir!.remove(where.id(driverId));
+
+      // Check if the deletion was successful. 'n' indicates number of docs removed.
+      return result['n'] != null && result['n'] > 0;
+    } catch (e) {
+      print('Error rejecting driver: $e');
+      return false;
+    }
+  }
 
   // =================================================================
   // BAGIAN MANAJER
@@ -162,7 +220,9 @@ class MongoService {
   // =================================================================
 
   // Helper: Sinkronkan data ke collection kendaraan
-  static Future<void> _syncToKendaraanCollection(Map<String, dynamic> vehicleData) async {
+  static Future<void> _syncToKendaraanCollection(
+    Map<String, dynamic> vehicleData,
+  ) async {
     try {
       if (_collectionKendaraan == null) {
         print("⚠️ Collection kendaraan belum terinisialisasi");
@@ -171,13 +231,19 @@ class MongoService {
 
       final deviceId = vehicleData['gps_1'] ?? vehicleData['device_id'];
       if (deviceId == null) {
-        print("⚠️ Device ID tidak ditemukan untuk sync ke collection kendaraan");
+        print(
+          "⚠️ Device ID tidak ditemukan untuk sync ke collection kendaraan",
+        );
         return;
       }
 
       // Cari dokumen yang sudah ada berdasarkan device_id atau gps_1
-      final docsDeviceId = await _collectionKendaraan!.find(where.eq('device_id', deviceId)).toList();
-      final docsGps1 = await _collectionKendaraan!.find(where.eq('gps_1', deviceId)).toList();
+      final docsDeviceId = await _collectionKendaraan!
+          .find(where.eq('device_id', deviceId))
+          .toList();
+      final docsGps1 = await _collectionKendaraan!
+          .find(where.eq('gps_1', deviceId))
+          .toList();
       final allDocs = [...docsDeviceId, ...docsGps1];
       // Hapus duplikat berdasarkan _id
       final uniqueDocs = <String, Map<String, dynamic>>{};
@@ -204,14 +270,14 @@ class MongoService {
           await _collectionKendaraan!.update(
             where.id(doc['_id']),
             modify
-              .set('plat', kendaraanData['plat'])
-              .set('model', kendaraanData['model'])
-              .set('device_id', kendaraanData['device_id'])
-              .set('gps_1', kendaraanData['gps_1'])
-              .set('status', kendaraanData['status'])
-              .set('peminjam', kendaraanData['peminjam'])
-              .set('waktu_ambil', kendaraanData['waktu_ambil'])
-              .set('waktu_lepas', kendaraanData['waktu_lepas']),
+                .set('plat', kendaraanData['plat'])
+                .set('model', kendaraanData['model'])
+                .set('device_id', kendaraanData['device_id'])
+                .set('gps_1', kendaraanData['gps_1'])
+                .set('status', kendaraanData['status'])
+                .set('peminjam', kendaraanData['peminjam'])
+                .set('waktu_ambil', kendaraanData['waktu_ambil'])
+                .set('waktu_lepas', kendaraanData['waktu_lepas']),
           );
         }
       } else {
@@ -224,12 +290,20 @@ class MongoService {
   }
 
   // CREATE: Tambahkan metadata kendaraan ke device GPS yang sudah ada atau buat baru
-  static Future<bool> tambahKendaraanManager(String plat, String model, String deviceId) async {
+  static Future<bool> tambahKendaraanManager(
+    String plat,
+    String model,
+    String deviceId,
+  ) async {
     try {
       // Cek apakah sudah ada metadata dengan gps_1 atau device_id yang sama
       // Cari dokumen yang memiliki gps_1 atau device_id yang sama DAN memiliki model atau plat
-      final docsGps1 = await _collectionLokasi!.find(where.eq('gps_1', deviceId)).toList();
-      final docsDeviceId = await _collectionLokasi!.find(where.eq('device_id', deviceId)).toList();
+      final docsGps1 = await _collectionLokasi!
+          .find(where.eq('gps_1', deviceId))
+          .toList();
+      final docsDeviceId = await _collectionLokasi!
+          .find(where.eq('device_id', deviceId))
+          .toList();
       final allDocs = [...docsGps1, ...docsDeviceId];
       // Hapus duplikat berdasarkan _id
       final uniqueDocs = <String, Map<String, dynamic>>{};
@@ -237,13 +311,13 @@ class MongoService {
         uniqueDocs[doc['_id'].toString()] = doc;
       }
       final allDocsUnique = uniqueDocs.values.toList();
-      
+
       // Cek apakah ada yang sudah punya metadata
       final adaMetadata = allDocsUnique.firstWhere(
         (doc) => doc['model'] != null || doc['plat'] != null,
         orElse: () => <String, dynamic>{},
       );
-      
+
       if (adaMetadata.isNotEmpty) {
         print("Device ID (gps_1) sudah terdaftar dengan metadata!");
         return false;
@@ -251,21 +325,21 @@ class MongoService {
 
       // Cek apakah ada dokumen GPS location yang sudah ada (tanpa metadata)
       final adaGps = allDocsUnique.isNotEmpty ? allDocsUnique.first : null;
-      
+
       Map<String, dynamic> vehicleData;
       if (adaGps != null) {
         // Update dokumen GPS location yang sudah ada dengan menambahkan metadata
         await _collectionLokasi!.update(
           where.id(adaGps['_id']),
           modify
-            .set('plat', plat)
-            .set('model', model)
-            .set('gps_1', deviceId)
-            .set('device_id', deviceId)
-            .set('status', 'Tersedia')
-            .set('peminjam', null)
-            .set('waktu_ambil', null)
-            .set('waktu_lepas', null),
+              .set('plat', plat)
+              .set('model', model)
+              .set('gps_1', deviceId)
+              .set('device_id', deviceId)
+              .set('status', 'Tersedia')
+              .set('peminjam', null)
+              .set('waktu_ambil', null)
+              .set('waktu_lepas', null),
         );
         vehicleData = {
           'plat': plat,
@@ -291,10 +365,10 @@ class MongoService {
         };
         await _collectionLokasi!.insert({
           ...vehicleData,
-          'created_at': DateTime.now().toIso8601String()
+          'created_at': DateTime.now().toIso8601String(),
         });
       }
-      
+
       // Sync ke collection kendaraan
       await _syncToKendaraanCollection(vehicleData);
       return true;
@@ -306,11 +380,20 @@ class MongoService {
 
   // UPDATE: Update metadata kendaraan berdasarkan gps_1
   // Update semua dokumen yang memiliki gps_1 atau device_id yang sama
-  static Future<bool> updateKendaraanManager(String gps1, String plat, String model, String? status) async {
+  static Future<bool> updateKendaraanManager(
+    String gps1,
+    String plat,
+    String model,
+    String? status,
+  ) async {
     try {
       // Query untuk semua dokumen dengan gps_1 atau device_id yang sama
-      final docsGps1 = await _collectionLokasi!.find(where.eq('gps_1', gps1)).toList();
-      final docsDeviceId = await _collectionLokasi!.find(where.eq('device_id', gps1)).toList();
+      final docsGps1 = await _collectionLokasi!
+          .find(where.eq('gps_1', gps1))
+          .toList();
+      final docsDeviceId = await _collectionLokasi!
+          .find(where.eq('device_id', gps1))
+          .toList();
       final allDocs = [...docsGps1, ...docsDeviceId];
       // Hapus duplikat berdasarkan _id
       final uniqueDocs = <String, Map<String, dynamic>>{};
@@ -318,30 +401,30 @@ class MongoService {
         uniqueDocs[doc['_id'].toString()] = doc;
       }
       final allDocsUnique = uniqueDocs.values.toList();
-      
+
       // Cari dokumen yang sudah punya metadata
       final existingDoc = allDocsUnique.firstWhere(
         (doc) => doc['model'] != null || doc['plat'] != null,
         orElse: () => <String, dynamic>{},
       );
-      
+
       Map<String, dynamic>? vehicleDataForSync;
-      
+
       if (existingDoc.isNotEmpty) {
         // Update semua dokumen yang memiliki gps_1 atau device_id yang sama
         for (var doc in allDocsUnique) {
           final updateModifier = modify
-            .set('plat', plat)
-            .set('model', model)
-            .set('gps_1', gps1)
-            .set('device_id', gps1);
-          
+              .set('plat', plat)
+              .set('model', model)
+              .set('gps_1', gps1)
+              .set('device_id', gps1);
+
           if (status != null) {
             updateModifier.set('status', status);
           }
-          
+
           await _collectionLokasi!.update(where.id(doc['_id']), updateModifier);
-          
+
           // Simpan data untuk sync (ambil dari dokumen yang diupdate)
           if (vehicleDataForSync == null) {
             vehicleDataForSync = {
@@ -360,17 +443,17 @@ class MongoService {
         // Jika tidak ada dokumen metadata, update dokumen GPS location yang sudah ada
         for (var doc in allDocsUnique) {
           final updateModifier = modify
-            .set('plat', plat)
-            .set('model', model)
-            .set('gps_1', gps1)
-            .set('device_id', gps1);
-          
+              .set('plat', plat)
+              .set('model', model)
+              .set('gps_1', gps1)
+              .set('device_id', gps1);
+
           if (status != null) {
             updateModifier.set('status', status);
           }
-          
+
           await _collectionLokasi!.update(where.id(doc['_id']), updateModifier);
-          
+
           // Simpan data untuk sync (ambil dari dokumen yang diupdate)
           if (vehicleDataForSync == null) {
             vehicleDataForSync = {
@@ -399,10 +482,10 @@ class MongoService {
         };
         await _collectionLokasi!.insert({
           ...vehicleDataForSync,
-          'created_at': DateTime.now().toIso8601String()
+          'created_at': DateTime.now().toIso8601String(),
         });
       }
-      
+
       // Sync ke collection kendaraan
       if (vehicleDataForSync != null) {
         await _syncToKendaraanCollection(vehicleDataForSync);
@@ -418,8 +501,12 @@ class MongoService {
   static Future<bool> hapusMetadataKendaraan(String gps1) async {
     try {
       // Cari semua dokumen dengan gps_1 atau device_id yang sama
-      final docsGps1 = await _collectionLokasi!.find(where.eq('gps_1', gps1)).toList();
-      final docsDeviceId = await _collectionLokasi!.find(where.eq('device_id', gps1)).toList();
+      final docsGps1 = await _collectionLokasi!
+          .find(where.eq('gps_1', gps1))
+          .toList();
+      final docsDeviceId = await _collectionLokasi!
+          .find(where.eq('device_id', gps1))
+          .toList();
       final allDocs = [...docsGps1, ...docsDeviceId];
       // Hapus duplikat berdasarkan _id
       final uniqueDocs = <String, Map<String, dynamic>>{};
@@ -427,7 +514,7 @@ class MongoService {
         uniqueDocs[doc['_id'].toString()] = doc;
       }
       final allDocsUnique = uniqueDocs.values.toList();
-      
+
       // Hanya hapus dokumen yang memiliki metadata (model atau plat)
       // Jangan hapus dokumen GPS location murni
       bool deleted = false;
@@ -437,7 +524,7 @@ class MongoService {
           deleted = true;
         }
       }
-      
+
       return deleted;
     } catch (e) {
       print("Error hapus metadata kendaraan: $e");
@@ -447,19 +534,22 @@ class MongoService {
 
   // READ (ALL): Manager melihat SIAPA mengerjakan APA - dipisah menjadi yang sudah dan belum didefinisikan
   // Mengembalikan Map dengan 'defined' dan 'undefined' keys
-  static Future<Map<String, List<Map<String, dynamic>>>> getSemuaDataUntukManagerDipisah() async {
+  static Future<Map<String, List<Map<String, dynamic>>>>
+  getSemuaDataUntukManagerDipisah() async {
     try {
       // Ambil semua data
       final allData = await _collectionLokasi!.find().toList();
-      
+
       // Pisahkan dokumen GPS location dan metadata kendaraan
-      Map<String, Map<String, dynamic>> gpsLocations = {}; // Key: gps_1, Value: latest GPS data
-      Map<String, Map<String, dynamic>> vehicleMetadata = {}; // Key: gps_1/device_id, Value: metadata
-      
+      Map<String, Map<String, dynamic>> gpsLocations =
+          {}; // Key: gps_1, Value: latest GPS data
+      Map<String, Map<String, dynamic>> vehicleMetadata =
+          {}; // Key: gps_1/device_id, Value: metadata
+
       for (var doc in allData) {
         // Gunakan gps_1 sebagai identifier utama, fallback ke device_id
         String deviceId = doc['gps_1'] ?? doc['device_id'] ?? "Unknown";
-        
+
         // Jika dokumen memiliki GPS location data (server_received_at atau gps_location)
         if (doc['server_received_at'] != null || doc['gps_location'] != null) {
           if (!gpsLocations.containsKey(deviceId)) {
@@ -467,20 +557,24 @@ class MongoService {
             gpsLocations[deviceId]!['gps_1'] = deviceId;
           } else {
             // Pilih yang lebih baru berdasarkan server_received_at
-            DateTime? currentTime = gpsLocations[deviceId]!['server_received_at'] != null
-                ? DateTime.tryParse(gpsLocations[deviceId]!['server_received_at'].toString())
+            DateTime? currentTime =
+                gpsLocations[deviceId]!['server_received_at'] != null
+                ? DateTime.tryParse(
+                    gpsLocations[deviceId]!['server_received_at'].toString(),
+                  )
                 : null;
             DateTime? newTime = doc['server_received_at'] != null
                 ? DateTime.tryParse(doc['server_received_at'].toString())
                 : null;
-            
-            if (newTime != null && (currentTime == null || newTime.isAfter(currentTime))) {
+
+            if (newTime != null &&
+                (currentTime == null || newTime.isAfter(currentTime))) {
               gpsLocations[deviceId] = Map<String, dynamic>.from(doc);
               gpsLocations[deviceId]!['gps_1'] = deviceId;
             }
           }
         }
-        
+
         // Jika dokumen memiliki metadata kendaraan (model atau plat)
         if (doc['model'] != null || doc['plat'] != null) {
           String metaKey = doc['gps_1'] ?? doc['device_id'] ?? deviceId;
@@ -489,48 +583,52 @@ class MongoService {
           }
         }
       }
-      
+
       // Pisahkan menjadi yang sudah didefinisikan dan belum
       List<Map<String, dynamic>> definedVehicles = [];
       List<Map<String, dynamic>> undefinedVehicles = [];
-      
+
       // Gunakan semua device yang ditemukan dari GPS locations
       Set<String> allDeviceIds = {};
       allDeviceIds.addAll(gpsLocations.keys);
       allDeviceIds.addAll(vehicleMetadata.keys);
-      
+
       for (var deviceId in allDeviceIds) {
         Map<String, dynamic> vehicleData = <String, dynamic>{};
-        
+
         // Ambil data GPS location jika ada
         if (gpsLocations.containsKey(deviceId)) {
           vehicleData.addAll(gpsLocations[deviceId]!);
         }
-        
+
         // Gabungkan dengan metadata jika ada
         bool hasMetadata = vehicleMetadata.containsKey(deviceId);
         if (hasMetadata) {
-          vehicleData['model'] = vehicleMetadata[deviceId]!['model'] ?? vehicleData['model'];
-          vehicleData['plat'] = vehicleMetadata[deviceId]!['plat'] ?? vehicleData['plat'];
-          vehicleData['status'] = vehicleMetadata[deviceId]!['status'] ?? vehicleData['status'] ?? 'N/A';
-          vehicleData['peminjam'] = vehicleMetadata[deviceId]!['peminjam'] ?? vehicleData['peminjam'];
+          vehicleData['model'] =
+              vehicleMetadata[deviceId]!['model'] ?? vehicleData['model'];
+          vehicleData['plat'] =
+              vehicleMetadata[deviceId]!['plat'] ?? vehicleData['plat'];
+          vehicleData['status'] =
+              vehicleMetadata[deviceId]!['status'] ??
+              vehicleData['status'] ??
+              'N/A';
+          vehicleData['peminjam'] =
+              vehicleMetadata[deviceId]!['peminjam'] ?? vehicleData['peminjam'];
         }
-        
+
         // Pastikan gps_1 selalu ada
         vehicleData['gps_1'] = deviceId;
-        
+
         // Cek apakah sudah punya metadata (model atau plat)
-        if (hasMetadata && (vehicleData['model'] != null || vehicleData['plat'] != null)) {
+        if (hasMetadata &&
+            (vehicleData['model'] != null || vehicleData['plat'] != null)) {
           definedVehicles.add(vehicleData);
         } else {
           undefinedVehicles.add(vehicleData);
         }
       }
-      
-      return {
-        'defined': definedVehicles,
-        'undefined': undefinedVehicles,
-      };
+
+      return {'defined': definedVehicles, 'undefined': undefinedVehicles};
     } catch (e) {
       print("Error get data manager: $e");
       return {'defined': [], 'undefined': []};
@@ -543,15 +641,17 @@ class MongoService {
     try {
       // Ambil semua data
       final allData = await _collectionLokasi!.find().toList();
-      
+
       // Pisahkan dokumen GPS location dan metadata kendaraan
-      Map<String, Map<String, dynamic>> gpsLocations = {}; // Key: gps_1, Value: latest GPS data
-      Map<String, Map<String, dynamic>> vehicleMetadata = {}; // Key: gps_1/device_id, Value: metadata
-      
+      Map<String, Map<String, dynamic>> gpsLocations =
+          {}; // Key: gps_1, Value: latest GPS data
+      Map<String, Map<String, dynamic>> vehicleMetadata =
+          {}; // Key: gps_1/device_id, Value: metadata
+
       for (var doc in allData) {
         // Gunakan gps_1 sebagai identifier utama, fallback ke device_id
         String deviceId = doc['gps_1'] ?? doc['device_id'] ?? "Unknown";
-        
+
         // Jika dokumen memiliki GPS location data (server_received_at atau gps_location)
         if (doc['server_received_at'] != null || doc['gps_location'] != null) {
           if (!gpsLocations.containsKey(deviceId)) {
@@ -559,20 +659,24 @@ class MongoService {
             gpsLocations[deviceId]!['gps_1'] = deviceId;
           } else {
             // Pilih yang lebih baru berdasarkan server_received_at
-            DateTime? currentTime = gpsLocations[deviceId]!['server_received_at'] != null
-                ? DateTime.tryParse(gpsLocations[deviceId]!['server_received_at'].toString())
+            DateTime? currentTime =
+                gpsLocations[deviceId]!['server_received_at'] != null
+                ? DateTime.tryParse(
+                    gpsLocations[deviceId]!['server_received_at'].toString(),
+                  )
                 : null;
             DateTime? newTime = doc['server_received_at'] != null
                 ? DateTime.tryParse(doc['server_received_at'].toString())
                 : null;
-            
-            if (newTime != null && (currentTime == null || newTime.isAfter(currentTime))) {
+
+            if (newTime != null &&
+                (currentTime == null || newTime.isAfter(currentTime))) {
               gpsLocations[deviceId] = Map<String, dynamic>.from(doc);
               gpsLocations[deviceId]!['gps_1'] = deviceId;
             }
           }
         }
-        
+
         // Jika dokumen memiliki metadata kendaraan (model atau plat)
         if (doc['model'] != null || doc['plat'] != null) {
           String metaKey = doc['gps_1'] ?? doc['device_id'] ?? deviceId;
@@ -581,37 +685,43 @@ class MongoService {
           }
         }
       }
-      
+
       // Gabungkan GPS location dengan metadata
       List<Map<String, dynamic>> result = [];
-      
+
       // Gunakan semua device yang ditemukan dari GPS locations
       Set<String> allDeviceIds = {};
       allDeviceIds.addAll(gpsLocations.keys);
       allDeviceIds.addAll(vehicleMetadata.keys);
-      
+
       for (var deviceId in allDeviceIds) {
         Map<String, dynamic> vehicleData = <String, dynamic>{};
-        
+
         // Ambil data GPS location jika ada
         if (gpsLocations.containsKey(deviceId)) {
           vehicleData.addAll(gpsLocations[deviceId]!);
         }
-        
+
         // Gabungkan dengan metadata jika ada
         if (vehicleMetadata.containsKey(deviceId)) {
-          vehicleData['model'] = vehicleMetadata[deviceId]!['model'] ?? vehicleData['model'];
-          vehicleData['plat'] = vehicleMetadata[deviceId]!['plat'] ?? vehicleData['plat'];
-          vehicleData['status'] = vehicleMetadata[deviceId]!['status'] ?? vehicleData['status'] ?? 'N/A';
-          vehicleData['peminjam'] = vehicleMetadata[deviceId]!['peminjam'] ?? vehicleData['peminjam'];
+          vehicleData['model'] =
+              vehicleMetadata[deviceId]!['model'] ?? vehicleData['model'];
+          vehicleData['plat'] =
+              vehicleMetadata[deviceId]!['plat'] ?? vehicleData['plat'];
+          vehicleData['status'] =
+              vehicleMetadata[deviceId]!['status'] ??
+              vehicleData['status'] ??
+              'N/A';
+          vehicleData['peminjam'] =
+              vehicleMetadata[deviceId]!['peminjam'] ?? vehicleData['peminjam'];
         }
-        
+
         // Pastikan gps_1 selalu ada
         vehicleData['gps_1'] = deviceId;
-        
+
         result.add(vehicleData);
       }
-      
+
       return result;
     } catch (e) {
       print("Error get data manager: $e");
@@ -626,20 +736,23 @@ class MongoService {
       if (_collectionLokasi == null) {
         print("⚠️ Database belum terkoneksi, mencoba koneksi ulang...");
         await connect(); // Coba koneksi ulang
-        if (_collectionLokasi == null) return []; // Jika masih gagal, kembalikan list kosong
+        if (_collectionLokasi == null)
+          return []; // Jika masih gagal, kembalikan list kosong
       }
 
       // Ambil semua data untuk mendapatkan GPS location dan metadata
       final allData = await _collectionLokasi!.find().toList();
-      
+
       // Pisahkan dokumen GPS location dan metadata kendaraan
-      Map<String, Map<String, dynamic>> gpsLocations = {}; // Key: gps_1, Value: latest GPS data
-      Map<String, Map<String, dynamic>> vehicleMetadata = {}; // Key: gps_1/device_id, Value: metadata
-      
+      Map<String, Map<String, dynamic>> gpsLocations =
+          {}; // Key: gps_1, Value: latest GPS data
+      Map<String, Map<String, dynamic>> vehicleMetadata =
+          {}; // Key: gps_1/device_id, Value: metadata
+
       for (var doc in allData) {
         // Gunakan gps_1 sebagai identifier utama, fallback ke device_id
         String deviceId = doc['gps_1'] ?? doc['device_id'] ?? "Unknown";
-        
+
         // Jika dokumen memiliki GPS location data (server_received_at atau gps_location)
         if (doc['server_received_at'] != null || doc['gps_location'] != null) {
           if (!gpsLocations.containsKey(deviceId)) {
@@ -647,20 +760,24 @@ class MongoService {
             gpsLocations[deviceId]!['gps_1'] = deviceId;
           } else {
             // Pilih yang lebih baru berdasarkan server_received_at
-            DateTime? currentTime = gpsLocations[deviceId]!['server_received_at'] != null
-                ? DateTime.tryParse(gpsLocations[deviceId]!['server_received_at'].toString())
+            DateTime? currentTime =
+                gpsLocations[deviceId]!['server_received_at'] != null
+                ? DateTime.tryParse(
+                    gpsLocations[deviceId]!['server_received_at'].toString(),
+                  )
                 : null;
             DateTime? newTime = doc['server_received_at'] != null
                 ? DateTime.tryParse(doc['server_received_at'].toString())
                 : null;
-            
-            if (newTime != null && (currentTime == null || newTime.isAfter(currentTime))) {
+
+            if (newTime != null &&
+                (currentTime == null || newTime.isAfter(currentTime))) {
               gpsLocations[deviceId] = Map<String, dynamic>.from(doc);
               gpsLocations[deviceId]!['gps_1'] = deviceId;
             }
           }
         }
-        
+
         // Jika dokumen memiliki metadata kendaraan (model atau plat)
         if (doc['model'] != null || doc['plat'] != null) {
           String metaKey = doc['gps_1'] ?? doc['device_id'] ?? deviceId;
@@ -669,28 +786,36 @@ class MongoService {
           }
         }
       }
-      
+
       // Gabungkan GPS location dengan metadata
       List<Map<String, dynamic>> result = [];
-      
+
       // Gunakan semua device yang ditemukan dari GPS locations
       for (var deviceId in gpsLocations.keys) {
-        Map<String, dynamic> vehicleData = Map<String, dynamic>.from(gpsLocations[deviceId]!);
-        
+        Map<String, dynamic> vehicleData = Map<String, dynamic>.from(
+          gpsLocations[deviceId]!,
+        );
+
         // Gabungkan dengan metadata jika ada
         if (vehicleMetadata.containsKey(deviceId)) {
-          vehicleData['model'] = vehicleMetadata[deviceId]!['model'] ?? vehicleData['model'];
-          vehicleData['plat'] = vehicleMetadata[deviceId]!['plat'] ?? vehicleData['plat'];
-          vehicleData['status'] = vehicleMetadata[deviceId]!['status'] ?? vehicleData['status'] ?? 'N/A';
-          vehicleData['peminjam'] = vehicleMetadata[deviceId]!['peminjam'] ?? vehicleData['peminjam'];
+          vehicleData['model'] =
+              vehicleMetadata[deviceId]!['model'] ?? vehicleData['model'];
+          vehicleData['plat'] =
+              vehicleMetadata[deviceId]!['plat'] ?? vehicleData['plat'];
+          vehicleData['status'] =
+              vehicleMetadata[deviceId]!['status'] ??
+              vehicleData['status'] ??
+              'N/A';
+          vehicleData['peminjam'] =
+              vehicleMetadata[deviceId]!['peminjam'] ?? vehicleData['peminjam'];
         }
-        
+
         // Pastikan gps_1 selalu ada
         vehicleData['gps_1'] = deviceId;
-        
+
         result.add(vehicleData);
       }
-      
+
       return result;
     } catch (e) {
       print("Error get fleet data: $e");
@@ -699,38 +824,53 @@ class MongoService {
   }
 
   /// Mengambil ringkasan data untuk Dashboard Manager
-  /// Mengembalikan Map berisi: 'total', 'dipakai', 'tersedia'
+  /// Mengembalikan Map berisi: 'total', 'dipakai', 'tersedia', dan 'pending'
   static Future<Map<String, int>> getDashboardSummary() async {
+    Map<String, int> summary = {
+      'total': 0,
+      'dipakai': 0,
+      'tersedia': 0,
+      'pending': 0,
+    };
     try {
-      // Pastikan koneksi dan koleksi siap
+      // 1. Ambil data dari koleksi kendaraan
       if (_dbLokasi == null || _collectionKendaraan == null) {
-        await connect(); // Coba koneksi jika belum siap
+        await connect();
         if (_collectionKendaraan == null) {
-           print("❌ Gagal mendapatkan koleksi kendaraan untuk summary.");
-           return {'total': 0, 'dipakai': 0, 'tersedia': 0};
+          print("❌ Gagal mendapatkan koleksi kendaraan untuk summary.");
         }
       }
+      if (_collectionKendaraan != null) {
+        final total = await _collectionKendaraan!.count(where.exists('plat'));
+        final dipakai = await _collectionKendaraan!.count(
+          where.eq('status', 'Dipakai'),
+        );
+        final tersedia = await _collectionKendaraan!.count(
+          where.eq('status', 'Tersedia'),
+        );
+        summary['total'] = total;
+        summary['dipakai'] = dipakai;
+        summary['tersedia'] = tersedia;
+      }
 
-      final collection = _collectionKendaraan!;
+      // 2. Ambil data dari koleksi sopir
+      if (_dbJadwal == null || _collectionSopir == null) {
+        await connectJadwal();
+        if (_collectionSopir == null) {
+          print("❌ Gagal mendapatkan koleksi sopir untuk summary.");
+        }
+      }
+      if (_collectionSopir != null) {
+        final pending = await _collectionSopir!.count(
+          where.eq('status_akun', 'pending'),
+        );
+        summary['pending'] = pending;
+      }
 
-      // 1. Hitung Total Kendaraan
-      // count() adalah operasi ringan di MongoDB, tidak mendownload isi data
-      final total = await collection.count(where.exists('plat')); // Hitung yang punya plat saja
-
-      // 2. Hitung Kendaraan yang Sedang 'Dipakai'
-      final dipakai = await collection.count(where.eq('status', 'Dipakai'));
-
-      // 3. Hitung Kendaraan yang 'Tersedia'
-      final tersedia = await collection.count(where.eq('status', 'Tersedia'));
-
-      return {
-        'total': total,
-        'dipakai': dipakai,
-        'tersedia': tersedia,
-      };
+      return summary;
     } catch (e) {
       print("Error mengambil summary dashboard: $e");
-      return {'total': 0, 'dipakai': 0, 'tersedia': 0};
+      return summary; // Kembalikan nilai default jika ada error
     }
   }
 
@@ -755,7 +895,9 @@ class MongoService {
 
   // READ (MY JOB): Sopir melihat pekerjaan dia sendiri
   // Filter: Hanya yang peminjam == namaSopir
-  static Future<List<Map<String, dynamic>>> getPekerjaanSaya(String namaSopir) async {
+  static Future<List<Map<String, dynamic>>> getPekerjaanSaya(
+    String namaSopir,
+  ) async {
     try {
       final data = await _collectionLokasi!
           .find(where.eq('peminjam', namaSopir)) // Filter isolasi driver
@@ -778,17 +920,17 @@ class MongoService {
       }
 
       final waktuAmbil = DateTime.now().toIso8601String();
-      
+
       // Update data di server
       await _collectionLokasi!.update(
         where.id(id),
         modify
-          .set('status', 'Dipakai')        // Ubah status
-          .set('peminjam', namaSopir)      // Catat nama sopir
-          .set('waktu_ambil', waktuAmbil) // Catat waktu ambil
-          .set('waktu_lepas', null),       // Reset waktu lepas saat check-in
+            .set('status', 'Dipakai') // Ubah status
+            .set('peminjam', namaSopir) // Catat nama sopir
+            .set('waktu_ambil', waktuAmbil) // Catat waktu ambil
+            .set('waktu_lepas', null), // Reset waktu lepas saat check-in
       );
-      
+
       // Sync ke collection kendaraan
       final vehicleData = {
         'plat': doc['plat'],
@@ -801,7 +943,7 @@ class MongoService {
         'waktu_lepas': null,
       };
       await _syncToKendaraanCollection(vehicleData);
-      
+
       print("✅ Mobil berhasil diambil oleh $namaSopir");
     } catch (e) {
       print("Error ambil kendaraan: $e");
@@ -819,16 +961,16 @@ class MongoService {
       }
 
       final waktuLepas = DateTime.now().toIso8601String();
-      
+
       await _collectionLokasi!.update(
         where.id(id),
         modify
-          .set('status', 'Tersedia')
-          .set('peminjam', null)
-          .set('waktu_ambil', null)
-          .set('waktu_lepas', waktuLepas), // Catat waktu lepas
+            .set('status', 'Tersedia')
+            .set('peminjam', null)
+            .set('waktu_ambil', null)
+            .set('waktu_lepas', waktuLepas), // Catat waktu lepas
       );
-      
+
       // Sync ke collection kendaraan
       final vehicleData = {
         'plat': doc['plat'],
@@ -841,7 +983,7 @@ class MongoService {
         'waktu_lepas': waktuLepas,
       };
       await _syncToKendaraanCollection(vehicleData);
-      
+
       print("✅ Pekerjaan selesai, mobil kembali tersedia");
     } catch (e) {
       print("Error selesai pekerjaan: $e");
@@ -851,11 +993,11 @@ class MongoService {
   // =================================================================
   // BAGIAN TRACKING
   // =================================================================
-  
+
   // =================================================================
   // BAGIAN TRACKING (DIPERBAIKI)
   // =================================================================
-  
+
   // Mengambil 1 data GPS paling baru dari collection dengan Auto-Reconnect
   static Future<Map<String, dynamic>?> getLatestGpsData() async {
     try {
@@ -863,7 +1005,7 @@ class MongoService {
       if (_dbLokasi == null || !_dbLokasi!.isConnected) {
         print("⚠️ Koneksi GPS terputus/belum siap. Mencoba connect ulang...");
         await connect();
-        
+
         // Jika setelah dicoba connect masih gagal, return null agar tidak crash
         if (_dbLokasi == null || !_dbLokasi!.isConnected) {
           print("❌ Gagal reconnect di getLatestGpsData.");
@@ -883,14 +1025,15 @@ class MongoService {
         return data.first;
       }
       return null;
-
     } catch (e) {
       print("Error get latest GPS data: $e");
-      
+
       // DETEKSI KHUSUS: Jika errornya "No master connection", paksa reset koneksi untuk request berikutnya
-      if (e.toString().contains("No master connection") || e.toString().contains("Closed")) {
+      if (e.toString().contains("No master connection") ||
+          e.toString().contains("Closed")) {
         print("♻️ Mendeteksi broken pipe, mereset koneksi database...");
-        _dbLokasi = null; // Set null agar connect() dipanggil ulang di request berikutnya
+        _dbLokasi =
+            null; // Set null agar connect() dipanggil ulang di request berikutnya
       }
       return null;
     }
@@ -901,7 +1044,9 @@ class MongoService {
   // =================================================================
 
   // READ: Ambil detail kendaraan dengan MERGE (Gabungan Data Identitas & Lokasi Terbaru)
-  static Future<Map<String, dynamic>?> getDetailKendaraan(String deviceId) async {
+  static Future<Map<String, dynamic>?> getDetailKendaraan(
+    String deviceId,
+  ) async {
     try {
       // 1. Pastikan koneksi siap
       if (_dbLokasi == null) await connect();
@@ -911,7 +1056,9 @@ class MongoService {
       // A. Ambil DATA IDENTITAS (Plat, Model) dari collection 'kendaraan'
       Map<String, dynamic>? identityData;
       // Coba cari by device_id
-      var doc = await _collectionKendaraan!.findOne(where.eq('device_id', deviceId));
+      var doc = await _collectionKendaraan!.findOne(
+        where.eq('device_id', deviceId),
+      );
       if (doc == null) {
         // Coba cari by gps_1
         doc = await _collectionKendaraan!.findOne(where.eq('gps_1', deviceId));
@@ -921,18 +1068,28 @@ class MongoService {
       // B. Ambil DATA LOKASI REAL-TIME dari 'gps_location'
       //    (Ambil 1 data paling baru berdasarkan waktu server)
       Map<String, dynamic>? realtimeData;
-      
+
       // Query sort descending agar dapat yang terbaru
-      final q1 = await _collectionLokasi!.find(
-        where.eq('gps_1', deviceId).sortBy('server_received_at', descending: true).limit(1)
-      ).toList();
-      
+      final q1 = await _collectionLokasi!
+          .find(
+            where
+                .eq('gps_1', deviceId)
+                .sortBy('server_received_at', descending: true)
+                .limit(1),
+          )
+          .toList();
+
       if (q1.isNotEmpty) {
         realtimeData = q1.first;
       } else {
-         final q2 = await _collectionLokasi!.find(
-          where.eq('device_id', deviceId).sortBy('server_received_at', descending: true).limit(1)
-        ).toList();
+        final q2 = await _collectionLokasi!
+            .find(
+              where
+                  .eq('device_id', deviceId)
+                  .sortBy('server_received_at', descending: true)
+                  .limit(1),
+            )
+            .toList();
         if (q2.isNotEmpty) realtimeData = q2.first;
       }
 
@@ -948,12 +1105,12 @@ class MongoService {
       if (realtimeData != null) {
         // Ambil koordinat dengan aman
         if (realtimeData['gps_location'] != null) {
-           result['gps_location'] = realtimeData['gps_location'];
+          result['gps_location'] = realtimeData['gps_location'];
         }
         // Ambil field lain yang live
-        result['speed'] = realtimeData['speed'];               
+        result['speed'] = realtimeData['speed'];
         result['server_received_at'] = realtimeData['server_received_at'];
-        
+
         // Pastikan ID terbawa
         result['gps_1'] ??= realtimeData['gps_1'];
         result['device_id'] ??= realtimeData['device_id'];
@@ -962,11 +1119,10 @@ class MongoService {
       // Default value agar UI tidak null
       result['plat'] ??= '-';
       result['model'] ??= '-';
-      result['status'] ??= 'Tersedia'; 
-      result['device_id'] ??= deviceId; 
+      result['status'] ??= 'Tersedia';
+      result['device_id'] ??= deviceId;
 
       return result;
-
     } catch (e) {
       print("Error get detail merge: $e");
       return null;
@@ -974,7 +1130,11 @@ class MongoService {
   }
 
   // UPDATE: Update plat dan model kendaraan di collection kendaraan
-  static Future<bool> updateKendaraanDetail(String deviceId, String plat, String model) async {
+  static Future<bool> updateKendaraanDetail(
+    String deviceId,
+    String plat,
+    String model,
+  ) async {
     // Normalisasi input agar plat konsisten dan spasi terpotong
     final normalizedPlat = plat.trim().toUpperCase();
     final normalizedModel = model.trim();
@@ -989,7 +1149,9 @@ class MongoService {
       // Pastikan collection sudah terinisialisasi
       if (_collectionKendaraan == null || _collectionLokasi == null) {
         if (_dbLokasi != null) {
-          _collectionKendaraan ??= _dbLokasi!.collection(_collectionKendaraanName);
+          _collectionKendaraan ??= _dbLokasi!.collection(
+            _collectionKendaraanName,
+          );
           _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
         } else {
           print("Collection kendaraan/gps_location belum ter-inisialisasi.");
@@ -998,9 +1160,15 @@ class MongoService {
       }
 
       // Helper untuk menggabungkan hasil query gps_1/device_id
-      Future<List<Map<String, dynamic>>> _findDocs(DbCollection collection) async {
-        final docsGps1 = await collection.find(where.eq('gps_1', deviceId)).toList();
-        final docsDeviceId = await collection.find(where.eq('device_id', deviceId)).toList();
+      Future<List<Map<String, dynamic>>> _findDocs(
+        DbCollection collection,
+      ) async {
+        final docsGps1 = await collection
+            .find(where.eq('gps_1', deviceId))
+            .toList();
+        final docsDeviceId = await collection
+            .find(where.eq('device_id', deviceId))
+            .toList();
         final allDocs = [...docsGps1, ...docsDeviceId];
         final uniqueDocs = <String, Map<String, dynamic>>{};
         for (var doc in allDocs) {
@@ -1018,9 +1186,7 @@ class MongoService {
       for (var doc in kendaraanDocs) {
         await _collectionKendaraan!.update(
           where.id(doc['_id']),
-          modify
-              .set('plat', normalizedPlat)
-              .set('model', normalizedModel),
+          modify.set('plat', normalizedPlat).set('model', normalizedModel),
         );
         updated = true;
       }
@@ -1071,17 +1237,24 @@ class MongoService {
   }
 
   // UPDATE: Simpan Foto Kendaraan (Base64 atau URL)
-  static Future<bool> updateFotoKendaraan(String deviceId, String fotoData) async {
+  static Future<bool> updateFotoKendaraan(
+    String deviceId,
+    String fotoData,
+  ) async {
     Future<bool> _doUpdate() async {
       if (_dbLokasi == null) await connect();
-      
+
       _collectionKendaraan ??= _dbLokasi!.collection(_collectionKendaraanName);
       _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
 
       // Cari ID dokumen berdasarkan gps_1 atau device_id
-      final docsGps1 = await _collectionKendaraan!.find(where.eq('gps_1', deviceId)).toList();
-      final docsDeviceId = await _collectionKendaraan!.find(where.eq('device_id', deviceId)).toList();
-      
+      final docsGps1 = await _collectionKendaraan!
+          .find(where.eq('gps_1', deviceId))
+          .toList();
+      final docsDeviceId = await _collectionKendaraan!
+          .find(where.eq('device_id', deviceId))
+          .toList();
+
       final allDocs = [...docsGps1, ...docsDeviceId];
       // Ambil ID unik saja
       final uniqueIds = <String>{};
@@ -1093,23 +1266,31 @@ class MongoService {
 
       // Update di collection 'kendaraan'
       for (var idStr in uniqueIds) {
-        final id = allDocs.firstWhere((doc) => doc['_id'].toString() == idStr)['_id'];
+        final id = allDocs.firstWhere(
+          (doc) => doc['_id'].toString() == idStr,
+        )['_id'];
         await _collectionKendaraan!.update(
           where.id(id),
           modify.set('foto_url', fotoData), // Simpan data foto
         );
-        
+
         // Update juga di collection 'gps_location' agar sinkron
-        final lokasiDocsGps1 = await _collectionLokasi!.find(where.eq('gps_1', deviceId)).toList();
-        final lokasiDocsDeviceId = await _collectionLokasi!.find(where.eq('device_id', deviceId)).toList();
+        final lokasiDocsGps1 = await _collectionLokasi!
+            .find(where.eq('gps_1', deviceId))
+            .toList();
+        final lokasiDocsDeviceId = await _collectionLokasi!
+            .find(where.eq('device_id', deviceId))
+            .toList();
         final allLokasiDocs = [...lokasiDocsGps1, ...lokasiDocsDeviceId];
         final uniqueLokasiIds = <String>{};
         for (var doc in allLokasiDocs) {
           uniqueLokasiIds.add(doc['_id'].toString());
         }
-        
+
         for (var lokasiIdStr in uniqueLokasiIds) {
-          final lokasiId = allLokasiDocs.firstWhere((doc) => doc['_id'].toString() == lokasiIdStr)['_id'];
+          final lokasiId = allLokasiDocs.firstWhere(
+            (doc) => doc['_id'].toString() == lokasiIdStr,
+          )['_id'];
           await _collectionLokasi!.update(
             where.id(lokasiId),
             modify.set('foto_url', fotoData),
@@ -1117,22 +1298,31 @@ class MongoService {
         }
         updated = true;
       }
-      
+
       // Fallback: Jika tidak ada di 'kendaraan', update langsung di 'gps_location'
       if (!updated) {
-         final locDocsGps1 = await _collectionLokasi!.find(where.eq('gps_1', deviceId)).toList();
-         final locDocsDeviceId = await _collectionLokasi!.find(where.eq('device_id', deviceId)).toList();
-         final allLocDocs = [...locDocsGps1, ...locDocsDeviceId];
-         final uniqueLocIds = <String>{};
-         for (var doc in allLocDocs) {
-           uniqueLocIds.add(doc['_id'].toString());
-         }
-         
-         for (var locIdStr in uniqueLocIds) {
-           final locId = allLocDocs.firstWhere((doc) => doc['_id'].toString() == locIdStr)['_id'];
-           await _collectionLokasi!.update(where.id(locId), modify.set('foto_url', fotoData));
-           updated = true;
-         }
+        final locDocsGps1 = await _collectionLokasi!
+            .find(where.eq('gps_1', deviceId))
+            .toList();
+        final locDocsDeviceId = await _collectionLokasi!
+            .find(where.eq('device_id', deviceId))
+            .toList();
+        final allLocDocs = [...locDocsGps1, ...locDocsDeviceId];
+        final uniqueLocIds = <String>{};
+        for (var doc in allLocDocs) {
+          uniqueLocIds.add(doc['_id'].toString());
+        }
+
+        for (var locIdStr in uniqueLocIds) {
+          final locId = allLocDocs.firstWhere(
+            (doc) => doc['_id'].toString() == locIdStr,
+          )['_id'];
+          await _collectionLokasi!.update(
+            where.id(locId),
+            modify.set('foto_url', fotoData),
+          );
+          updated = true;
+        }
       }
 
       return updated;
@@ -1143,7 +1333,8 @@ class MongoService {
     } catch (e) {
       print("Error update foto: $e");
       // Reconnect jika putus
-      if (e.toString().contains('connection') || e.toString().contains('No master connection')) {
+      if (e.toString().contains('connection') ||
+          e.toString().contains('No master connection')) {
         await connect();
         _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
         _collectionLokasi = _dbLokasi!.collection(_collectionLokasiName);

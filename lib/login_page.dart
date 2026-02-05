@@ -20,8 +20,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     var user = await AuthService.loginSopir(
-      _emailController.text, 
-      _passwordController.text
+      _emailController.text,
+      _passwordController.text,
     );
 
     setState(() => _isLoading = false);
@@ -33,13 +33,19 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login Gagal! Email atau Password salah.")),
+          const SnackBar(
+            content: Text("Login Gagal! Email atau Password salah."),
+          ),
         );
       }
     }
   }
 
-  void _showConsentDialog(BuildContext context, String role, Map<String, dynamic> user) {
+  void _showConsentDialog(
+    BuildContext context,
+    String role,
+    Map<String, dynamic> user,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -50,7 +56,10 @@ class _LoginPageState extends State<LoginPage> {
           textAlign: TextAlign.justify,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Batal")),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Batal"),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
@@ -69,18 +78,19 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Login Sopir"),
-      ),
+      appBar: AppBar(title: const Text("Login Sopir")),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.lock, size: 80, color: Colors.blueAccent),
-            const Text("Login Sopir SiKenDi", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text(
+              "Login Sopir SiKenDi",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 30),
-            
+
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
@@ -91,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             TextField(
               controller: _passwordController,
               obscureText: !_isPasswordVisible,
@@ -100,34 +110,46 @@ class _LoginPageState extends State<LoginPage> {
                 labelText: "Password",
                 border: OutlineInputBorder(),
                 suffixIcon: IconButton(
-                  icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                  icon: Icon(
+                    _isPasswordVisible
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                  ),
                   onPressed: () {
                     setState(() {
                       _isPasswordVisible = !_isPasswordVisible;
                     });
                   },
-                )
+                ),
               ),
             ),
             const SizedBox(height: 24),
 
             _isLoading
-            ? const CircularProgressIndicator()
-            : SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _handleLogin,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800]),
-                  child: const Text("MASUK", style: TextStyle(color: Colors.white, fontSize: 16)),
-                ),
-              ),
-            
+                ? const CircularProgressIndicator()
+                : SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[800],
+                      ),
+                      child: const Text(
+                        "MASUK",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  ),
+
             const SizedBox(height: 16),
-            
+
             TextButton(
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SignUpPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SignUpPage()),
+                );
               },
               child: const Text("Belum punya akun? Daftar sebagai Sopir"),
             ),

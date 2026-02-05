@@ -4,6 +4,7 @@ import 'package:sikendi/manager_map_page.dart';
 import 'package:sikendi/manager_peringatan_page.dart';
 import 'package:sikendi/manager_sopir_page.dart';
 import 'package:sikendi/manager_vehicle_page.dart';
+import 'package:sikendi/manager_verifikasi_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 
 class ManagerPage extends StatefulWidget {
@@ -16,7 +17,6 @@ class ManagerPage extends StatefulWidget {
 }
 
 class _ManagerPageState extends State<ManagerPage> {
-  // Definisi item menu baru sesuai permintaan
   final List<Map<String, dynamic>> _menuItems = [
     {
       'title': 'Monitoring Peta',
@@ -37,6 +37,12 @@ class _ManagerPageState extends State<ManagerPage> {
       'page': () => const ManagerSopirPage(),
     },
     {
+      'title': 'Verifikasi Sopir',
+      'icon': Icons.person_add_alt_1_outlined,
+      'color': Colors.indigo,
+      'page': () => const ManagerVerifikasiPage(),
+    },
+    {
       'title': 'Peringatan',
       'icon': Icons.notifications_active_outlined,
       'color': Colors.amber,
@@ -44,7 +50,12 @@ class _ManagerPageState extends State<ManagerPage> {
     },
   ];
 
-  Map<String, int> _summaryData = {'total': 0, 'dipakai': 0, 'tersedia': 0};
+  Map<String, int> _summaryData = {
+    'total': 0,
+    'dipakai': 0,
+    'tersedia': 0,
+    'pending': 0,
+  };
   bool _isLoadingSummary = true;
 
   @override
@@ -80,7 +91,9 @@ class _ManagerPageState extends State<ManagerPage> {
             onPressed: () {
               Navigator.of(ctx).pop();
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const RoleSelectionPage()),
+                MaterialPageRoute(
+                  builder: (context) => const RoleSelectionPage(),
+                ),
                 (route) => false,
               );
             },
@@ -101,18 +114,36 @@ class _ManagerPageState extends State<ManagerPage> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => item['page']()),
-          );
+          ).then((_) => _refreshDashboard()); // Refresh data when returning
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: (item['color'] as Color).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(item['icon'], size: 40, color: item['color']),
+            Stack(
+              alignment: Alignment.topRight,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(item['icon'], size: 40, color: item['color']),
+                ),
+                if (item['title'] == 'Verifikasi Sopir' &&
+                    _summaryData['pending']! > 0)
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${_summaryData['pending']}',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             Text(
@@ -126,7 +157,12 @@ class _ManagerPageState extends State<ManagerPage> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, Color color, IconData icon) {
+  Widget _buildSummaryCard(
+    String title,
+    String value,
+    Color color,
+    IconData icon,
+  ) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -203,14 +239,18 @@ class _ManagerPageState extends State<ManagerPage> {
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(20),
                     bottomRight: Radius.circular(20),
-                  )
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     const Text(
+                    const Text(
                       "Ringkasan Operasional",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -223,15 +263,33 @@ class _ManagerPageState extends State<ManagerPage> {
                         ),
                         _buildSummaryCard(
                           "Sedang Jalan",
-                          _isLoadingSummary ? "-" : "${_summaryData['dipakai']}",
+                          _isLoadingSummary
+                              ? "-"
+                              : "${_summaryData['dipakai']}",
                           Colors.orange.shade700,
                           Icons.speed,
                         ),
                         _buildSummaryCard(
                           "Tersedia",
-                          _isLoadingSummary ? "-" : "${_summaryData['tersedia']}",
+                          _isLoadingSummary
+                              ? "-"
+                              : "${_summaryData['tersedia']}",
                           Colors.green.shade700,
                           Icons.check_circle,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildSummaryCard(
+                          "Verifikasi Pending",
+                          _isLoadingSummary
+                              ? "-"
+                              : "${_summaryData['pending']}",
+                          Colors.red.shade700,
+                          Icons.hourglass_bottom,
                         ),
                       ],
                     ),
@@ -253,10 +311,10 @@ class _ManagerPageState extends State<ManagerPage> {
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                  crossAxisCount: 3, // Change cross axis count to 3
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 1.0,
+                  childAspectRatio: 0.9, // Adjust aspect ratio
                 ),
                 itemCount: _menuItems.length,
                 itemBuilder: (context, index) {

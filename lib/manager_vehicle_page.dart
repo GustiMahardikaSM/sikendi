@@ -44,7 +44,10 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
   }
 
   // Fungsi untuk memfilter kendaraan berdasarkan query pencarian
-  List<Map<String, dynamic>> _filterVehicles(List<Map<String, dynamic>> vehicles, bool isDefined) {
+  List<Map<String, dynamic>> _filterVehicles(
+    List<Map<String, dynamic>> vehicles,
+    bool isDefined,
+  ) {
     if (_searchQuery.isEmpty) {
       return vehicles;
     }
@@ -52,20 +55,33 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
     return vehicles.where((vehicle) {
       if (isDefined) {
         // Untuk kendaraan yang sudah didefinisikan, cari berdasarkan model dan plat
-        final model = (vehicle['model'] ?? '').toString().toLowerCase().replaceAll(' ', '');
-        final plat = (vehicle['plat'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+        final model = (vehicle['model'] ?? '')
+            .toString()
+            .toLowerCase()
+            .replaceAll(' ', '');
+        final plat = (vehicle['plat'] ?? '')
+            .toString()
+            .toLowerCase()
+            .replaceAll(' ', '');
         final searchQueryNoSpace = _searchQuery.replaceAll(' ', '');
-        return model.contains(searchQueryNoSpace) || plat.contains(searchQueryNoSpace);
+        return model.contains(searchQueryNoSpace) ||
+            plat.contains(searchQueryNoSpace);
       } else {
         // Untuk kendaraan yang belum didefinisikan, cari berdasarkan device_id/gps_1
-        final deviceId = (vehicle['gps_1'] ?? vehicle['device_id'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+        final deviceId = (vehicle['gps_1'] ?? vehicle['device_id'] ?? '')
+            .toString()
+            .toLowerCase()
+            .replaceAll(' ', '');
         final searchQueryNoSpace = _searchQuery.replaceAll(' ', '');
         return deviceId.contains(searchQueryNoSpace);
       }
     }).toList();
   }
 
-  void _showDefineVehicleDialog(BuildContext context, Map<String, dynamic> vehicle) {
+  void _showDefineVehicleDialog(
+    BuildContext context,
+    Map<String, dynamic> vehicle,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -79,7 +95,10 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
     );
   }
 
-  void _showVehicleCrudDialog(BuildContext context, Map<String, dynamic> vehicle) {
+  void _showVehicleCrudDialog(
+    BuildContext context,
+    Map<String, dynamic> vehicle,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -116,9 +135,12 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
 
           final allUndefinedVehicles = snapshot.data!['undefined'] ?? [];
           final allDefinedVehicles = snapshot.data!['defined'] ?? [];
-          
+
           // Filter kendaraan berdasarkan query pencarian
-          final undefinedVehicles = _filterVehicles(allUndefinedVehicles, false);
+          final undefinedVehicles = _filterVehicles(
+            allUndefinedVehicles,
+            false,
+          );
           final definedVehicles = _filterVehicles(allDefinedVehicles, true);
 
           return RefreshIndicator(
@@ -142,11 +164,18 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
                     child: TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        hintText: 'Cari berdasarkan nama/model atau plat nomor...',
-                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                        hintText:
+                            'Cari berdasarkan nama/model atau plat nomor...',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Colors.grey,
+                        ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.grey),
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.grey,
+                                ),
                                 onPressed: () {
                                   _searchController.clear();
                                 },
@@ -160,18 +189,27 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+                          borderSide: BorderSide(
+                            color: Colors.grey[300]!,
+                            width: 1,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.blue[900]!, width: 2),
+                          borderSide: BorderSide(
+                            color: Colors.blue[900]!,
+                            width: 2,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                     ),
                   ),
                 ),
-                
+
                 // Bagian Atas: Kendaraan yang belum didefinisikan
                 if (undefinedVehicles.isNotEmpty)
                   SliverToBoxAdapter(
@@ -189,38 +227,49 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
                   ),
                 if (undefinedVehicles.isNotEmpty)
                   SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final vehicle = undefinedVehicles[index];
-                        final gps1 = vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown";
-                        
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.directions_car,
-                              color: Colors.orange,
-                            ),
-                            title: Text(
-                              'Model Tidak Dikenal',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text("$gps1 - Plat Tidak Dikenal - Status: N/A"),
-                            trailing: Text('Tidak Dipakai', style: TextStyle(color: Colors.grey[600])),
-                            onTap: () => _showDefineVehicleDialog(context, vehicle),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final vehicle = undefinedVehicles[index];
+                      final gps1 =
+                          vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown";
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.directions_car,
+                            color: Colors.orange,
                           ),
-                        );
-                      },
-                      childCount: undefinedVehicles.length,
-                    ),
+                          title: Text(
+                            'Model Tidak Dikenal',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            "$gps1 - Plat Tidak Dikenal - Status: N/A",
+                          ),
+                          trailing: Text(
+                            'Tidak Dipakai',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          onTap: () =>
+                              _showDefineVehicleDialog(context, vehicle),
+                        ),
+                      );
+                    }, childCount: undefinedVehicles.length),
                   ),
-                
+
                 // Divider antara dua bagian
                 if (undefinedVehicles.isNotEmpty && definedVehicles.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: Divider(height: 32, thickness: 1, color: Colors.grey[300]),
+                    child: Divider(
+                      height: 32,
+                      thickness: 1,
+                      color: Colors.grey[300],
+                    ),
                   ),
-                
+
                 // Bagian Bawah: Kendaraan yang sudah dimasukkan
                 if (definedVehicles.isNotEmpty)
                   SliverToBoxAdapter(
@@ -238,48 +287,62 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
                   ),
                 if (definedVehicles.isNotEmpty)
                   SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final vehicle = definedVehicles[index];
-                        final status = vehicle['status'] ?? 'N/A';
-                        final peminjam = vehicle['peminjam'] ?? 'Tidak Dipakai';
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final vehicle = definedVehicles[index];
+                      final status = vehicle['status'] ?? 'N/A';
+                      final peminjam = vehicle['peminjam'] ?? 'Tidak Dipakai';
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.directions_car,
-                              color: status == 'Tersedia' ? Colors.green : Colors.orange,
-                            ),
-                            title: Text(
-                              vehicle['model'] ?? 'Model Tidak Dikenal',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text("${vehicle['plat'] ?? 'Plat Tidak Dikenal'} - Status: $status"),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(peminjam, style: TextStyle(color: Colors.grey[600])),
-                                const SizedBox(width: 8),
-                                Icon(Icons.chevron_right, color: Colors.grey[400]),
-                              ],
-                            ),
-                            onTap: () {
-                              final deviceId = vehicle['gps_1'] ?? vehicle['device_id'] ?? "Unknown";
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => VehicleDetailPage(deviceId: deviceId),
-                                ),
-                              );
-                            },
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.directions_car,
+                            color: status == 'Tersedia'
+                                ? Colors.green
+                                : Colors.orange,
                           ),
-                        );
-                      },
-                      childCount: definedVehicles.length,
-                    ),
+                          title: Text(
+                            vehicle['model'] ?? 'Model Tidak Dikenal',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            "${vehicle['plat'] ?? 'Plat Tidak Dikenal'} - Status: $status",
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                peminjam,
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.chevron_right,
+                                color: Colors.grey[400],
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            final deviceId =
+                                vehicle['gps_1'] ??
+                                vehicle['device_id'] ??
+                                "Unknown";
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    VehicleDetailPage(deviceId: deviceId),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    }, childCount: definedVehicles.length),
                   ),
-                
+
                 // Pesan jika tidak ada data
                 if (undefinedVehicles.isEmpty && definedVehicles.isEmpty)
                   SliverFillRemaining(
@@ -288,7 +351,9 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            _searchQuery.isNotEmpty ? Icons.search_off : Icons.directions_car_outlined,
+                            _searchQuery.isNotEmpty
+                                ? Icons.search_off
+                                : Icons.directions_car_outlined,
                             size: 64,
                             color: Colors.grey[400],
                           ),
@@ -377,10 +442,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Error: $e"),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
           );
         }
       } finally {
@@ -403,12 +465,17 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
             children: <Widget>[
               Text(
                 "Device ID: ${widget.gps1}",
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
               ),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _platController,
-                decoration: const InputDecoration(labelText: 'Plat Nomor (e.g., H 1234 XY)'),
+                decoration: const InputDecoration(
+                  labelText: 'Plat Nomor (e.g., H 1234 XY)',
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Plat nomor tidak boleh kosong';
@@ -420,7 +487,9 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
               const SizedBox(height: 15),
               TextFormField(
                 controller: _modelController,
-                decoration: const InputDecoration(labelText: 'Model (e.g., Toyota Avanza)'),
+                decoration: const InputDecoration(
+                  labelText: 'Model (e.g., Toyota Avanza)',
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Model tidak boleh kosong';
@@ -478,7 +547,9 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
   void initState() {
     super.initState();
     _platController = TextEditingController(text: widget.vehicle['plat'] ?? '');
-    _modelController = TextEditingController(text: widget.vehicle['model'] ?? '');
+    _modelController = TextEditingController(
+      text: widget.vehicle['model'] ?? '',
+    );
     _selectedStatus = widget.vehicle['status'] ?? 'Tersedia';
   }
 
@@ -494,7 +565,8 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
       setState(() => _isLoading = true);
 
       try {
-        final gps1 = widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
+        final gps1 =
+            widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
         final success = await MongoService.updateKendaraanManager(
           gps1,
           _platController.text.toUpperCase(),
@@ -524,10 +596,7 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Error: $e"),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
           );
         }
       } finally {
@@ -565,7 +634,8 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
       setState(() => _isLoading = true);
 
       try {
-        final gps1 = widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
+        final gps1 =
+            widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
         final success = await MongoService.hapusMetadataKendaraan(gps1);
 
         if (mounted) {
@@ -590,10 +660,7 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Error: $e"),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
           );
         }
       } finally {
@@ -606,8 +673,9 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final gps1 = widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
-    
+    final gps1 =
+        widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
+
     return AlertDialog(
       title: const Text("Kelola Kendaraan"),
       content: SingleChildScrollView(
@@ -618,7 +686,10 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
             children: <Widget>[
               Text(
                 "Device ID: $gps1",
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
               ),
               const SizedBox(height: 20),
               TextFormField(
@@ -650,7 +721,10 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
                 items: const [
                   DropdownMenuItem(value: 'Tersedia', child: Text('Tersedia')),
                   DropdownMenuItem(value: 'Dipakai', child: Text('Dipakai')),
-                  DropdownMenuItem(value: 'Maintenance', child: Text('Maintenance')),
+                  DropdownMenuItem(
+                    value: 'Maintenance',
+                    child: Text('Maintenance'),
+                  ),
                 ],
                 onChanged: (value) {
                   if (value != null) {
