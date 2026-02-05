@@ -28,23 +28,32 @@ class _ManagerVerifikasiDetailPageState
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
-
     final driverId = widget.driver['_id'] as mongo.ObjectId;
-    final success = await MongoService.updateDriverStatus(driverId, status);
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      final message = success
-          ? "Status sopir berhasil diubah menjadi '$status'"
-          : "Gagal memperbarui status sopir.";
-      final color = success ? Colors.green : Colors.red;
+    try {
+      // Panggil service. Jika ini gagal, akan melempar exception.
+      await MongoService.updateDriverStatus(driverId, status);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
-
-      if (success) {
-        Navigator.pop(context, true); // Return true to refresh the list
+      // Jika kode mencapai baris ini, berarti operasi berhasil.
+      if (mounted) {
+        final message = "Status sopir berhasil diubah menjadi '$status'";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context, true); // Kirim sinyal sukses untuk refresh
+      }
+    } catch (e) {
+      // Jika terjadi exception, tangkap di sini.
+      if (mounted) {
+        final message = "Gagal memperbarui status: ${e.toString()}";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      // Pastikan loading indicator selalu berhenti.
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }

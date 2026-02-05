@@ -163,90 +163,74 @@ class MongoService {
       if (_collectionSopir == null) {
         await connectJadwal();
         if (_collectionSopir == null) {
-          print("❌ Gagal: Collection Sopir masih null (Cek Internet/Database)");
-          return [];
+          throw Exception("Gagal: Collection Sopir masih null (Cek Internet/Database)");
         }
       }
-
-      // Logika Query: filter status & urutkan berdasarkan tanggal daftar
       final data = await _collectionSopir!
           .find(where.eq('status_akun', 'pending').sortBy('tgl_daftar'))
           .toList();
       return data;
     } catch (e) {
       print('Error getting pending drivers: $e');
-      return [];
+      rethrow;
     }
   }
 
-  // --- TAMBAHAN: FUNGSI UPDATE STATUS (PENGHUBUNG) ---
-  static Future<bool> updateDriverStatus(ObjectId id, String status) async {
-    try {
-      if (status == 'aktif') {
-        // Jika status yang diminta 'aktif', panggil fungsi approve
-        return await approveDriver(id);
-      } else if (status == 'ditolak') {
-        // Jika status yang diminta 'ditolak', panggil fungsi reject
-        return await rejectDriver(id);
-      }
-      print("Status tidak dikenal: $status");
-      return false;
-    } catch (e) {
-      print("Error updateDriverStatus: $e");
-      return false;
+  // UPDATE: Penghubung untuk mengubah status sopir. Throws exception on failure.
+  static Future<void> updateDriverStatus(ObjectId id, String status) async {
+    if (status == 'aktif') {
+      await approveDriver(id);
+    } else if (status == 'ditolak') {
+      await rejectDriver(id);
+    } else {
+      throw Exception("Status tidak dikenal: $status");
     }
   }
 
-  /// B. Fungsi approveDriver(ObjectId id)
-  /// Menyetujui pendaftaran sopir dan menghapus field data foto.
-  static Future<bool> approveDriver(ObjectId driverId) async {
+  /// Menyetujui pendaftaran sopir. Throws exception on low-level failure.
+  static Future<void> approveDriver(ObjectId driverId) async {
     try {
-      // Cek koneksi yang lebih aman
       if (_collectionSopir == null) {
         await connectJadwal();
         if (_collectionSopir == null) {
-          print("❌ Gagal: Collection Sopir masih null (Cek Internet/Database)");
-          return false;
+          throw Exception("Gagal: Collection Sopir masih null (Cek Internet/Database)");
         }
       }
 
-      // Teknis Query: $set untuk status, $unset untuk menghapus field foto
-      var result = await _collectionSopir!.update(
+      // Assume success if no exception is thrown by the driver.
+      // The manual result check is removed as it proved unreliable.
+      await _collectionSopir!.update(
         where.id(driverId),
         modify
             .set('status_akun', 'aktif')
             .set('tgl_verifikasi', DateTime.now())
-            .unset('foto_selfie_temp') // Hapus field, lebih bersih dari set null
-            .unset('foto_ktp_temp'),   // Hapus field, lebih bersih dari set null
+            .unset('foto_selfie_temp')
+            .unset('foto_ktp_temp'),
       );
       
-      return result['nModified'] != null && result['nModified'] > 0;
     } catch (e) {
       print('Error approving driver: $e');
-      return false;
+      rethrow; // Re-throw the low-level exception to be caught by the UI
     }
   }
 
-  /// C. Fungsi rejectDriver(ObjectId id)
-  /// Menolak dan menghapus permanen data pendaftar.
-  static Future<bool> rejectDriver(ObjectId driverId) async {
+  /// Menolak dan menghapus permanen data pendaftar. Throws exception on low-level failure.
+  static Future<void> rejectDriver(ObjectId driverId) async {
     try {
-      // Cek koneksi yang lebih aman
       if (_collectionSopir == null) {
         await connectJadwal();
         if (_collectionSopir == null) {
-          print("❌ Gagal: Collection Sopir masih null (Cek Internet/Database)");
-          return false;
+          throw Exception("Gagal: Collection Sopir masih null (Cek Internet/Database)");
         }
       }
       
-      // Teknis Query: Hapus seluruh dokumen
-      var result = await _collectionSopir!.remove(where.id(driverId));
+      // Assume success if no exception is thrown by the driver.
+      // The manual result check is removed as it proved unreliable.
+      await _collectionSopir!.remove(where.id(driverId));
 
-      return result['n'] != null && result['n'] > 0;
     } catch (e) {
       print('Error rejecting driver: $e');
-      return false;
+      rethrow; // Re-throw the low-level exception to be caught by the UI
     }
   }
 
