@@ -160,7 +160,13 @@ class MongoService {
   // READ: Ambil sopir yang statusnya pending untuk verifikasi
   static Future<List<Map<String, dynamic>>> getPendingDrivers() async {
     try {
-      if (_collectionSopir == null) await connectJadwal();
+      if (_collectionSopir == null) {
+        await connectJadwal();
+        if (_collectionSopir == null) {
+          print("❌ Gagal: Collection Sopir masih null (Cek Internet/Database)");
+          return [];
+        }
+      }
 
       // Logika Query: filter status & urutkan berdasarkan tanggal daftar
       final data = await _collectionSopir!
@@ -173,11 +179,36 @@ class MongoService {
     }
   }
 
+  // --- TAMBAHAN: FUNGSI UPDATE STATUS (PENGHUBUNG) ---
+  static Future<bool> updateDriverStatus(ObjectId id, String status) async {
+    try {
+      if (status == 'aktif') {
+        // Jika status yang diminta 'aktif', panggil fungsi approve
+        return await approveDriver(id);
+      } else if (status == 'ditolak') {
+        // Jika status yang diminta 'ditolak', panggil fungsi reject
+        return await rejectDriver(id);
+      }
+      print("Status tidak dikenal: $status");
+      return false;
+    } catch (e) {
+      print("Error updateDriverStatus: $e");
+      return false;
+    }
+  }
+
   /// B. Fungsi approveDriver(ObjectId id)
   /// Menyetujui pendaftaran sopir dan menghapus field data foto.
   static Future<bool> approveDriver(ObjectId driverId) async {
     try {
-      if (_collectionSopir == null) await connectJadwal();
+      // Cek koneksi yang lebih aman
+      if (_collectionSopir == null) {
+        await connectJadwal();
+        if (_collectionSopir == null) {
+          print("❌ Gagal: Collection Sopir masih null (Cek Internet/Database)");
+          return false;
+        }
+      }
 
       // Teknis Query: $set untuk status, $unset untuk menghapus field foto
       var result = await _collectionSopir!.update(
@@ -189,7 +220,6 @@ class MongoService {
             .unset('foto_ktp_temp'),   // Hapus field, lebih bersih dari set null
       );
       
-      // Check if the update was successful. 'nModified' indicates a change.
       return result['nModified'] != null && result['nModified'] > 0;
     } catch (e) {
       print('Error approving driver: $e');
@@ -201,12 +231,18 @@ class MongoService {
   /// Menolak dan menghapus permanen data pendaftar.
   static Future<bool> rejectDriver(ObjectId driverId) async {
     try {
-      if (_collectionSopir == null) await connectJadwal();
+      // Cek koneksi yang lebih aman
+      if (_collectionSopir == null) {
+        await connectJadwal();
+        if (_collectionSopir == null) {
+          print("❌ Gagal: Collection Sopir masih null (Cek Internet/Database)");
+          return false;
+        }
+      }
       
       // Teknis Query: Hapus seluruh dokumen
       var result = await _collectionSopir!.remove(where.id(driverId));
 
-      // Check if the deletion was successful. 'n' indicates number of docs removed.
       return result['n'] != null && result['n'] > 0;
     } catch (e) {
       print('Error rejecting driver: $e');

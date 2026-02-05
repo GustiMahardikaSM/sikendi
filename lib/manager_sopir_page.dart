@@ -52,7 +52,7 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
               itemCount: sopirList.length,
               itemBuilder: (context, index) {
                 final sopir = sopirList[index];
-                final nama = sopir['nama_lengkap'] ?? 'Tanpa Nama';
+                final nama = sopir['nama'] ?? 'Tanpa Nama';
                 final email = sopir['email'] ?? '-';
                 final hp = sopir['no_hp'] ?? '-';
 

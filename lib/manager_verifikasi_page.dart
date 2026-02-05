@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
+import 'package:sikendi/manager_verifikasi_detail_page.dart';
 import 'mongodb_service.dart';
 
 class ManagerVerifikasiPage extends StatefulWidget {
@@ -24,86 +25,6 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
     setState(() {
       _pendingDriversFuture = MongoService.getPendingDrivers();
     });
-  }
-
-  void _showVerificationDialog(Map<String, dynamic> driver) {
-    // Safely get base64 strings
-    final String? selfieBase64 = driver['foto_selfie_temp'];
-    final String? ktpBase64 = driver['foto_ktp_temp'];
-    final mongo.ObjectId driverId = driver['_id'];
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Detail Verifikasi Sopir"),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("Nama: ${driver['nama'] ?? 'N/A'}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text("Email: ${driver['email'] ?? 'N/A'}"),
-                const SizedBox(height: 8),
-                Text("No. HP: ${driver['no_hp'] ?? 'N/A'}"),
-                const SizedBox(height: 16),
-                const Text("Foto Selfie:", style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                if (selfieBase64 != null && selfieBase64.isNotEmpty)
-                  Image.memory(base64Decode(selfieBase64))
-                else
-                  const Text("Foto selfie tidak tersedia."),
-                const SizedBox(height: 16),
-                const Text("Foto KTP:", style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                if (ktpBase64 != null && ktpBase64.isNotEmpty)
-                  Image.memory(base64Decode(ktpBase64))
-                else
-                  const Text("Foto KTP tidak tersedia."),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog first
-                bool success = await MongoService.rejectDriver(driverId);
-                if (success) {
-                   ScaffoldMessenger.of(this.context).showSnackBar(
-                    const SnackBar(content: Text("Pendaftaran sopir ditolak dan dihapus."), backgroundColor: Colors.red),
-                  );
-                  _loadData(); // Refresh list
-                } else {
-                   ScaffoldMessenger.of(this.context).showSnackBar(
-                    const SnackBar(content: Text("Gagal menolak pendaftaran."), backgroundColor: Colors.red),
-                  );
-                }
-              },
-              child: const Text("Tolak", style: TextStyle(color: Colors.red)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog first
-                bool success = await MongoService.approveDriver(driverId);
-                if (success) {
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    const SnackBar(content: Text("Sopir berhasil diverifikasi dan diaktifkan!"), backgroundColor: Colors.green),
-                  );
-                  _loadData(); // Refresh list
-                } else {
-                   ScaffoldMessenger.of(this.context).showSnackBar(
-                    const SnackBar(content: Text("Gagal memverifikasi sopir."), backgroundColor: Colors.red),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text("Verifikasi / Terima"),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -147,8 +68,25 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
                     leading: const Icon(Icons.person_outline, color: Colors.orange),
                     title: Text(driver['nama'] ?? 'Tanpa Nama'),
                     subtitle: Text("No HP: ${driver['no_hp'] ?? '-'}\nDaftar: $tglDaftar"),
-                    trailing: const Icon(Icons.watch_later_outlined, color: Colors.grey),
-                    onTap: () => _showVerificationDialog(driver),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                    
+                    // --- PERBAIKAN LOGIKA REFRESH DISINI ---
+                    onTap: () async {
+                      // 1. Pindah ke halaman detail dan TUNGGU (await) hasilnya
+                      // Halaman detail akan mengembalikan 'true' jika ada perubahan status
+                      final bool? result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => 
+                              ManagerVerifikasiDetailPage(driver: driver),
+                        ),
+                      );
+
+                      // 2. Jika result bernilai true, Refresh data list
+                      if (result == true) {
+                        _loadData(); 
+                      }
+                    },
                   ),
                 );
               },
