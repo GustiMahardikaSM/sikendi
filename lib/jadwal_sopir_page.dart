@@ -1,7 +1,5 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:sikendi/models/kegiatan_sopir.dart';
 import 'package:sikendi/mongodb_service.dart';
 
@@ -69,50 +67,99 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
 
   @override
   Widget build(BuildContext context) {
+    // REVISI: AppBar dihapus untuk mencegah "Double Header/Back Button"
+    // karena halaman ini berada di dalam TabView DriverPage.
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Jadwal Kegiatan'),
-        backgroundColor: Colors.blue[900],
-        foregroundColor: Colors.white,
-      ),
-      body: FutureBuilder<List<KegiatanSopir>>(
-        future: _kegiatanFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Belum ada jadwal kegiatan.'));
-          }
+      backgroundColor: Colors.grey[100],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Custom sebagai pengganti AppBar
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            color: Colors.white,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Agenda Perjalanan",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[900],
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  "Kelola jadwal dan status tugas Anda",
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          
+          // List Jadwal
+          Expanded(
+            child: FutureBuilder<List<KegiatanSopir>>(
+              future: _kegiatanFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text('Error: ${snapshot.error}', textAlign: TextAlign.center),
+                    ),
+                  );
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.event_busy, size: 80, color: Colors.grey[300]),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Belum ada jadwal kegiatan.',
+                          style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-          final kegiatanList = snapshot.data!;
-          // Sort by date
-          kegiatanList.sort((a, b) => b.waktu.compareTo(a.waktu));
+                final kegiatanList = snapshot.data!;
+                // Sort by date (Terbaru di atas)
+                kegiatanList.sort((a, b) => b.waktu.compareTo(a.waktu));
 
-          return RefreshIndicator(
-            onRefresh: () async => _loadKegiatan(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: kegiatanList.length,
-              itemBuilder: (context, index) {
-                final kegiatan = kegiatanList[index];
-                return _KegiatanCard(
-                  kegiatan: kegiatan,
-                  onTap: () => _showEditKegiatanDialog(kegiatan),
+                return RefreshIndicator(
+                  onRefresh: () async => _loadKegiatan(),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: kegiatanList.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final kegiatan = kegiatanList[index];
+                      return _KegiatanCard(
+                        kegiatan: kegiatan,
+                        onTap: () => _showEditKegiatanDialog(kegiatan),
+                      );
+                    },
+                  ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddKegiatanDialog,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.blue[900],
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.blue[900],
+        icon: const Icon(Icons.add_task, color: Colors.white),
+        label: const Text("Tambah Jadwal", style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -134,41 +181,131 @@ class _KegiatanCard extends StatelessWidget {
         return Colors.red;
       case 'Belum':
       default:
-        return Colors.grey;
+        return Colors.blueGrey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'Selesai': return Icons.check_circle;
+      case 'Dalam Perjalanan': return Icons.directions_car;
+      case 'Batal': return Icons.cancel;
+      default: return Icons.schedule;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _getStatusColor(kegiatan.status);
+
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-      elevation: 3,
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16.0),
-        title: Text(
-          kegiatan.judul,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            Text(DateFormat('d MMMM yyyy, HH:mm').format(kegiatan.waktu)),
-            const SizedBox(height: 8),
-            Chip(
-              label: Text(kegiatan.status),
-              backgroundColor: _getStatusColor(kegiatan.status),
-              labelStyle: const TextStyle(color: Colors.white),
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            ),
-          ],
-        ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias, // Agar strip warna mengikuti border radius
+      child: InkWell(
         onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(color: statusColor, width: 6), // Strip warna kiri
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Tanggal (Box Kotak)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300)
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        DateFormat('d').format(kegiatan.waktu),
+                        style: const TextStyle(
+                          fontSize: 20, 
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                      Text(
+                        DateFormat('MMM').format(kegiatan.waktu),
+                        style: const TextStyle(
+                          fontSize: 12, 
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                
+                // Konten Utama
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        kegiatan.judul,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            DateFormat('HH:mm').format(kegiatan.waktu),
+                            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(_getStatusIcon(kegiatan.status), size: 12, color: statusColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  kegiatan.status,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: statusColor,
+                                    fontWeight: FontWeight.bold
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Icon Edit Hint
+                Icon(Icons.chevron_right, color: Colors.grey[400]),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
+// Dialog tetap dipertahankan logikanya, hanya dirapikan sedikit jika perlu
 class _KegiatanDialog extends StatefulWidget {
   final KegiatanSopir? kegiatan;
   final Function(String judul, DateTime waktu, String status) onSave;
@@ -222,114 +359,14 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
   }
 
   Future<void> _pickTime() async {
-    TimeOfDay? newTime = await showDialog<TimeOfDay>(
+    // Menggunakan Standard Time Picker agar UX lebih familiar
+    final TimeOfDay? picked = await showTimePicker(
       context: context,
-      builder: (BuildContext context) {
-        int tempHour = _selectedTime.hour;
-        int tempMinute = _selectedTime.minute;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Pilih Waktu'),
-              content: SizedBox(
-                height: 200,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ListWheelScrollView.useDelegate(
-                            controller: FixedExtentScrollController(
-                              initialItem: tempHour,
-                            ),
-                            itemExtent: 32.0,
-                            physics: const FixedExtentScrollPhysics(),
-                            useMagnifier: true,
-                            magnification: 1.2,
-                            onSelectedItemChanged: (int index) {
-                              setState(() {
-                                tempHour = index % 24;
-                              });
-                            },
-                            childDelegate: ListWheelChildLoopingListDelegate(
-                              children: List<Widget>.generate(24, (int index) {
-                                return Center(
-                                  child: Text(index.toString().padLeft(2, '0')),
-                                );
-                              }),
-                            ),
-                          ),
-                        ),
-                        const Text(' : '),
-                        Expanded(
-                          child: ListWheelScrollView.useDelegate(
-                            controller: FixedExtentScrollController(
-                              initialItem: tempMinute,
-                            ),
-                            itemExtent: 32.0,
-                            physics: const FixedExtentScrollPhysics(),
-                            useMagnifier: true,
-                            magnification: 1.2,
-                            onSelectedItemChanged: (int index) {
-                              setState(() {
-                                tempMinute = index % 60;
-                              });
-                            },
-                            childDelegate: ListWheelChildLoopingListDelegate(
-                              children: List<Widget>.generate(60, (int index) {
-                                return Center(
-                                  child: Text(index.toString().padLeft(2, '0')),
-                                );
-                              }),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      height: 32.0, // Match the itemExtent
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.grey.shade400,
-                            width: 1.0,
-                          ),
-                          bottom: BorderSide(
-                            color: Colors.grey.shade400,
-                            width: 1.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  child: const Text('Batal'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-                TextButton(
-                  child: const Text('Pilih'),
-                  onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).pop(TimeOfDay(hour: tempHour, minute: tempMinute));
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
+      initialTime: _selectedTime,
     );
-
-    if (newTime != null) {
+    if (picked != null) {
       setState(() {
-        _selectedTime = newTime;
+        _selectedTime = picked;
       });
     }
   }
@@ -379,36 +416,70 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
             children: [
               TextFormField(
                 controller: _judulController,
-                decoration: const InputDecoration(labelText: 'Judul Kegiatan'),
+                decoration: const InputDecoration(
+                  labelText: 'Judul Kegiatan',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.work),
+                ),
                 validator: (value) =>
                     value!.isEmpty ? 'Judul tidak boleh kosong' : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              
+              // Input Tanggal & Waktu (Row)
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      'Tanggal: ${DateFormat('d MMM yyyy').format(_selectedDate)}',
+                    child: InkWell(
+                      onTap: _pickDate,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Tanggal',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5)
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16),
+                            const SizedBox(width: 8),
+                            Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  TextButton(onPressed: _pickDate, child: const Text('Pilih')),
-                ],
-              ),
-              Row(
-                children: [
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'Waktu: ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                    child: InkWell(
+                      onTap: _pickTime,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Jam',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5)
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 16),
+                            const SizedBox(width: 8),
+                            Text(_selectedTime.format(context)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  TextButton(onPressed: _pickTime, child: const Text('Pilih')),
                 ],
               ),
+              
               if (widget.kegiatan != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: _selectedStatus,
-                  decoration: const InputDecoration(labelText: 'Status'),
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.flag),
+                  ),
                   items: _statusOptions.map((status) {
                     return DropdownMenuItem(value: status, child: Text(status));
                   }).toList(),
@@ -428,13 +499,14 @@ class _KegiatanDialogState extends State<_KegiatanDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Batal'),
+          child: const Text('Batal', style: TextStyle(color: Colors.grey)),
         ),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[900]),
           onPressed: _isLoading ? null : _submit,
           child: _isLoading
-              ? const CircularProgressIndicator(strokeWidth: 2)
-              : const Text('Simpan'),
+              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Simpan', style: TextStyle(color: Colors.white)),
         ),
       ],
     );

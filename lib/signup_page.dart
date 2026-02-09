@@ -166,10 +166,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   onPressed: () {
                     // Arahkan kembali ke LoginPage
                     Navigator.of(ctx).pop(); // Close the dialog
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginPage()),
-                      (Route<dynamic> route) => false,
-                    );
+                    Navigator.of(context).pop(); // Kembali ke halaman Login sebelumnya
                   },
                 ),
               ],
