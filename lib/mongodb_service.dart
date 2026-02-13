@@ -854,13 +854,13 @@ class MongoService {
     };
     try {
       // 1. Ambil data dari koleksi kendaraan
-      if (_dbLokasi == null || _collectionKendaraan == null) {
+      if (_dbLokasi == null || !_dbLokasi!.isConnected || _collectionKendaraan == null) {
         await connect();
         if (_collectionKendaraan == null) {
           print("❌ Gagal mendapatkan koleksi kendaraan untuk summary.");
         }
       }
-      if (_collectionKendaraan != null) {
+      if (_collectionKendaraan != null && _dbLokasi != null && _dbLokasi!.isConnected) {
         final total = await _collectionKendaraan!.count(where.exists('plat'));
         final dipakai = await _collectionKendaraan!.count(
           where.eq('status', 'Dipakai'),
@@ -874,13 +874,13 @@ class MongoService {
       }
 
       // 2. Ambil data dari koleksi sopir
-      if (_dbJadwal == null || _collectionSopir == null) {
+      if (_dbJadwal == null || !_dbJadwal!.isConnected || _collectionSopir == null) {
         await connectJadwal();
         if (_collectionSopir == null) {
           print("❌ Gagal mendapatkan koleksi sopir untuk summary.");
         }
       }
-      if (_collectionSopir != null) {
+      if (_collectionSopir != null && _dbJadwal != null && _dbJadwal!.isConnected) {
         final pending = await _collectionSopir!.count(
           where.eq('status_akun', 'pending'),
         );
@@ -890,6 +890,11 @@ class MongoService {
       return summary;
     } catch (e) {
       print("Error mengambil summary dashboard: $e");
+      // Reset koneksi jika error "No master connection" agar retry berikutnya berhasil
+      if (e.toString().contains("No master connection") || e.toString().contains("Closed")) {
+        _dbLokasi = null;
+        _dbJadwal = null;
+      }
       return summary; // Kembalikan nilai default jika ada error
     }
   }
