@@ -145,4 +145,53 @@ class AuthService {
       await db?.close();
     }
   }
+
+  /// 4. Fungsi untuk Memperbarui Profil Sopir
+  static Future<String> updateProfilSopir({
+    required String email, // Digunakan sebagai acuan/pencarian data mana yang diubah
+    required String namaBaru,
+    required String noHpBaru,
+    String? passwordBaru, // Opsional: hanya diisi jika user ingin ganti password
+    String? fotoProfilBase64, // Opsional: hanya diisi jika user upload foto baru
+  }) async {
+    Db? db;
+    try {
+      // Membuka koneksi ke database
+      db = await Db.create(_mongoUrl);
+      await db.open();
+      var collection = db.collection(_collection);
+
+      // Pastikan akun dengan email tersebut ada
+      var user = await collection.findOne(where.eq('email', email));
+      if (user == null) {
+        return "Gagal: Akun tidak ditemukan.";
+      }
+
+      // Siapkan data dasar yang pasti akan diupdate (Nama dan No HP)
+      var updateModifier = modify
+          .set('nama', namaBaru)
+          .set('no_hp', noHpBaru);
+
+      // Jika ada input password baru, hash password tersebut lalu tambahkan ke updateModifier
+      if (passwordBaru != null && passwordBaru.isNotEmpty) {
+        updateModifier.set('password', hashPassword(passwordBaru));
+      }
+
+      // Jika ada foto profil baru, tambahkan ke updateModifier
+      if (fotoProfilBase64 != null && fotoProfilBase64.isNotEmpty) {
+        updateModifier.set('foto_profil', fotoProfilBase64);
+      }
+
+      // Eksekusi update ke MongoDB berdasarkan email
+      await collection.update(where.eq('email', email), updateModifier);
+
+      return "Sukses";
+    } catch (e) {
+      print("Error during updateProfilSopir: $e");
+      return "Error: $e";
+    } finally {
+      // Pastikan koneksi database ditutup kembali
+      await db?.close();
+    }
+  }
 }

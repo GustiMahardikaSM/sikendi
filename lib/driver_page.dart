@@ -4,6 +4,7 @@ import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/driver_vehicle_page.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
+import 'driver_profile_page.dart';
 
 // ==========================================================
 // KELAS UTAMA HALAMAN SOPIR
@@ -93,6 +94,27 @@ class _DriverPageState extends State<DriverPage> {
               builder: (context) => JadwalSopirPage(email: widget.user['email']),
             ),
           );
+        },
+      },
+      {
+        'title': 'Profil Saya',
+        'icon': Icons.person,
+        'color': Colors.purple,
+        'onTap': () async {
+          final updatedUser = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DriverProfilePage(user: widget.user),
+            ),
+
+          );
+
+          if (updatedUser != null && updatedUser is Map<String, dynamic>) {
+            setState(() {
+              widget.user['nama'] = updatedUser['nama'];
+              widget.user['no_hp'] = updatedUser['no_hp'];
+            });
+          }
         },
       },
     ];
