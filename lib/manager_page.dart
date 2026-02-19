@@ -262,7 +262,7 @@ class _ManagerPageState extends State<ManagerPage> {
                           Icons.local_shipping,
                         ),
                         _buildSummaryCard(
-                          "Sedang Jalan",
+                          "Sedang Dipakai",
                           _isLoadingSummary
                               ? "-"
                               : "${_summaryData['dipakai']}",
