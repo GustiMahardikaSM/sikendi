@@ -55,9 +55,10 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       return '-';
     }
     try {
-      final dateTime = DateTime.parse(dateTimeStr);
+      String cleanTimeStr = dateTimeStr.replaceAll('Z', '');
+      final dateTime = DateTime.parse(cleanTimeStr);
       final formatter = DateFormat('dd MMMM yyyy, HH:mm:ss', 'id_ID');
-      return formatter.format(dateTime.toLocal());
+      return formatter.format(dateTime);
     } catch (e) {
       return dateTimeStr;
     }
