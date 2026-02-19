@@ -76,7 +76,8 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
   bool _isGpsOffline(String? serverTimeStr) {
     if (serverTimeStr == null) return true;
     try {
-      DateTime lastUpdate = DateTime.parse(serverTimeStr).toLocal();
+      String cleanTime = serverTimeStr.replaceAll('Z', '');
+      DateTime lastUpdate = DateTime.parse(cleanTime);
       DateTime now = DateTime.now();
       Duration diff = now.difference(lastUpdate);
       return diff.inMinutes > 5;
@@ -93,7 +94,8 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
 
   String _getStatusText(double speed, String? serverTimeStr) {
     if (_isGpsOffline(serverTimeStr)) {
-      DateTime last = DateTime.parse(serverTimeStr!).toLocal();
+      String cleanTime = serverTimeStr!.replaceAll('Z', '');
+      DateTime last = DateTime.parse(cleanTime);
       int minAgo = DateTime.now().difference(last).inMinutes;
       return "GPS Mati / Offline ($minAgo mnt lalu)";
     }
@@ -220,9 +222,7 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
                 title: const Text("Terakhir Update"),
                 subtitle: Text(
                   timestamp != null
-                      ? DateTime.parse(
-                          timestamp,
-                        ).toLocal().toString().split('.')[0]
+                      ? DateTime.parse(timestamp.replaceAll('Z', '')).toString().split('.')[0]
                       : "-",
                 ),
               ),
