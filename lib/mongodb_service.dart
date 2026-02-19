@@ -905,58 +905,66 @@ class MongoService {
   // =================================================================
 
   // READ (AVAILABLE): Sopir mencari mobil untuk bekerja
-  // Filter: Hanya yang statusnya 'Tersedia'
-  static Future<List<Map<String, dynamic>>> getKendaraanTersedia() async {
+  static Future<List<Map<String, dynamic>>> getKendaraanTersedia({int retryCount = 0}) async {
     try {
-      final data = await _collectionLokasi!
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
+      _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
+
+      return await _collectionLokasi!
           .find(where.eq('status', 'Tersedia'))
           .toList();
-      return data;
     } catch (e) {
       print("Error get tersedia: $e");
+      // Auto-Retry Maksimal 2 Kali jika koneksi bertabrakan
+      if (retryCount < 2 && (e.toString().contains("No master connection") || e.toString().contains("Closed"))) {
+        _dbLokasi = null; // Reset koneksi
+        await Future.delayed(const Duration(milliseconds: 300)); // Beri jeda 0.3 detik agar db bernapas
+        return await getKendaraanTersedia(retryCount: retryCount + 1);
+      }
       return [];
     }
   }
 
   // READ (MY JOB): Sopir melihat pekerjaan dia sendiri
-  // Filter: Hanya yang peminjam == namaSopir
-  static Future<List<Map<String, dynamic>>> getPekerjaanSaya(
-    String namaSopir,
-  ) async {
+  static Future<List<Map<String, dynamic>>> getPekerjaanSaya(String namaSopir, {int retryCount = 0}) async {
     try {
-      final data = await _collectionLokasi!
-          .find(where.eq('peminjam', namaSopir)) // Filter isolasi driver
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
+      _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
+
+      return await _collectionLokasi!
+          .find(where.eq('peminjam', namaSopir)) 
           .toList();
-      return data;
     } catch (e) {
       print("Error get pekerjaan saya: $e");
+      if (retryCount < 2 && (e.toString().contains("No master connection") || e.toString().contains("Closed"))) {
+        _dbLokasi = null;
+        await Future.delayed(const Duration(milliseconds: 300));
+        return await getPekerjaanSaya(namaSopir, retryCount: retryCount + 1);
+      }
       return [];
     }
   }
 
   // UPDATE (CHECK-IN): Sopir mengambil mobil
-  static Future<void> ambilKendaraan(ObjectId id, String namaSopir) async {
+  static Future<void> ambilKendaraan(ObjectId id, String namaSopir, {int retryCount = 0}) async {
     try {
-      // Baca dokumen yang akan diupdate untuk mendapatkan data lengkap
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
+      _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
+
       final doc = await _collectionLokasi!.findOne(where.id(id));
-      if (doc == null) {
-        print("⚠️ Dokumen tidak ditemukan untuk ID: $id");
-        return;
-      }
+      if (doc == null) return;
 
       final waktuAmbil = DateTime.now().toIso8601String();
 
-      // Update data di server
       await _collectionLokasi!.update(
         where.id(id),
         modify
-            .set('status', 'Dipakai') // Ubah status
-            .set('peminjam', namaSopir) // Catat nama sopir
-            .set('waktu_ambil', waktuAmbil) // Catat waktu ambil
-            .set('waktu_lepas', null), // Reset waktu lepas saat check-in
+            .set('status', 'Dipakai') 
+            .set('peminjam', namaSopir) 
+            .set('waktu_ambil', waktuAmbil) 
+            .set('waktu_lepas', null), 
       );
 
-      // Sync ke collection kendaraan
       final vehicleData = {
         'plat': doc['plat'],
         'model': doc['model'],
@@ -969,21 +977,24 @@ class MongoService {
       };
       await _syncToKendaraanCollection(vehicleData);
 
-      print("✅ Mobil berhasil diambil oleh $namaSopir");
     } catch (e) {
       print("Error ambil kendaraan: $e");
+      if (retryCount < 2 && (e.toString().contains("No master connection") || e.toString().contains("Closed"))) {
+        _dbLokasi = null;
+        await Future.delayed(const Duration(milliseconds: 300));
+        await ambilKendaraan(id, namaSopir, retryCount: retryCount + 1);
+      }
     }
   }
 
   // UPDATE (CHECK-OUT): Sopir mengembalikan mobil (Selesai tugas)
-  static Future<void> selesaikanPekerjaan(ObjectId id) async {
+  static Future<void> selesaikanPekerjaan(ObjectId id, {int retryCount = 0}) async {
     try {
-      // Baca dokumen yang akan diupdate untuk mendapatkan data lengkap
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
+      _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
+
       final doc = await _collectionLokasi!.findOne(where.id(id));
-      if (doc == null) {
-        print("⚠️ Dokumen tidak ditemukan untuk ID: $id");
-        return;
-      }
+      if (doc == null) return;
 
       final waktuLepas = DateTime.now().toIso8601String();
 
@@ -993,10 +1004,9 @@ class MongoService {
             .set('status', 'Tersedia')
             .set('peminjam', null)
             .set('waktu_ambil', null)
-            .set('waktu_lepas', waktuLepas), // Catat waktu lepas
+            .set('waktu_lepas', waktuLepas), 
       );
 
-      // Sync ke collection kendaraan
       final vehicleData = {
         'plat': doc['plat'],
         'model': doc['model'],
@@ -1009,9 +1019,13 @@ class MongoService {
       };
       await _syncToKendaraanCollection(vehicleData);
 
-      print("✅ Pekerjaan selesai, mobil kembali tersedia");
     } catch (e) {
       print("Error selesai pekerjaan: $e");
+      if (retryCount < 2 && (e.toString().contains("No master connection") || e.toString().contains("Closed"))) {
+        _dbLokasi = null;
+        await Future.delayed(const Duration(milliseconds: 300));
+        await selesaikanPekerjaan(id, retryCount: retryCount + 1);
+      }
     }
   }
 
