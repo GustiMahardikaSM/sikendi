@@ -29,10 +29,12 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
   }
 
   void _loadMyJob() async {
-    // Menggunakan 'nama' atau 'nama_lengkap' untuk kompatibilitas
-    final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'];
-    if (namaSopir != null) {
-      final myJobs = await MongoService.getPekerjaanSaya(namaSopir);
+    // KUNCI PERUBAHAN: Sekarang kita mengambil _id dari data user
+    final idSopir = widget.user['_id']; 
+    
+    if (idSopir != null && idSopir is mongo.ObjectId) {
+      // Mencari kendaraan yang memiliki id_peminjam sama dengan _id sopir ini
+      final myJobs = await MongoService.getPekerjaanSaya(idSopir);
       if(myJobs.isNotEmpty && mounted) {
         setState(() {
           _selectedCar = myJobs.first;
@@ -49,9 +51,11 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
 
     try {
       final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'] ?? 'Nama Tidak Ditemukan';
+      final idSopir = widget.user['_id'] as mongo.ObjectId; // Ambil ID Sopir
       final carId = car['_id'] as mongo.ObjectId;
 
-      await MongoService.ambilKendaraan(carId, namaSopir);
+      // KUNCI PERUBAHAN: Kirim carId, idSopir, dan namaSopir
+      await MongoService.ambilKendaraan(carId, idSopir, namaSopir);
       
       // Jeda untuk memastikan database selesai commit sebelum UI me-refresh
       await Future.delayed(const Duration(milliseconds: 300)); 

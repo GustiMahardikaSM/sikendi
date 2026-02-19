@@ -925,42 +925,44 @@ class MongoService {
     }
   }
 
-  // READ (MY JOB): Sopir melihat pekerjaan dia sendiri
-  static Future<List<Map<String, dynamic>>> getPekerjaanSaya(String namaSopir, {int retryCount = 0}) async {
+  // READ (MY JOB): Sopir melihat pekerjaan dia sendiri berdasarkan ID
+  static Future<List<Map<String, dynamic>>> getPekerjaanSaya(ObjectId idSopir, {int retryCount = 0}) async {
     try {
       if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
       _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
 
+      // KUNCI: Sekarang mencari menggunakan id_peminjam
       return await _collectionLokasi!
-          .find(where.eq('peminjam', namaSopir)) 
+          .find(where.eq('id_peminjam', idSopir)) 
           .toList();
     } catch (e) {
       print("Error get pekerjaan saya: $e");
       if (retryCount < 2 && (e.toString().contains("No master connection") || e.toString().contains("Closed"))) {
         _dbLokasi = null;
         await Future.delayed(const Duration(milliseconds: 300));
-        return await getPekerjaanSaya(namaSopir, retryCount: retryCount + 1);
+        return await getPekerjaanSaya(idSopir, retryCount: retryCount + 1);
       }
       return [];
     }
   }
 
   // UPDATE (CHECK-IN): Sopir mengambil mobil
-  static Future<void> ambilKendaraan(ObjectId id, String namaSopir, {int retryCount = 0}) async {
+  static Future<void> ambilKendaraan(ObjectId idKendaraan, ObjectId idSopir, String namaSopir, {int retryCount = 0}) async {
     try {
       if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
       _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
 
-      final doc = await _collectionLokasi!.findOne(where.id(id));
+      final doc = await _collectionLokasi!.findOne(where.id(idKendaraan));
       if (doc == null) return;
 
       final waktuAmbil = DateTime.now().toIso8601String();
 
       await _collectionLokasi!.update(
-        where.id(id),
+        where.id(idKendaraan),
         modify
             .set('status', 'Dipakai') 
             .set('peminjam', namaSopir) 
+            .set('id_peminjam', idSopir) // <--- SIMPAN ID
             .set('waktu_ambil', waktuAmbil) 
             .set('waktu_lepas', null), 
       );
@@ -972,6 +974,7 @@ class MongoService {
         'device_id': doc['device_id'] ?? doc['gps_1'],
         'status': 'Dipakai',
         'peminjam': namaSopir,
+        'id_peminjam': idSopir, // <--- SIMPAN ID
         'waktu_ambil': waktuAmbil,
         'waktu_lepas': null,
       };
@@ -982,27 +985,28 @@ class MongoService {
       if (retryCount < 2 && (e.toString().contains("No master connection") || e.toString().contains("Closed"))) {
         _dbLokasi = null;
         await Future.delayed(const Duration(milliseconds: 300));
-        await ambilKendaraan(id, namaSopir, retryCount: retryCount + 1);
+        await ambilKendaraan(idKendaraan, idSopir, namaSopir, retryCount: retryCount + 1);
       }
     }
   }
 
-  // UPDATE (CHECK-OUT): Sopir mengembalikan mobil (Selesai tugas)
-  static Future<void> selesaikanPekerjaan(ObjectId id, {int retryCount = 0}) async {
+  // UPDATE (CHECK-OUT): Sopir mengembalikan mobil
+  static Future<void> selesaikanPekerjaan(ObjectId idKendaraan, {int retryCount = 0}) async {
     try {
       if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
       _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
 
-      final doc = await _collectionLokasi!.findOne(where.id(id));
+      final doc = await _collectionLokasi!.findOne(where.id(idKendaraan));
       if (doc == null) return;
 
       final waktuLepas = DateTime.now().toIso8601String();
 
       await _collectionLokasi!.update(
-        where.id(id),
+        where.id(idKendaraan),
         modify
             .set('status', 'Tersedia')
             .set('peminjam', null)
+            .set('id_peminjam', null) // <--- KOSONGKAN ID
             .set('waktu_ambil', null)
             .set('waktu_lepas', waktuLepas), 
       );
@@ -1014,6 +1018,7 @@ class MongoService {
         'device_id': doc['device_id'] ?? doc['gps_1'],
         'status': 'Tersedia',
         'peminjam': null,
+        'id_peminjam': null, // <--- KOSONGKAN ID
         'waktu_ambil': null,
         'waktu_lepas': waktuLepas,
       };
@@ -1024,7 +1029,7 @@ class MongoService {
       if (retryCount < 2 && (e.toString().contains("No master connection") || e.toString().contains("Closed"))) {
         _dbLokasi = null;
         await Future.delayed(const Duration(milliseconds: 300));
-        await selesaikanPekerjaan(id, retryCount: retryCount + 1);
+        await selesaikanPekerjaan(idKendaraan, retryCount: retryCount + 1);
       }
     }
   }

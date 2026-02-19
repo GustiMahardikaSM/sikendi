@@ -151,7 +151,6 @@ class AuthService {
     required String email, // Digunakan sebagai acuan/pencarian data mana yang diubah
     required String namaBaru,
     required String noHpBaru,
-    String? passwordBaru, // Opsional: hanya diisi jika user ingin ganti password
     String? fotoProfilBase64, // Opsional: hanya diisi jika user upload foto baru
   }) async {
     Db? db;
@@ -171,11 +170,6 @@ class AuthService {
       var updateModifier = modify
           .set('nama', namaBaru)
           .set('no_hp', noHpBaru);
-
-      // Jika ada input password baru, hash password tersebut lalu tambahkan ke updateModifier
-      if (passwordBaru != null && passwordBaru.isNotEmpty) {
-        updateModifier.set('password', hashPassword(passwordBaru));
-      }
 
       // Jika ada foto profil baru, tambahkan ke updateModifier
       if (fotoProfilBase64 != null && fotoProfilBase64.isNotEmpty) {
