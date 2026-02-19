@@ -67,38 +67,16 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
 
   @override
   Widget build(BuildContext context) {
-    // REVISI: AppBar dihapus untuk mencegah "Double Header/Back Button"
-    // karena halaman ini berada di dalam TabView DriverPage.
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Agenda Perjalanan"),
+        backgroundColor: Colors.blue[900],
+        foregroundColor: Colors.white,
+      ),
       backgroundColor: Colors.grey[100],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Custom sebagai pengganti AppBar
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Agenda Perjalanan",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[900],
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  "Kelola jadwal dan status tugas Anda",
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-          
           // List Jadwal
           Expanded(
             child: FutureBuilder<List<KegiatanSopir>>(

@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
+import 'package:sikendi/driver_tracking_page.dart';
+import 'package:sikendi/driver_vehicle_page.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
-import 'package:sikendi/mongodb_service.dart';
 
 // ==========================================================
 // KELAS UTAMA HALAMAN SOPIR
@@ -20,25 +18,6 @@ class DriverPage extends StatefulWidget {
 }
 
 class _DriverPageState extends State<DriverPage> {
-  int _selectedIndex = 0;
-
-  late final List<Widget> _pages;
-
-  @override
-  void initState() {
-    super.initState();
-    _pages = <Widget>[
-      const DriverTrackingTab(),
-      DriverVehicleTab(user: widget.user), // Pass user data
-      JadwalSopirPage(email: widget.user['email']), // Use the new schedule page
-    ];
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   void _handleLogout(BuildContext context) {
     showDialog(
@@ -75,12 +54,56 @@ class _DriverPageState extends State<DriverPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Definisi Menu Items di dalam build agar bisa akses context & widget.user
+    final List<Map<String, dynamic>> menuItems = [
+      {
+        'title': 'Tracking GPS',
+        'icon': Icons.map_outlined,
+        'color': Colors.blueAccent,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const DriverTrackingPage()),
+          );
+        },
+      },
+      {
+        'title': 'Pilih Kendaraan',
+        'icon': Icons.directions_car_filled,
+        'color': Colors.green,
+        'onTap': () {
+          // Mengirim data user agar sopir bisa check-in
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DriverVehiclePage(user: widget.user),
+            ),
+          );
+        },
+      },
+      {
+        'title': 'Jadwal Perjalanan',
+        'icon': Icons.calendar_today,
+        'color': Colors.orange,
+        'onTap': () {
+          // Mengirim email sopir untuk filter jadwal
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => JadwalSopirPage(email: widget.user['email']),
+            ),
+          );
+        },
+      },
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Dashboard Sopir SiKenDi"),
-        backgroundColor: Colors.green[700],
+        backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -89,424 +112,119 @@ class _DriverPageState extends State<DriverPage> {
           ),
         ],
       ),
-      body: IndexedStack(index: _selectedIndex, children: _pages),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Tracking'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_car),
-            label: 'Kendaraan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Jadwal',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.green[800],
-        onTap: _onItemTapped,
-      ),
-    );
-  }
-}
-
-// ==========================================================
-// TAB 1: TRACKING & NOTIFIKASI SAFETY (REFACTORED)
-// ==========================================================
-class DriverTrackingTab extends StatefulWidget {
-  const DriverTrackingTab({super.key});
-
-  @override
-  State<DriverTrackingTab> createState() => _DriverTrackingTabState();
-}
-
-class _DriverTrackingTabState extends State<DriverTrackingTab>
-    with AutomaticKeepAliveClientMixin {
-  LatLng? _currentPosition;
-  double _currentSpeed = 0.0;
-  Timer? _timer;
-
-  final double _speedLimit = 60.0;
-  bool _isOverspeeding = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      _fetchData();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _fetchData() async {
-    final data = await MongoService.getLatestGpsData();
-    if (data == null || !mounted) return;
-
-    final doc = data;
-    double? lat, lng;
-
-    try {
-      if (doc['gps_location'] != null) {
-        final loc = doc['gps_location'];
-        if (loc is Map && loc.containsKey('lat') && loc.containsKey('lng')) {
-          // Format A: { "lat": ..., "lng": ... }
-          lat = (loc['lat'] as num).toDouble();
-          lng = (loc['lng'] as num).toDouble();
-        } else if (loc is Map && loc.containsKey('coordinates')) {
-          // Format B: GeoJSON { "coordinates": [lng, lat] }
-          final List coords = loc['coordinates'];
-          if (coords.length >= 2) {
-            lng = (coords[0] as num).toDouble();
-            lat = (coords[1] as num).toDouble();
-          }
-        }
-      }
-
-      // Fallback: Check for lat/lng at the root level
-      if (lat == null && lng == null) {
-        if (doc.containsKey('lat') && doc.containsKey('lng')) {
-          lat = (doc['lat'] as num).toDouble();
-          lng = (doc['lng'] as num).toDouble();
-        }
-      }
-    } catch (e) {
-      print("Error parsing location in DriverTrackingTab: $e");
-      // Prevent further processing if parsing fails
-      return;
-    }
-
-    // Only update state if we successfully parsed a location
-    if (lat != null && lng != null) {
-      final speed = (doc['speed'] as num? ?? 0).toDouble();
-
-      setState(() {
-        _currentPosition = LatLng(lat!, lng!);
-        _currentSpeed = speed;
-
-        if (_currentSpeed > _speedLimit) {
-          if (!_isOverspeeding) {
-            _isOverspeeding = true;
-            // Avoid showing snackbar if widget is not in the tree
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 1),
-                  content: Row(
-                    children: const [
-                      Icon(Icons.warning, color: Colors.white),
-                      SizedBox(width: 10),
-                      Text(
-                        "BAHAYA! Anda melewati batas kecepatan!",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- MULAI HEADER (Langkah 4) ---
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+                decoration: BoxDecoration(
+                  color: Colors.blue[900],
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
                   ),
                 ),
-              );
-            }
-          }
-        } else {
-          _isOverspeeding = false;
-        }
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return Stack(
-      children: [
-        _currentPosition == null
-            ? const Center(child: CircularProgressIndicator())
-            : FlutterMap(
-                options: MapOptions(
-                  initialCenter: _currentPosition!,
-                  initialZoom: 16.0,
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.sikendi.driver',
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: _currentPosition!,
-                        width: 80,
-                        height: 80,
-                        child: const Icon(
-                          Icons.directions_car,
-                          color: Colors.green,
-                          size: 40,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-        Positioned(
-          top: 20,
-          right: 20,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _isOverspeeding ? Colors.red : Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: const [
-                BoxShadow(blurRadius: 5, color: Colors.black26),
-              ],
-            ),
-            child: Column(
-              children: [
-                const Text("Kecepatan", style: TextStyle(fontSize: 12)),
-                Text(
-                  "${_currentSpeed.toStringAsFixed(1)} km/h",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: _isOverspeeding ? Colors.white : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-}
-
-// ==========================================================
-// TAB 2: MANAJEMEN TANGGUNG JAWAB (REFACTORED with MongoService)
-// ==========================================================
-class DriverVehicleTab extends StatefulWidget {
-  final Map<String, dynamic> user;
-  const DriverVehicleTab({super.key, required this.user});
-
-  @override
-  State<DriverVehicleTab> createState() => _DriverVehicleTabState();
-}
-
-class _DriverVehicleTabState extends State<DriverVehicleTab>
-    with AutomaticKeepAliveClientMixin {
-  late Future<List<Map<String, dynamic>>> _vehiclesFuture;
-  Map<String, dynamic>? _selectedCar;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVehicles();
-  }
-
-  void _loadVehicles() {
-    setState(() {
-      _vehiclesFuture = MongoService.getKendaraanTersedia();
-      // Also check if the driver already has an active job
-      _loadMyJob();
-    });
-  }
-
-  // Load the current driver's active job
-  void _loadMyJob() async {
-    final myJobs = await MongoService.getPekerjaanSaya(
-      widget.user['nama_lengkap'],
-    );
-    if (myJobs.isNotEmpty && mounted) {
-      setState(() {
-        _selectedCar = myJobs.first;
-      });
-    }
-  }
-
-  void _handleCheckIn(Map<String, dynamic> car) async {
-    final namaSopir =
-        widget.user['nama_lengkap'] as String? ?? 'Nama Tidak Ditemukan';
-    final carId = car['_id'] as mongo.ObjectId;
-
-    await MongoService.ambilKendaraan(carId, namaSopir);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.green,
-          content: Text("Berhasil Check-in: ${car['model']}"),
-        ),
-      );
-    }
-    _loadVehicles(); // Refresh both available list and my job
-  }
-
-  void _handleCheckOut() async {
-    if (_selectedCar == null) return;
-    final carId = _selectedCar!['_id'] as mongo.ObjectId;
-
-    await MongoService.selesaikanPekerjaan(carId);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Berhasil Check-out kendaraan.")),
-      );
-    }
-
-    setState(() {
-      _selectedCar = null; // Clear the selected car
-    });
-    _loadVehicles(); // Refresh the list
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Status Tanggung Jawab",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-
-          if (_selectedCar == null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                children: const [
-                  Icon(Icons.no_crash, size: 50, color: Colors.grey),
-                  Text("Anda belum memilih kendaraan."),
-                  Text("Silakan pilih kendaraan di bawah untuk Check-in."),
-                ],
-              ),
-            )
-          else
-            Card(
-              elevation: 4,
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "KENDARAAN AKTIF",
-                      style: TextStyle(
-                        color: Colors.blue,
+                      "Selamat bertugas,",
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      widget.user['nama'] ?? widget.user['nama_lengkap'] ?? 'Sopir',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Divider(),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.directions_car,
-                        size: 40,
-                        color: Colors.blue,
-                      ),
-                      title: Text(
-                        _selectedCar!['model']!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: const [
+                        Icon(Icons.badge, color: Colors.white70, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          "Sopir Kendaraan Dinas - Undip",
+                          style: TextStyle(color: Colors.white70),
                         ),
-                      ),
-                      subtitle: Text(_selectedCar!['plat']!),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.exit_to_app),
-                        label: const Text("LEPAS TANGGUNG JAWAB (Check-out)"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                        onPressed: _handleCheckOut,
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
+              // --- AKHIR HEADER ---
 
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Daftar Kendaraan Tersedia",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _loadVehicles,
-                tooltip: "Muat Ulang",
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
+              const SizedBox(height: 20), // Jarak antara header dan grid
 
-          Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _vehiclesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(
-                    child: Text("Tidak ada kendaraan tersedia saat ini."),
-                  );
-                }
-
-                final vehicles = snapshot.data!;
-                return ListView.builder(
-                  itemCount: vehicles.length,
+              // --- MULAI GRIDVIEW (Langkah 5) ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: menuItems.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.0, // Kotak 1:1
+                  ),
                   itemBuilder: (context, index) {
-                    var car = vehicles[index];
+                    final item = menuItems[index];
                     return Card(
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.car_rental,
-                          color: Colors.green,
-                        ),
-                        title: Text(car['model']!),
-                        subtitle: Text("${car['plat']} • ${car['status']}"),
-                        trailing: ElevatedButton(
-                          onPressed: (_selectedCar == null)
-                              ? () => _handleCheckIn(car)
-                              : null,
-                          child: const Text("Pilih"),
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(15),
+                        onTap: item['onTap'], // Fungsi navigasi dari Langkah 2
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Lingkaran latar belakang ikon
+                            Container(
+                              padding: const EdgeInsets.all(15),
+                              decoration: BoxDecoration(
+                                color: (item['color'] as Color).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                item['icon'],
+                                color: item['color'],
+                                size: 40,
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            // Teks Judul Menu
+                            Text(
+                              item['title'],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+              // --- AKHIR GRIDVIEW ---
+
+              const SizedBox(height: 30), // Ruang kosong di paling bawah
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
-
-  @override
-  bool get wantKeepAlive => true;
 }
