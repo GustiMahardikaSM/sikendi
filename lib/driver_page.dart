@@ -4,6 +4,7 @@ import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/driver_vehicle_page.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
+import 'package:sikendi/profile_sopir_page.dart'; 
 
 // ==========================================================
 // KELAS UTAMA HALAMAN SOPIR
@@ -95,6 +96,22 @@ class _DriverPageState extends State<DriverPage> {
           );
         },
       },
+      // --- TAMBAHKAN KODE INI UNTUK MENU PROFIL ---
+      {
+        'title': 'Profil Saya',
+        'icon': Icons.person, // Ikon profil
+        'color': Colors.purple, // Warna yang berbeda agar menarik
+        'onTap': () {
+          // Navigasi ke halaman profil sambil membawa data user
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfileSopirPage(user: widget.user),
+            ),
+          );
+        },
+      },
+      // --- AKHIR TAMBAHAN KODE ---
     ];
 
     return Scaffold(

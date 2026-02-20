@@ -1382,4 +1382,32 @@ class MongoService {
       return false;
     }
   }
+
+  // ==========================================================
+  // FUNGSI UNTUK PROFIL SOPIR
+  // ==========================================================
+  
+  /// Memperbarui atau menambahkan field 'foto_profil' pada dokumen sopir
+  static Future<bool> updateFotoProfilSopir(String email, String base64Image) async {
+    try {
+      if (_collectionSopir == null) {
+        await connectJadwal();
+        if (_collectionSopir == null) {
+          throw Exception("Gagal: Collection Sopir masih null (Cek Internet/Database)");
+        }
+      }
+      
+      // Mencari sopir berdasarkan email dan mengupdate field 'foto_profil'
+      var result = await _collectionSopir!.updateOne(
+        where.eq('email', email),
+        modify.set('foto_profil', base64Image),
+      );
+      
+      // Mengembalikan true jika berhasil diubah
+      return result.isAcknowledged;
+    } catch (e) {
+      print("Error saat update foto profil: $e");
+      return false;
+    }
+  }
 }
