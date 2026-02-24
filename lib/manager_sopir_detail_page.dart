@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-// import 'mongodb_service.dart'; // Buka komentar ini nanti untuk fungsi status
+import 'package:sikendi/mongodb_service.dart'; // Mengaktifkan kembali import
 
 class ManagerSopirDetailPage extends StatefulWidget {
   final Map<String, dynamic> dataSopir;
@@ -23,20 +23,35 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
   }
 
   Future<void> _fetchStatusSopir() async {
-    // TODO: Langkah 3 (Status Pekerjaan) akan diimplementasikan di sini nanti.
-    // Sementara kita buat loading pura-pura agar UI bisa dites dulu.
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
+    // Mengaktifkan kembali pengambilan data dinamis
+    final namaSopir = widget.dataSopir['nama'] ?? widget.dataSopir['username'];
+    if (namaSopir == null) {
+      if (mounted) setState(() => isLoading = false);
+      return;
+    }
+
+    try {
+      final pekerjaan = await MongoDBService.getPekerjaanBySopir(namaSopir);
+      if (mounted) {
+        setState(() {
+          statusPekerjaan = pekerjaan;
+        });
+      }
+    } catch (e) {
+      debugPrint("Gagal mengambil status pekerjaan: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
   // Fungsi khusus untuk menangani error Base64 Foto
   ImageProvider _getProfileImage() {
-    // GANTI 'foto' dengan key yang benar di MongoDB Anda (misal: 'profile_pic', 'image', dll)
-    String? base64String = widget.dataSopir['foto']; 
+    // Mencari dengan beberapa kemungkinan key
+    String? base64String = widget.dataSopir['foto_profil'] ?? widget.dataSopir['profile_image'] ?? widget.dataSopir['foto'];
 
     if (base64String != null && base64String.isNotEmpty) {
       try {
@@ -53,7 +68,7 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
         debugPrint("Gagal decode gambar: $e");
       }
     }
-    // Mengembalikan gambar transparan/kosong jika gagal, nanti ditangani di UI
+    // Mengembalikan gambar transparan/kosong jika gagal
     return const AssetImage(''); 
   }
 
@@ -70,6 +85,16 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
     if (imageProvider is MemoryImage) {
       hasValidImage = true;
     }
+
+    // Menyiapkan data untuk kartu status
+    final bool isBekerja = statusPekerjaan != null && statusPekerjaan!.isNotEmpty;
+    final String namaKendaraan = statusPekerjaan?['model'] ?? 'Kendaraan tidak dikenal';
+    final String platNomor = statusPekerjaan?['plat'] ?? '-';
+    final String statusText = isBekerja 
+      ? 'Sedang bertugas: $namaKendaraan ($platNomor)' 
+      : 'Saat ini sedang standby';
+    final Color statusColor = isBekerja ? Colors.orange : Colors.green;
+
 
     return Scaffold(
       appBar: AppBar(
@@ -133,10 +158,9 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ListTile(
-                        leading: const Icon(Icons.directions_car, color: Colors.green),
+                        leading: Icon(Icons.directions_car, color: statusColor),
                         title: const Text('Status Operasional'),
-                        // Ini akan diubah saat Langkah 3 selesai
-                        subtitle: const Text('Saat ini sedang standby (Data dinamis menyusul)'), 
+                        subtitle: Text(statusText), 
                       ),
               ),
             ),
