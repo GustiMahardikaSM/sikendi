@@ -66,7 +66,7 @@ class _ManagerPageState extends State<ManagerPage> {
 
   Future<void> _refreshDashboard() async {
     setState(() => _isLoadingSummary = true);
-    final data = await MongoService.getDashboardSummary();
+    final data = await MongoDBService.getDashboardSummary();
     if (mounted) {
       setState(() {
         _summaryData = data;

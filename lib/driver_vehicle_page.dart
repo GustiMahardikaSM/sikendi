@@ -23,7 +23,7 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
 
   void _loadVehicles() {
     setState(() {
-      _vehiclesFuture = MongoService.getKendaraanTersedia();
+      _vehiclesFuture = MongoDBService.getKendaraanTersedia();
       _loadMyJob(); 
     });
   }
@@ -32,7 +32,7 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
     // Menggunakan 'nama' atau 'nama_lengkap' untuk kompatibilitas
     final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'];
     if (namaSopir != null) {
-      final myJobs = await MongoService.getPekerjaanSaya(namaSopir);
+      final myJobs = await MongoDBService.getPekerjaanSaya(namaSopir);
       if(myJobs.isNotEmpty && mounted) {
         setState(() {
           _selectedCar = myJobs.first;
@@ -51,7 +51,7 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
       final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'] ?? 'Nama Tidak Ditemukan';
       final carId = car['_id'] as mongo.ObjectId;
 
-      await MongoService.ambilKendaraan(carId, namaSopir);
+      await MongoDBService.ambilKendaraan(carId, namaSopir);
       
       // Jeda untuk memastikan database selesai commit sebelum UI me-refresh
       await Future.delayed(const Duration(milliseconds: 300)); 
@@ -85,7 +85,7 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
     try {
       final carId = _selectedCar!['_id'] as mongo.ObjectId;
 
-      await MongoService.selesaikanPekerjaan(carId);
+      await MongoDBService.selesaikanPekerjaan(carId);
       
       // Jeda untuk memastikan database selesai commit sebelum UI me-refresh
       await Future.delayed(const Duration(milliseconds: 300));

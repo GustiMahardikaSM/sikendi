@@ -45,7 +45,7 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
   }
 
   Future<void> _fetchFleetData() async {
-    final data = await MongoService.getFleetDataForManager();
+    final data = await MongoDBService.getFleetDataForManager();
 
     if (mounted) {
       setState(() {

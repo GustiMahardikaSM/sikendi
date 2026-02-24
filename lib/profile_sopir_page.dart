@@ -89,7 +89,7 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
           String email = widget.user['email'];
 
           // Simpan ke MongoDB menggunakan fungsi dari Langkah 3
-          bool success = await MongoService.updateFotoProfilSopir(email, base64Image);
+          bool success = await MongoDBService.updateFotoProfilSopir(email, base64Image);
 
           if (success) {
             setState(() {
@@ -130,9 +130,9 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
       // Mengambil nama sopir dari data user yang login
       String namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'] ?? '';
       
-      // Memanggil fungsi yang sudah ada sebelumnya di MongoService
+      // Memanggil fungsi yang sudah ada sebelumnya di MongoDBService
       // untuk mengecek pekerjaan/kendaraan yang sedang dipegang sopir
-      var pekerjaan = await MongoService.getPekerjaanSaya(namaSopir);
+      var pekerjaan = await MongoDBService.getPekerjaanSaya(namaSopir);
       
       setState(() {
         if (pekerjaan.isNotEmpty) {

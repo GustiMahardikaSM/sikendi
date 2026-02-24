@@ -23,7 +23,7 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
 
   void _loadKegiatan() {
     setState(() {
-      _kegiatanFuture = MongoService.getKegiatan(widget.email);
+      _kegiatanFuture = MongoDBService.getKegiatan(widget.email);
     });
   }
 
@@ -34,7 +34,7 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
         return _KegiatanDialog(
           kegiatan: kegiatan,
           onSave: (judul, waktu, status) async {
-            await MongoService.updateKegiatan(
+            await MongoDBService.updateKegiatan(
               id: kegiatan.id,
               judul: judul,
               waktu: waktu,
@@ -53,7 +53,7 @@ class _JadwalSopirPageState extends State<JadwalSopirPage> {
       builder: (context) {
         return _KegiatanDialog(
           onSave: (judul, waktu, status) async {
-            await MongoService.addKegiatan(
+            await MongoDBService.addKegiatan(
               email: widget.email,
               judul: judul,
               waktu: waktu,

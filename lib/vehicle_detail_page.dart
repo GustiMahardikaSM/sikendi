@@ -35,7 +35,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
   void _loadVehicleDetail() {
     setState(() {
-      _vehicleFuture = MongoService.getDetailKendaraan(widget.deviceId);
+      _vehicleFuture = MongoDBService.getDetailKendaraan(widget.deviceId);
     });
   }
 
@@ -84,7 +84,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
         String dataToSave = "BASE64:$base64Image";
 
         final deviceId = widget.deviceId;
-        bool success = await MongoService.updateFotoKendaraan(
+        bool success = await MongoDBService.updateFotoKendaraan(
           deviceId,
           dataToSave,
         );
@@ -856,7 +856,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                                 : currentModel;
 
                             final success =
-                                await MongoService.updateKendaraanDetail(
+                                await MongoDBService.updateKendaraanDetail(
                                   deviceId.toString(),
                                   updatedPlat,
                                   updatedModel,

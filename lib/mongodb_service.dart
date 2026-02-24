@@ -2,7 +2,7 @@ import 'dart:developer';
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:sikendi/models/kegiatan_sopir.dart';
 
-class MongoService {
+class MongoDBService {
   // --- KONFIGURASI DB LOKASI---
   static final String _mongoLokasiUrl =
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
@@ -922,6 +922,20 @@ class MongoService {
         return await getKendaraanTersedia(retryCount: retryCount + 1);
       }
       return [];
+    }
+  }
+
+  // READ (MY JOB): Sopir melihat pekerjaan dia sendiri
+  static Future<Map<String, dynamic>?> getPekerjaanBySopir(String namaSopir) async {
+    try {
+      final pekerjaanList = await getPekerjaanSaya(namaSopir);
+      if (pekerjaanList.isNotEmpty) {
+        return pekerjaanList.first;
+      }
+      return null;
+    } catch (e) {
+      print("Error getPekerjaanBySopir: $e");
+      return null;
     }
   }
 

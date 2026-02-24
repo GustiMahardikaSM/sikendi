@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/manager_sopir_detail_page.dart'; // Import halaman detail
 
 class ManagerSopirPage extends StatefulWidget {
   const ManagerSopirPage({super.key});
@@ -19,7 +20,7 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
 
   void _loadSopirData() {
     setState(() {
-      _sopirFuture = MongoService.getSemuaSopir();
+      _sopirFuture = MongoDBService.getSemuaSopir();
     });
   }
 
@@ -61,30 +62,40 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
                     horizontal: 16,
                     vertical: 8,
                   ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.teal[100],
-                      child: Text(
-                        nama.isNotEmpty ? nama[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: Colors.teal,
-                          fontWeight: FontWeight.bold,
+                  child: InkWell( // Menambahkan InkWell untuk onTap
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ManagerSopirDetailPage(dataSopir: sopir),
+                        ),
+                      );
+                    },
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.teal[100],
+                        child: Text(
+                          nama.isNotEmpty ? nama[0].toUpperCase() : '?',
+                          style: const TextStyle(
+                            color: Colors.teal,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
+                      title: Text(
+                        nama,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text('Email: $email'),
+                          Text('No. HP: $hp'),
+                        ],
+                      ),
+                      isThreeLine: true,
                     ),
-                    title: Text(
-                      nama,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text('Email: $email'),
-                        Text('No. HP: $hp'),
-                      ],
-                    ),
-                    isThreeLine: true,
                   ),
                 );
               },

@@ -39,7 +39,7 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
 
   void _loadVehicles() {
     setState(() {
-      _vehiclesFuture = MongoService.getSemuaDataUntukManagerDipisah();
+      _vehiclesFuture = MongoDBService.getSemuaDataUntukManagerDipisah();
     });
   }
 
@@ -414,7 +414,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
       setState(() => _isLoading = true);
 
       try {
-        final success = await MongoService.tambahKendaraanManager(
+        final success = await MongoDBService.tambahKendaraanManager(
           _platController.text.toUpperCase(),
           _modelController.text,
           widget.gps1,
@@ -567,7 +567,7 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
       try {
         final gps1 =
             widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
-        final success = await MongoService.updateKendaraanManager(
+        final success = await MongoDBService.updateKendaraanManager(
           gps1,
           _platController.text.toUpperCase(),
           _modelController.text,
@@ -636,7 +636,7 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
       try {
         final gps1 =
             widget.vehicle['gps_1'] ?? widget.vehicle['device_id'] ?? "Unknown";
-        final success = await MongoService.hapusMetadataKendaraan(gps1);
+        final success = await MongoDBService.hapusMetadataKendaraan(gps1);
 
         if (mounted) {
           if (success) {

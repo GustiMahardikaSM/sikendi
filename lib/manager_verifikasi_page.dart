@@ -23,7 +23,7 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
 
   void _loadData() {
     setState(() {
-      _pendingDriversFuture = MongoService.getPendingDrivers();
+      _pendingDriversFuture = MongoDBService.getPendingDrivers();
     });
   }
 

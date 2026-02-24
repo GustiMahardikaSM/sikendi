@@ -11,8 +11,8 @@ Future<void> main() async {
   // Pastikan semua widget Flutter siap sebelum menjalankan kode async
   WidgetsFlutterBinding.ensureInitialized();
   // Hubungkan ke database MongoDB sebelum aplikasi dimulai
-  await MongoService.connect();
-  await MongoService.connectJadwal();
+  await MongoDBService.connect();
+  await MongoDBService.connectJadwal();
 
   runApp(
     const MaterialApp(

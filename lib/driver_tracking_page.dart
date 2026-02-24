@@ -34,7 +34,7 @@ class _DriverTrackingPageState extends State<DriverTrackingPage> {
   }
 
   Future<void> _fetchData() async {
-    final data = await MongoService.getLatestGpsData();
+    final data = await MongoDBService.getLatestGpsData();
     if (data == null || !mounted) return;
 
     final doc = data;
