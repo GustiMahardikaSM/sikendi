@@ -114,44 +114,54 @@ class _ManagerPageState extends State<ManagerPage> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => item['page']()),
-          ).then((_) => _refreshDashboard()); // Refresh data when returning
+          ).then((_) => _refreshDashboard());
         },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.topRight,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: (item['color'] as Color).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(item['icon'], size: 40, color: item['color']),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0), // Padding dalam kartu
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // Tinggi menyesuaikan isi
+            children: [
+              // Bungkus icon dengan Flexible agar ukurannya aman
+              Flexible(
+                child: Stack(
+                  alignment: Alignment.topRight,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12), // Padding icon dikurangi agar pas di layar kecil
+                      decoration: BoxDecoration(
+                        color: (item['color'] as Color).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(item['icon'], size: 32, color: item['color']), // Ukuran icon dikecilkan sedikit (dari 40 ke 32)
+                    ),
+                    if (item['title'] == 'Verifikasi Sopir' &&
+                        _summaryData['pending']! > 0)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${_summaryData['pending']}',
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                  ],
                 ),
-                if (item['title'] == 'Verifikasi Sopir' &&
-                    _summaryData['pending']! > 0)
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${_summaryData['pending']}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              item['title'],
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-            ),
-          ],
+              ),
+              const SizedBox(height: 8),
+              // Teks juga dibatasi agar terlipat rapi jika layar sangat sempit
+              Text(
+                item['title'],
+                textAlign: TextAlign.center,
+                maxLines: 2, // Maksimal 2 baris
+                overflow: TextOverflow.ellipsis, // Jika lebih, munculkan titik-titik (...)
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -311,10 +321,10 @@ class _ManagerPageState extends State<ManagerPage> {
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3, // Change cross axis count to 3
-                  crossAxisSpacing: 16,
+                  crossAxisCount: 3, 
+                  crossAxisSpacing: 12, // Jarak antar kotak dikurangi sedikit agar lebih lega
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.9, // Adjust aspect ratio
+                  mainAxisExtent: 140, // <--- TAMBAHKAN INI (Tinggi kotak dikunci di 140 pixel)
                 ),
                 itemCount: _menuItems.length,
                 itemBuilder: (context, index) {
