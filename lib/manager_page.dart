@@ -216,6 +216,7 @@ class _ManagerPageState extends State<ManagerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // ✨ TAMBAHKAN BARIS INI UNTUK HAPUS TOMBOL BACK
         title: const Text("Dashboard Manajer"),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
