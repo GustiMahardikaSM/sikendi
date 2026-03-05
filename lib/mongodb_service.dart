@@ -19,10 +19,12 @@ class MongoDBService {
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
   static final String _collectionJadwalName = "kegiatan_sopir";
   static final String _collectionSopirName = "sopir";
+  static final String _collectionManagerName = "manager"; // ✨ TAMBAHAN BARU
 
   static Db? _dbJadwal;
   static DbCollection? _collectionJadwal;
   static DbCollection? _collectionSopir;
+  static DbCollection? _collectionManager; // ✨ TAMBAHAN BARU
 
   // 1. KONEKSI DATABASE LOKASI
   static Future<void> connect() async {
@@ -48,7 +50,10 @@ class MongoDBService {
       inspect(_dbJadwal);
       _collectionJadwal = _dbJadwal!.collection(_collectionJadwalName);
       _collectionSopir = _dbJadwal!.collection(_collectionSopirName);
-      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (kegiatan_sopir & sopir)");
+      _collectionManager = _dbJadwal!.collection(_collectionManagerName); // ✨ TAMBAHAN BARU
+      
+      // (Opsional) Sesuaikan pesan print agar lebih informatif
+      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (kegiatan_sopir, sopir, & manager)");
     } catch (e) {
       print("❌ Gagal Koneksi ke demo_akun: $e");
     }
@@ -1421,6 +1426,46 @@ class MongoDBService {
       return result.isAcknowledged;
     } catch (e) {
       print("Error saat update foto profil: $e");
+      return false;
+    }
+  }
+
+  // =================================================================
+  // BAGIAN AUTENTIKASI MANAJER
+  // =================================================================
+
+  /// Fungsi untuk memverifikasi login manajer
+  /// Menerima email dan password yang sudah di-hash (SHA-256)
+  static Future<bool> loginManager(String email, String hashedPassword) async {
+    try {
+      // Pastikan koneksi database ke demo_akun sudah siap
+      if (_collectionManager == null) {
+        await connectJadwal();
+        if (_collectionManager == null) {
+          print("❌ Gagal: Collection Manager masih null (Cek Koneksi Internet)");
+          return false;
+        }
+      }
+
+      // Melakukan query pencarian ke collection manager
+      // Mencari dokumen yang email_manager dan pass_manager-nya cocok
+      final managerDoc = await _collectionManager!.findOne(
+        where
+          .eq('email_manager', email)
+          .eq('pass_manager', hashedPassword)
+      );
+
+      // Jika dokumen ditemukan, kembalikan nilai true (Berhasil Login)
+      if (managerDoc != null) {
+        print("✅ Login Manajer berhasil untuk: $email");
+        return true;
+      } else {
+        // Jika null, berarti email atau password salah
+        print("❌ Login Manajer gagal: Kredensial tidak cocok.");
+        return false;
+      }
+    } catch (e) {
+      print("Error saat proses login manager: $e");
       return false;
     }
   }

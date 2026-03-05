@@ -2,7 +2,8 @@ import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_page.dart'; // Import halaman driver
 import 'package:sikendi/login_page.dart';
 import 'package:sikendi/manager_page.dart'; // Import halaman manager
-import 'package:flutter/material.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
+import 'package:flutter/material.dart';
+import 'package:sikendi/manager_login_page.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
 
 // ==========================================================
 // 1. FUNGSI UTAMA (Main Entry Point)
@@ -30,47 +31,6 @@ Future<void> main() async {
 // ==========================================================
 class RoleSelectionPage extends StatelessWidget {
   const RoleSelectionPage({super.key});
-
-  // Fungsi untuk menampilkan Dialog Persetujuan Privasi untuk Manajer
-  void _showManagerConsentDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible:
-          false, // User tidak bisa tutup dialog dengan klik di luar kotak
-      builder: (ctx) => AlertDialog(
-        title: const Text("Persetujuan Privasi Data"),
-        content: const SingleChildScrollView(
-          child: Text(
-            // Teks disesuaikan dengan dokumen proposal
-            "Sesuai dengan UU No. 27 Tahun 2022 tentang Perlindungan Data Pribadi:\n\n"
-            "1. Aplikasi ini akan mengakses lokasi perangkat Anda secara real-time.\n"
-            "2. Data lokasi digunakan hanya untuk keperluan operasional kendaraan dinas Undip.\n"
-            "3. Dengan melanjutkan, Anda menyetujui pengumpulan dan pemrosesan data ini.",
-            textAlign: TextAlign.justify,
-          ),
-        ),
-        actions: [
-          // Tombol Batal
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(), // Tutup dialog
-            child: const Text("Tolak"),
-          ),
-          // Tombol Setuju -> Masuk ke Peta Manajer
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop(); // Tutup dialog dulu
-              // Langsung ke halaman manajer
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const ManagerPage()),
-              );
-            },
-            child: const Text("Setuju & Masuk"),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +79,13 @@ class RoleSelectionPage extends StatelessWidget {
                     backgroundColor: Colors.blue[900],
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () => _showManagerConsentDialog(context),
+                  onPressed: () {
+                    // Langsung arahkan ke halaman login, JANGAN panggil dialog privasi di sini
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ManagerLoginPage()),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 16),
