@@ -9,10 +9,12 @@ class MongoDBService {
 
   static final String _collectionLokasiName = "gps_location";
   static final String _collectionKendaraanName = "kendaraan";
+  static final String _collectionTripHistoryName = "trip_history"; // ✨ TAMBAHAN BARU
 
   static Db? _dbLokasi;
   static DbCollection? _collectionLokasi;
   static DbCollection? _collectionKendaraan;
+  static DbCollection? _collectionTripHistory; // ✨ TAMBAHAN BARU
 
   // --- KONFIGURASI DB JADWAL & SOPIR ---
   static final String _mongoJadwalUrl =
@@ -34,8 +36,12 @@ class MongoDBService {
       inspect(_dbLokasi);
       _collectionLokasi = _dbLokasi!.collection(_collectionLokasiName);
       _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
+
+      // ✨ TAMBAHAN BARU
+      _collectionTripHistory = _dbLokasi!.collection(_collectionTripHistoryName);
+
       print(
-        "✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location & kendaraan)",
+        "✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location, kendaraan & trip_history)",
       );
     } catch (e) {
       print("❌ Gagal Koneksi ke gps_location: $e");
@@ -1467,6 +1473,26 @@ class MongoDBService {
     } catch (e) {
       print("Error saat proses login manager: $e");
       return false;
+    }
+  }
+
+  // =================================================================
+  // BAGIAN TRIP HISTORY
+  // =================================================================
+  static Future<List<Map<String, dynamic>>> getTripHistory(String gpsId) async {
+    try {
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
+      _collectionTripHistory ??= _dbLokasi!.collection(_collectionTripHistoryName);
+
+      // Ambil data berdasarkan gps_id dan urutkan dari yang terbaru (descending)
+      final data = await _collectionTripHistory!
+          .find(where.eq('gps_id', gpsId).sortBy('start_time', descending: true))
+          .toList();
+
+      return data;
+    } catch (e) {
+      print("Error get trip history: $e");
+      return [];
     }
   }
 }
