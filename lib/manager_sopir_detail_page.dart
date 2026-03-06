@@ -256,7 +256,6 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
 
     // 2. Ekstraksi Data Lainnya
     String date = trip['date'] ?? '-';
-    String distance = trip['trip_distance_km']?.toString() ?? '0';
     String duration = trip['trip_duration_minutes']?.toString() ?? '0';
     // ✨ BARU: Ambil nama mobil dan plat
     String namaMobil = trip['model'] ?? 'N/A';
@@ -354,7 +353,6 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildTripStat(Icons.route_outlined, "$distance km", "Jarak"),
                 _buildTripStat(Icons.timer_outlined, "$duration Menit", "Durasi"),
               ],
             ),
