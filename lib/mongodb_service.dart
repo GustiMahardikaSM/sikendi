@@ -1495,4 +1495,22 @@ class MongoDBService {
       return [];
     }
   }
+
+  // ✨ BARU: Ambil riwayat perjalanan berdasarkan NAMA SOPIR
+  static Future<List<Map<String, dynamic>>> getTripHistoryBySopir(String namaSopir) async {
+    try {
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
+      _collectionTripHistory ??= _dbLokasi!.collection(_collectionTripHistoryName);
+
+      // Ambil data berdasarkan nama peminjam dan urutkan dari yang terbaru
+      final data = await _collectionTripHistory!
+          .find(where.eq('peminjam', namaSopir).sortBy('start_time', descending: true))
+          .toList();
+
+      return data;
+    } catch (e) {
+      print("Error get trip history by sopir: $e");
+      return [];
+    }
+  }
 }
