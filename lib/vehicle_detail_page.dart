@@ -1080,8 +1080,6 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildTripStat(Icons.timer_outlined, "$duration Menit", "Durasi"),
-                Container(width: 1, height: 30, color: Colors.grey[300]), // Separator line
-                _buildTripStat(Icons.route_outlined, "$distance km", "Jarak"),
               ],
             ),
           ),
