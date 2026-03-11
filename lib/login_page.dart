@@ -339,20 +339,39 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     
                     const SizedBox(height: 24),
-                    TextButton(
-                      onPressed: _isLoading ? null : () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SignUpPage()),
-                        );
-                      },
-                      child: Text(
-                        'Belum punya akun? Daftar sebagai Sopir',
-                        style: TextStyle(
-                          color: accentColor,
-                          fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Belum punya akun? ',
+                          style: TextStyle(
+                            color: Colors.white70, // Ubah warnanya sesuaikan dengan background Anda (misal Colors.grey[600] jika background putih)
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
+                        TextButton(
+                          onPressed: _isLoading ? null : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SignUpPage()),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero, // Menghilangkan padding bawaan agar rapat dengan teks sebelumnya
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'Daftar sebagai Sopir',
+                            style: TextStyle(
+                              color: accentColor,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline, // Memberikan garis bawah
+                              decorationColor: accentColor, // Warna garis bawah menyamakan teks
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
