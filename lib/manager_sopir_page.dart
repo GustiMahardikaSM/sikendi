@@ -11,6 +11,9 @@ class ManagerSopirPage extends StatefulWidget {
 
 class _ManagerSopirPageState extends State<ManagerSopirPage> {
   late Future<List<Map<String, dynamic>>> _sopirFuture;
+  String _searchQuery = '';
+  List<Map<String, dynamic>> _allSopir = [];
+  List<Map<String, dynamic>> _filteredSopir = [];
 
   @override
   void initState() {
@@ -21,6 +24,37 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
   void _loadSopirData() {
     setState(() {
       _sopirFuture = MongoDBService.getSemuaSopir();
+      _sopirFuture.then((sopir) {
+        setState(() {
+          _allSopir = sopir;
+          _filteredSopir = sopir;
+        });
+      });
+    });
+  }
+
+  void _filterSopir(String query) {
+    final searchQueryNoSpace = query.toLowerCase().replaceAll(' ', '');
+    setState(() {
+      _searchQuery = query;
+      _filteredSopir = _allSopir.where((sopir) {
+        final nama = (sopir['nama'] ?? '')
+            .toString()
+            .toLowerCase()
+            .replaceAll(' ', '');
+        final email = (sopir['email'] ?? '')
+            .toString()
+            .toLowerCase()
+            .replaceAll(' ', '');
+        final noHp = (sopir['no_hp'] ?? '')
+            .toString()
+            .toLowerCase()
+            .replaceAll(' ', '');
+
+        return nama.contains(searchQueryNoSpace) ||
+            email.contains(searchQueryNoSpace) ||
+            noHp.contains(searchQueryNoSpace);
+      }).toList();
     });
   }
 
@@ -154,53 +188,75 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Data Sopir'),
-        backgroundColor: Colors.blue[900], // Menyelaraskan dengan manager_page
+        backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      backgroundColor: Colors.grey[100], // Memberi sedikit warna latar belakang
-      body: RefreshIndicator(
-        onRefresh: () async => _loadSopirData(),
-        child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: _sopirFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Gagal memuat data: ${snapshot.error}',
-                  style: TextStyle(color: Colors.red[700]),
+      backgroundColor: Colors.grey[100],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              onChanged: _filterSopir,
+              decoration: InputDecoration(
+                hintText: 'Cari berdasarkan nama, email, atau no. hp',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-              );
-            }
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.people_outline, size: 60, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text('Belum ada data sopir.', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                  ],
-                ),
-              );
-            }
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => _loadSopirData(),
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _sopirFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Gagal memuat data: ${snapshot.error}',
+                        style: TextStyle(color: Colors.red[700]),
+                      ),
+                    );
+                  }
+                  if (_filteredSopir.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 60, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'Sopir tidak ditemukan.',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-            final sopirList = snapshot.data!;
-
-            // Gunakan ListView.separated untuk memberi jarak antar kartu
-            return ListView.separated(
-              padding: const EdgeInsets.only(top: 8, bottom: 8),
-              itemCount: sopirList.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 0), // Tidak ada pemisah tambahan
-              itemBuilder: (context, index) {
-                return _buildSopirCard(sopirList[index]);
-              },
-            );
-          },
-        ),
+                  return ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    itemCount: _filteredSopir.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 0),
+                    itemBuilder: (context, index) {
+                      return _buildSopirCard(_filteredSopir[index]);
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
