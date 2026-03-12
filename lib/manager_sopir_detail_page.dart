@@ -111,6 +111,7 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
       appBar: AppBar(
         title: const Text('Detail Sopir'),
         backgroundColor: Colors.blue[900],
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
