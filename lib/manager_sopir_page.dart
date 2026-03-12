@@ -195,19 +195,27 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
       backgroundColor: Colors.grey[100],
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: TextField(
               onChanged: _filterSopir,
               decoration: InputDecoration(
-                hintText: 'Cari berdasarkan nama, email, atau no. hp',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.white,
+                hintText: 'Cari Sopir...',
+                prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
               ),
             ),
           ),
