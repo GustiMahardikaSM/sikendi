@@ -27,90 +27,205 @@ Future<void> main() async {
 }
 
 // ==========================================================
-// 2. HALAMAN PEMILIHAN PERAN
+// 2. HALAMAN PEMILIHAN PERAN (UI MODERN)
 // ==========================================================
 class RoleSelectionPage extends StatelessWidget {
   const RoleSelectionPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Definisikan warna utama agar konsisten
+    const primaryColor = Color(0xFF003366); // Navy Blue
+    const managerButtonColor = Color(0xFF005A9C); // Slightly Lighter Blue
+    const driverButtonColor = Color(0xFF2E7D32); // Darker Green
+
     return Scaffold(
-      backgroundColor: Colors.blue[50], // Warna latar belakang biru muda
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // Posisi elemen di tengah vertikal
-            children: [
-              // Logo atau Ikon Judul
-              const Icon(
-                Icons.directions_car_filled,
-                size: 80,
-                color: Colors.blueAccent,
+      body: Stack(
+        children: [
+          // --- Latar Belakang Gradien ---
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  primaryColor,
+                  Color(0xFF001F3F), // Darker Navy
+                ],
               ),
-              const SizedBox(height: 16),
-              const Text(
-                "SiKenDi UNDIP",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+            ),
+          ),
+          // Elemen dekoratif
+          Positioned(
+            top: -50,
+            left: -80,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.03),
               ),
-              const Text("Sistem Informasi Kendaraan Dinas"),
-              const SizedBox(height: 48),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            right: -120,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.04),
+              ),
+            ),
+          ),
 
-              // --- TOMBOL PILIH PERAN ---
-              const Text(
-                "Masuk Sebagai:",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
+          // --- Konten Utama ---
+          SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // --- Header ---
+                    const Icon(
+                      Icons.directions_car_filled,
+                      size: 80,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      "SiKenDi",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 2.5,
+                      ),
+                    ),
+                    const Text(
+                      "SISTEM INFORMASI KENDARAAN DINAS\nUNIVERSITAS DIPONEGORO",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white70,
+                        letterSpacing: 1.5,
+                        height: 1.5, // Menambah jarak antar baris
+                      ),
+                    ),
+                    const SizedBox(height: 64),
 
-              // Tombol untuk MANAJER
-              SizedBox(
-                width: double.infinity, // Lebar tombol memenuhi layar
-                height: 50,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.admin_panel_settings),
-                  label: const Text("MANAJER (Monitoring Armada)"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[900],
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    // Langsung arahkan ke halaman login, JANGAN panggil dialog privasi di sini
-                    Navigator.push(
+                    // --- Pemisah ---
+                    const Text(
+                      "Masuk Sebagai",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // --- Tombol Manager ---
+                    _buildRoleButton(
                       context,
-                      MaterialPageRoute(builder: (_) => const ManagerLoginPage()),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
+                      icon: Icons.admin_panel_settings_rounded,
+                      label: "MANAJER",
+                      subtitle: "Monitoring Armada",
+                      color: managerButtonColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ManagerLoginPage()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
 
-              // Tombol untuk SOPIR
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.drive_eta),
-                  label: const Text("SOPIR (Aktifkan Tracking)"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    // Arahkan ke halaman login khusus sopir
-                    Navigator.push(
+                    // --- Tombol Sopir ---
+                    _buildRoleButton(
                       context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                    );
-                  },
+                      icon: Icons.drive_eta_rounded,
+                      label: "SOPIR",
+                      subtitle: "Aktifkan Tracking",
+                      color: driverButtonColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget helper untuk membuat tombol yang dapat digunakan kembali
+  Widget _buildRoleButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            child: Row(
+              children: [
+                Icon(icon, size: 40, color: Colors.white),
+                const SizedBox(width: 20),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+              ],
+            ),
           ),
         ),
       ),
