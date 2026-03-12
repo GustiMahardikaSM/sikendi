@@ -114,7 +114,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Login Gagal: Email atau Password salah.'),
+            content: const Text('Email atau Password salah.'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
