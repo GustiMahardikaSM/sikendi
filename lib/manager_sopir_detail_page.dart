@@ -110,7 +110,7 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Sopir'),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.blue[900],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

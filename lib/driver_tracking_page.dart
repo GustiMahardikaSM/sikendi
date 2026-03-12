@@ -104,7 +104,7 @@ class _DriverTrackingPageState extends State<DriverTrackingPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tracking GPS'),
-        backgroundColor: Colors.blue[800],
+        backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
       body: Stack(

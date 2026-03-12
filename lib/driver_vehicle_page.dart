@@ -113,7 +113,7 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pilih Kendaraan'),
-        backgroundColor: Colors.blue[800],
+        backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
       ),
       // --- MODIFIKASI: Gunakan Stack untuk overlay loading ---
