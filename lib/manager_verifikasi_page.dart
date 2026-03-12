@@ -13,87 +13,299 @@ class ManagerVerifikasiPage extends StatefulWidget {
 }
 
 class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
+
   late Future<List<Map<String, dynamic>>> _pendingDriversFuture;
 
+
+
   @override
+
   void initState() {
+
     super.initState();
+
     _loadData();
+
   }
+
+
 
   void _loadData() {
+
     setState(() {
+
       _pendingDriversFuture = MongoDBService.getPendingDrivers();
+
     });
+
   }
+
+
+
+  // Widget baru untuk kartu verifikasi
+
+  Widget _buildVerifikasiCard(Map<String, dynamic> driver) {
+
+    final nama = driver['nama'] ?? 'Tanpa Nama';
+
+    final hp = driver['no_hp'] ?? '-';
+
+    final tglDaftar = driver['tgl_daftar'] != null
+
+        ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(driver['tgl_daftar']))
+
+        : 'Tanggal tidak diketahui';
+
+
+
+    return Card(
+
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+
+      elevation: 2,
+
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+      child: InkWell(
+
+        borderRadius: BorderRadius.circular(12),
+
+        onTap: () async {
+
+          final bool? result = await Navigator.push(
+
+            context,
+
+            MaterialPageRoute(
+
+              builder: (context) => ManagerVerifikasiDetailPage(driver: driver),
+
+            ),
+
+          );
+
+          if (result == true && mounted) {
+
+            _loadData();
+
+          }
+
+        },
+
+        child: Padding(
+
+          padding: const EdgeInsets.all(16.0),
+
+          child: Row(
+
+            children: [
+
+              CircleAvatar(
+
+                radius: 28,
+
+                backgroundColor: Colors.orange[50],
+
+                child: Text(
+
+                  nama.isNotEmpty ? nama[0].toUpperCase() : '?',
+
+                  style: TextStyle(
+
+                    color: Colors.orange[800],
+
+                    fontWeight: FontWeight.bold,
+
+                    fontSize: 24,
+
+                  ),
+
+                ),
+
+              ),
+
+              const SizedBox(width: 16),
+
+              Expanded(
+
+                child: Column(
+
+                  crossAxisAlignment: CrossAxisAlignment.start,
+
+                  children: [
+
+                    Text(
+
+                      nama,
+
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+
+                      children: [
+
+                        Icon(Icons.phone_outlined, size: 14, color: Colors.grey[600]),
+
+                        const SizedBox(width: 6),
+
+                        Text(hp, style: TextStyle(color: Colors.grey[700])),
+
+                      ],
+
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Row(
+
+                      children: [
+
+                        Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[600]),
+
+                        const SizedBox(width: 6),
+
+                        Text(tglDaftar, style: TextStyle(color: Colors.grey[700])),
+
+                      ],
+
+                    ),
+
+                  ],
+
+                ),
+
+              ),
+
+              const SizedBox(width: 12),
+
+              Icon(Icons.chevron_right, color: Colors.grey[400]),
+
+            ],
+
+          ),
+
+        ),
+
+      ),
+
+    );
+
+  }
+
+
 
   @override
+
   Widget build(BuildContext context) {
+
     return Scaffold(
+
       appBar: AppBar(
+
         title: const Text("Verifikasi Pendaftaran Sopir"),
-      ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _pendingDriversFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text("Terjadi error: ${snapshot.error}"));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                "Tidak ada pendaftaran baru yang menunggu verifikasi.",
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
 
-          final drivers = snapshot.data!;
-          return RefreshIndicator(
-            onRefresh: () async => _loadData(),
-            child: ListView.builder(
+        backgroundColor: Colors.blue[900],
+
+        foregroundColor: Colors.white,
+
+        elevation: 0,
+
+      ),
+
+      backgroundColor: Colors.grey[100],
+
+      body: RefreshIndicator(
+
+        onRefresh: () async => _loadData(),
+
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+
+          future: _pendingDriversFuture,
+
+          builder: (context, snapshot) {
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+
+              return const Center(child: CircularProgressIndicator());
+
+            }
+
+            if (snapshot.hasError) {
+
+              return Center(
+
+                child: Text(
+
+                  'Gagal memuat data: ${snapshot.error}',
+
+                  style: TextStyle(color: Colors.red[700]),
+
+                ),
+
+              );
+
+            }
+
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+
+              return const Center(
+
+                child: Column(
+
+                  mainAxisAlignment: MainAxisAlignment.center,
+
+                  children: [
+
+                    Icon(Icons.person_search, size: 60, color: Colors.grey),
+
+                    SizedBox(height: 16),
+
+                    Text(
+
+                      'Tidak ada pendaftaran baru.',
+
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+
+                    ),
+
+                  ],
+
+                ),
+
+              );
+
+            }
+
+
+
+            final drivers = snapshot.data!;
+
+            return ListView.builder(
+
+              padding: const EdgeInsets.only(top: 8, bottom: 8),
+
               itemCount: drivers.length,
+
               itemBuilder: (context, index) {
-                final driver = drivers[index];
-                final tglDaftar = driver['tgl_daftar'] != null 
-                    ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(driver['tgl_daftar']))
-                    : 'Tanggal tidak diketahui';
 
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: ListTile(
-                    leading: const Icon(Icons.person_outline, color: Colors.orange),
-                    title: Text(driver['nama'] ?? 'Tanpa Nama'),
-                    subtitle: Text("No HP: ${driver['no_hp'] ?? '-'}\nDaftar: $tglDaftar"),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                    
-                    // --- PERBAIKAN LOGIKA REFRESH DISINI ---
-                    onTap: () async {
-                      // 1. Pindah ke halaman detail dan TUNGGU (await) hasilnya
-                      // Halaman detail akan mengembalikan 'true' jika ada perubahan status
-                      final bool? result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => 
-                              ManagerVerifikasiDetailPage(driver: driver),
-                        ),
-                      );
+                return _buildVerifikasiCard(drivers[index]);
 
-                      // 2. Jika result bernilai true, Refresh data list
-                      if (result == true) {
-                        _loadData(); 
-                      }
-                    },
-                  ),
-                );
               },
-            ),
-          );
-        },
+
+            );
+
+          },
+
+        ),
+
       ),
+
     );
+
   }
+
 }

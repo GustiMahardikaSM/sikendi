@@ -20,8 +20,13 @@ class _ManagerVerifikasiDetailPageState
   bool _isLoading = false;
 
   Uint8List _decodeBase64(String base64String) {
-    final cleanBase64 = base64String.split(',').last;
-    return base64Decode(cleanBase64);
+    try {
+      final cleanBase64 = base64String.split(',').last;
+      return base64Decode(cleanBase64);
+    } catch (e) {
+      // Return an empty list or a placeholder image byte array if decode fails
+      return Uint8List(0);
+    }
   }
 
   Future<void> _handleStatusUpdate(String status) async {
@@ -31,19 +36,15 @@ class _ManagerVerifikasiDetailPageState
     final driverId = widget.driver['_id'] as mongo.ObjectId;
 
     try {
-      // Panggil service. Jika ini gagal, akan melempar exception.
       await MongoDBService.updateDriverStatus(driverId, status);
-
-      // Jika kode mencapai baris ini, berarti operasi berhasil.
       if (mounted) {
         final message = "Status sopir berhasil diubah menjadi '$status'";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), backgroundColor: Colors.green),
         );
-        Navigator.pop(context, true); // Kirim sinyal sukses untuk refresh
+        Navigator.pop(context, true);
       }
     } catch (e) {
-      // Jika terjadi exception, tangkap di sini.
       if (mounted) {
         final message = "Gagal memperbarui status: ${e.toString()}";
         ScaffoldMessenger.of(context).showSnackBar(
@@ -51,62 +52,10 @@ class _ManagerVerifikasiDetailPageState
         );
       }
     } finally {
-      // Pastikan loading indicator selalu berhenti.
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Detail Verifikasi")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDetailItem("Nama", widget.driver['nama'] ?? 'N/A'),
-            _buildDetailItem("Email", widget.driver['email'] ?? 'N/A'),
-            _buildDetailItem("No. HP", widget.driver['no_hp'] ?? 'N/A'),
-            const SizedBox(height: 24),
-
-            _buildPhotoCard("Foto Selfie", widget.driver['foto_selfie_temp']),
-            const SizedBox(height: 16),
-            _buildPhotoCard("Foto KTP/ID Card", widget.driver['foto_ktp_temp']),
-            const SizedBox(height: 32),
-
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _showConfirmationDialog('ditolak'),
-                    icon: const Icon(Icons.close),
-                    label: const Text("Tolak"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      minimumSize: const Size(120, 48),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showConfirmationDialog('aktif'),
-                    icon: const Icon(Icons.check),
-                    label: const Text("Setujui"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      minimumSize: const Size(120, 48),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showConfirmationDialog(String status) {
@@ -117,6 +66,8 @@ class _ManagerVerifikasiDetailPageState
         content: Text(
           "Apakah Anda yakin ingin ${status == 'aktif' ? 'menyetujui' : 'menolak'} pendaftaran sopir ini?",
         ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -128,7 +79,9 @@ class _ManagerVerifikasiDetailPageState
               _handleStatusUpdate(status);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: status == 'aktif' ? Colors.green : Colors.red,
+              backgroundColor: status == 'aktif' ? Colors.green[700] : Colors.red[700],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text("Yakin"),
           ),
@@ -137,60 +90,183 @@ class _ManagerVerifikasiDetailPageState
     );
   }
 
-  Widget _buildDetailItem(String label, String value) {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Detail Verifikasi"),
+        backgroundColor: Colors.blue[900],
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      backgroundColor: Colors.grey[100],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoCard(),
+            const SizedBox(height: 16),
+            _buildPhotoCard("Foto Selfie", widget.driver['foto_selfie_temp']),
+            const SizedBox(height: 16),
+            _buildPhotoCard("Foto KTP / ID Card", widget.driver['foto_ktp_temp']),
+            const SizedBox(height: 24),
+            _buildActionButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Data Personal",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
+            ),
+            const SizedBox(height: 8),
+            const Divider(),
+            _buildDetailItem(Icons.person_outline, "Nama", widget.driver['nama'] ?? 'N/A'),
+            _buildDetailItem(Icons.email_outlined, "Email", widget.driver['email'] ?? 'N/A'),
+            _buildDetailItem(Icons.phone_outlined, "No. HP", widget.driver['no_hp'] ?? 'N/A'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Icon(icon, color: Colors.blue[800], size: 20),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF333333)),
+              ),
+            ],
           ),
-          const Divider(),
         ],
       ),
     );
   }
 
   Widget _buildPhotoCard(String title, String? base64Image) {
+    final imageBytes = base64Image != null && base64Image.isNotEmpty ? _decodeBase64(base64Image) : null;
+
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Text(
               title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
             ),
-            const SizedBox(height: 12),
-            if (base64Image != null && base64Image.isNotEmpty)
-              Center(
+          ),
+          const Divider(height: 1),
+          if (imageBytes != null && imageBytes.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Center(
                 child: Image.memory(
-                  _decodeBase64(base64Image),
+                  imageBytes,
                   fit: BoxFit.contain,
                   height: 250,
                   errorBuilder: (context, error, stackTrace) =>
                       const Icon(Icons.error, color: Colors.red, size: 50),
                 ),
-              )
-            else
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                  child: Text(
-                    "Gambar tidak tersedia atau telah dihapus.",
-                    style: TextStyle(color: Colors.grey),
-                  ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 48.0),
+              color: Colors.white,
+              child: const Center(
+                child: Text(
+                  "Gambar tidak tersedia.",
+                  style: TextStyle(color: Colors.grey),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
+  }
+
+  Widget _buildActionButtons() {
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                )
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showConfirmationDialog('ditolak'),
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text("Tolak"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[700],
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 4,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showConfirmationDialog('aktif'),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text("Setujui"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
   }
 }
