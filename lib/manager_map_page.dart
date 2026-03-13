@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/vehicle_detail_page.dart';
 
 class ManagerMapPage extends StatefulWidget {
   final LatLng? initialCenter;
@@ -156,10 +157,11 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // Tambahkan ini agar lebih fleksibel
       builder: (ctx) {
         return Container(
           padding: const EdgeInsets.all(20),
-          height: 350,
+          height: 400, // Diperbesar sedikit dari 350 menjadi 400 agar muat tombol
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -242,6 +244,40 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
                   },
                 ),
               ),
+              
+              const Spacer(), // Memberi jarak agar tombol berada di paling bawah
+              
+              // ==========================================
+              // TOMBOL TAMBAHAN UNTUK KE DETAIL KENDARAAN
+              // ==========================================
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // 1. Tutup Bottom Sheet terlebih dahulu
+                    Navigator.pop(context);
+                    
+                    // 2. Pindah ke halaman VehicleDetailPage dengan membawa deviceId
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VehicleDetailPage(deviceId: deviceId),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.info_outline),
+                  label: const Text("Lihat Detail Kendaraan"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[900], // Sesuaikan dengan tema aplikasi
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10), // Jarak kecil di bawah tombol
             ],
           ),
         );
@@ -337,7 +373,7 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
                             Icon(
                               Icons.directions_car_filled,
                               color: _getStatusColor(speed, timestamp),
-                              size: isFocused ? 50 : 40,
+                              size: isFocused ? 40 : 30,
                             ),
                           ],
                         ),
@@ -350,3 +386,4 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
     );
   }
 }
+
