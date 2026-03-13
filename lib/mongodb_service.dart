@@ -294,6 +294,57 @@ class MongoDBService {
   // (Manager bisa melihat semua & menambah kendaraan valid)
   // =================================================================
 
+  // =================================================================
+  // BAGIAN MANAJER - LEPAS PAKSA KENDARAAN
+  // =================================================================
+  static Future<Map<String, dynamic>?> lepasPaksaKendaraan(String deviceId) async {
+    try {
+      if (_dbLokasi == null || !_dbLokasi!.isConnected) await connect();
+      _collectionLokasi ??= _dbLokasi!.collection(_collectionLokasiName);
+
+      final waktuLepas = DateTime.now().toIso8601String();
+      
+      // 1. Cari dokumen kendaraan berdasarkan device_id atau gps_1
+      var doc = await _collectionLokasi!.findOne(where.eq('gps_1', deviceId));
+      if (doc == null) {
+        doc = await _collectionLokasi!.findOne(where.eq('device_id', deviceId));
+      }
+
+      if (doc == null) return null;
+
+      // 2. Siapkan modifier untuk mengubah status, mengosongkan peminjam & waktu ambil
+      final modifier = modify
+          .set('status', 'Tersedia')
+          .set('peminjam', null)
+          .set('waktu_ambil', null)
+          .set('waktu_lepas', waktuLepas);
+
+      // 3. Update di _collectionLokasi
+      await _collectionLokasi!.update(where.id(doc['_id']), modifier);
+
+      // 4. Sinkronisasikan ke collection 'kendaraan' agar data Manajer seragam
+      final vehicleDataForSync = {
+        'plat': doc['plat'],
+        'model': doc['model'],
+        'gps_1': doc['gps_1'] ?? doc['device_id'] ?? deviceId,
+        'device_id': doc['device_id'] ?? doc['gps_1'] ?? deviceId,
+        'status': 'Tersedia',
+        'peminjam': null,
+        'waktu_ambil': null,
+        'waktu_lepas': waktuLepas,
+      };
+      
+      await _syncToKendaraanCollection(vehicleDataForSync);
+      
+      // FIX: Panggil ulang getDetailKendaraan untuk memastikan semua data (termasuk foto) ikut terkirim
+      return await getDetailKendaraan(deviceId);
+
+    } catch (e) {
+      print("Error lepas paksa kendaraan: $e");
+      return null;
+    }
+  }
+
   // Helper: Sinkronkan data ke collection kendaraan
   static Future<void> _syncToKendaraanCollection(
     Map<String, dynamic> vehicleData,

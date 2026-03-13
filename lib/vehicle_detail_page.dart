@@ -614,10 +614,10 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
                         // --- AKHIR TAMBAHAN ---
                         const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.person,
-                          label: 'Peminjam',
-                          value: peminjam?.toString() ?? '-',
+                        _buildPeminjamCard(
+                          context: context,
+                          peminjam: peminjam?.toString() ?? '-',
+                          deviceId: deviceId.toString(),
                         ),
                         const SizedBox(height: 12),
                         _buildInfoCard(
@@ -720,6 +720,143 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           ],
         ),
       ),
+    );
+  }
+
+  // Widget khusus untuk menampilkan Info Peminjam beserta tombol Lepas
+  Widget _buildPeminjamCard({
+    required BuildContext context,
+    required String peminjam,
+    required String deviceId,
+  }) {
+    // Tombol hanya muncul jika ada yang meminjam
+    bool isDipinjam = peminjam != '-';
+
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.person, color: Colors.blue[900], size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Peminjam',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    peminjam,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isDipinjam)
+              ElevatedButton.icon(
+                onPressed: () => _showLepasPaksaDialog(context, deviceId, peminjam),
+                icon: const Icon(Icons.output_rounded, size: 16),
+                label: const Text('Lepas'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[50],
+                  foregroundColor: Colors.red[700],
+                  elevation: 0,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Dialog Konfirmasi Lepas Paksa
+  void _showLepasPaksaDialog(BuildContext context, String deviceId, String peminjam) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        bool isProcessing = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) { // <<-- setState diganti nama menjadi setDialogState
+            return AlertDialog(
+              title: const Text('Lepas Paksa Kendaraan?'),
+              content: Text(
+                'Apakah Anda yakin ingin melepas paksa penanggung jawab ($peminjam) dari kendaraan ini?\n\nStatus kendaraan akan kembali menjadi "Tersedia".'
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isProcessing ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: isProcessing
+                      ? null
+                      : () async {
+                          // Gunakan setDialogState untuk me-refresh dialog saja
+                          setDialogState(() => isProcessing = true);
+                          
+                          final updatedVehicle = await MongoDBService.lepasPaksaKendaraan(deviceId);
+                          
+                          // Gunakan 'mounted' dari State utama
+                          if (!mounted) return;
+                          
+                          Navigator.of(dialogContext).pop(); // Tutup dialog
+                          
+                          if (updatedVehicle != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Berhasil melepas kendaraan'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            // Panggil setState milik halaman untuk refresh seluruh UI
+                            setState(() {
+                              _vehicleFuture = Future.value(updatedVehicle);
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Gagal melepas kendaraan'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: isProcessing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text('Ya, Lepas Paksa', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
     );
   }
 
