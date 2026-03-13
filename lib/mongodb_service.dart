@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:async'; // ✨ TAMBAHKAN INI UNTUK TIMER
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:sikendi/models/kegiatan_sopir.dart';
 
@@ -16,6 +17,10 @@ class MongoDBService {
   static DbCollection? _collectionKendaraan;
   static DbCollection? _collectionTripHistory; // ✨ TAMBAHAN BARU
 
+  // ✨ TAMBAHKAN 2 VARIABEL INI DI SINI
+  static bool _isConnectingLokasi = false; // Lock (Gembok) Anti-Spam
+  static Timer? _heartbeatTimer;           // Timer Ping
+
   // --- KONFIGURASI DB JADWAL & SOPIR ---
   static final String _mongoJadwalUrl =
       "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
@@ -30,21 +35,32 @@ class MongoDBService {
 
   // 1. KONEKSI DATABASE LOKASI
   static Future<void> connect() async {
+    // 🛡️ ANTI-SPAM: Jika sedang mencoba koneksi, abaikan permintaan lain
+    if (_isConnectingLokasi) {
+      print("⏳ Sedang mencoba reconnect, harap tunggu...");
+      return; 
+    }
+
+    _isConnectingLokasi = true; // Kunci gembok
+
     try {
       _dbLokasi = await Db.create(_mongoLokasiUrl);
-      await _dbLokasi!.open();
+      await _dbLokasi!.open(secure: true); // Pastikan secure: true
       inspect(_dbLokasi);
       _collectionLokasi = _dbLokasi!.collection(_collectionLokasiName);
       _collectionKendaraan = _dbLokasi!.collection(_collectionKendaraanName);
-
-      // ✨ TAMBAHAN BARU
       _collectionTripHistory = _dbLokasi!.collection(_collectionTripHistoryName);
 
-      print(
-        "✅ Berhasil Terkoneksi ke MongoDB Atlas (gps_location, kendaraan & trip_history)",
-      );
+      print("✅ Berhasil Terkoneksi ke MongoDB Atlas (Lokasi)");
+
+      // 💓 MULAI HEARTBEAT SAAT KONEKSI SUKSES
+      _startHeartbeat();
+
     } catch (e) {
       print("❌ Gagal Koneksi ke gps_location: $e");
+      _dbLokasi = null; // Bersihkan jika gagal
+    } finally {
+      _isConnectingLokasi = false; // Buka gembok kembali, sukses maupun gagal
     }
   }
 
@@ -63,6 +79,34 @@ class MongoDBService {
     } catch (e) {
       print("❌ Gagal Koneksi ke demo_akun: $e");
     }
+  }
+
+  // =================================================================
+  // BAGIAN KONEKSI & HEARTBEAT
+  // =================================================================
+
+  static void _startHeartbeat() {
+    // Batalkan timer lama jika sebelumnya sudah berjalan
+    _heartbeatTimer?.cancel(); 
+
+    // Jalankan detak jantung setiap 3 menit (180 detik)
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 3), (timer) async {
+      try {
+        if (_dbLokasi != null && _dbLokasi!.isConnected && _collectionLokasi != null) {
+          // Lakukan query kosong sekadar untuk "mencolek" server agar tidak tertidur
+          await _collectionLokasi!.findOne(); 
+          print("💓 Heartbeat MongoDB: Tetap terhubung.");
+        } else {
+          // Jika koneksi sudah ketahuan putus, matikan timer
+          print("⚠️ Heartbeat berhenti: Database null.");
+          timer.cancel();
+        }
+      } catch (e) {
+        print("💔 Heartbeat gagal (Socket terputus saat ping): $e");
+        _dbLokasi = null; // Paksa reset agar fungsi read/write melakukan reconnect
+        timer.cancel();
+      }
+    });
   }
 
   // =================================================================
