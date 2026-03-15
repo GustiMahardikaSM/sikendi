@@ -525,123 +525,161 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                   ),
 
                   // ====================================================
-                  // INFORMASI DETAIL (FITUR LAIN TETAP ADA)
+                  // INFORMASI DETAIL (DESAIN MODERN)
                   // ====================================================
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Informasi Detail',
+                          'Identitas Kendaraan',
                           style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
+                        
+                        // KELOMPOK 1: IDENTITAS (Grouped List Style)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.shade100,
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _buildModernEditableRow(
+                                context: context,
+                                icon: Icons.confirmation_number_outlined,
+                                label: 'Plat Nomor',
+                                value: plat.toString(),
+                                vehicle: vehicleData!,
+                                fieldType: 'plat',
+                                onUpdate: () => _loadVehicleDetail(),
+                              ),
+                              Divider(height: 1, color: Colors.grey.shade100, indent: 56),
+                              _buildModernEditableRow(
+                                context: context,
+                                icon: Icons.directions_car_outlined,
+                                label: 'Model',
+                                value: model.toString(),
+                                vehicle: vehicleData!,
+                                fieldType: 'model',
+                                onUpdate: () => _loadVehicleDetail(),
+                              ),
+                              Divider(height: 1, color: Colors.grey.shade100, indent: 56),
+                              _buildModernInfoRow(
+                                icon: Icons.memory_outlined,
+                                label: 'Device ID',
+                                value: deviceId.toString(),
+                              ),
+                              Divider(height: 1, color: Colors.grey.shade100, indent: 56),
+                              _buildModernInfoRow(
+                                icon: Icons.gps_fixed_outlined,
+                                label: 'GPS ID',
+                                value: gps1.toString(),
+                              ),
+                            ],
+                          ),
+                        ),
 
-                        _buildEditableInfoCard(
-                          context: context,
-                          icon: Icons.confirmation_number,
-                          label: 'Plat Nomor',
-                          value: plat.toString(),
-                          vehicle: vehicleData!,
-                          fieldType: 'plat',
-                          onUpdate: () => _loadVehicleDetail(),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildEditableInfoCard(
-                          context: context,
-                          icon: Icons.directions_car,
-                          label: 'Model',
-                          value: model.toString(),
-                          vehicle: vehicleData!,
-                          fieldType: 'model',
-                          onUpdate: () => _loadVehicleDetail(),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.devices,
-                          label: 'Device ID',
-                          value: deviceId.toString(),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.gps_fixed,
-                          label: 'GPS ID',
-                          value: gps1.toString(),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.info_outline,
-                          label: 'Status',
-                          value: status.toString(),
-                          valueColor: statusColor,
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Status & Telemetri',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                         const SizedBox(height: 12),
 
-                        // --- TAMBAHAN BARU: TAMPILKAN KOORDINAT ---
-                        Builder(
-                          builder: (context) {
-                            // Logika ekstraksi koordinat agar aman
-                            String lat = "0";
-                            String lng = "0";
-
-                            var gpsLoc = vehicleData!['gps_location'];
-                            if (gpsLoc != null) {
-                              if (gpsLoc is Map && gpsLoc.containsKey('lat')) {
-                                lat = gpsLoc['lat'].toString();
-                                lng = gpsLoc['lng'].toString();
-                              } else if (gpsLoc is Map &&
-                                  gpsLoc.containsKey('coordinates')) {
-                                // Handle GeoJSON [lng, lat]
-                                List coords = gpsLoc['coordinates'];
-                                if (coords.length >= 2) {
-                                  lng = coords[0].toString();
-                                  lat = coords[1].toString();
+                        // KELOMPOK 2: TELEMETRI (Bento Grid Style)
+                        GridView.count(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.5,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            _buildGridStatBox(
+                              icon: Icons.info_outline,
+                              label: 'Status',
+                              value: status.toString(),
+                              iconColor: statusColor,
+                              valueColor: statusColor,
+                            ),
+                            _buildGridStatBox(
+                              icon: Icons.speed_outlined,
+                              label: 'Kecepatan',
+                              value: "${speed.toStringAsFixed(1)} km/h",
+                              iconColor: Colors.orange,
+                            ),
+                            _buildGridStatBox(
+                              icon: Icons.update_outlined,
+                              label: 'Update Terakhir',
+                              value: _formatDateTime(gpsTime.toString()),
+                              iconColor: Colors.blue,
+                              isSmallText: true,
+                            ),
+                            Builder(
+                              builder: (context) {
+                                String lat = "0";
+                                String lng = "0";
+                                var gpsLoc = vehicleData!['gps_location'];
+                                if (gpsLoc != null) {
+                                  if (gpsLoc is Map && gpsLoc.containsKey('lat')) {
+                                    lat = gpsLoc['lat'].toString();
+                                    lng = gpsLoc['lng'].toString();
+                                  } else if (gpsLoc is Map && gpsLoc.containsKey('coordinates')) {
+                                    List coords = gpsLoc['coordinates'];
+                                    if (coords.length >= 2) {
+                                      lng = coords[0].toString();
+                                      lat = coords[1].toString();
+                                    }
+                                  }
                                 }
-                              }
-                            }
-
-                            return _buildInfoCard(
-                              icon: Icons.map, // Ikon Peta
-                              label: 'Lokasi Terkini (Lat, Lng)',
-                              value: "$lat, $lng",
-                            );
-                          },
+                                return _buildGridStatBox(
+                                  icon: Icons.location_on_outlined,
+                                  label: 'Koordinat',
+                                  value: "$lat,\n$lng",
+                                  iconColor: Colors.redAccent,
+                                  isSmallText: true,
+                                );
+                              },
+                            ),
+                          ],
                         ),
 
-                        // --- AKHIR TAMBAHAN ---
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Informasi Peminjaman',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        _buildPeminjamCard(
+
+                        // KELOMPOK 3: PEMINJAMAN (Accent Highlight Box)
+                        _buildModernPeminjamCard(
                           context: context,
                           peminjam: peminjam?.toString() ?? '-',
                           deviceId: deviceId.toString(),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.access_time,
-                          label: 'Waktu Ambil',
-                          value: _formatDateTime(waktuAmbil),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.event_available,
-                          label: 'Waktu Lepas',
-                          value: _formatDateTime(waktuLepas),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.speed,
-                          label: 'Kecepatan',
-                          value: "${speed.toStringAsFixed(1)} km/h",
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCard(
-                          icon: Icons.access_time,
-                          label: 'Terakhir Update',
-                          value: _formatDateTime(gpsTime.toString()),
+                          waktuAmbil: _formatDateTime(waktuAmbil),
+                          waktuLepas: _formatDateTime(waktuLepas),
                         ),
 
                         // ✨ === MULAI TAMBAHAN UI TRIP HISTORY === ✨
@@ -659,7 +697,6 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                         _buildTripHistorySection(),
                         const SizedBox(height: 32),
                         // ✨ === AKHIR TAMBAHAN UI TRIP HISTORY === ✨
-
                       ],
                     ),
                   ),
@@ -672,119 +709,214 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     );
   }
 
-  Widget _buildInfoCard({
+  // --- WIDGET BUILDER MODERN ---
+
+  Widget _buildModernInfoRow({
     required IconData icon,
     required String label,
     required String value,
-    Color? valueColor,
   }) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: Colors.blue[900], size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: valueColor ?? Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey.shade500, size: 22),
+          const SizedBox(width: 16),
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+        ],
       ),
     );
   }
 
-  // Widget khusus untuk menampilkan Info Peminjam beserta tombol Lepas
-  Widget _buildPeminjamCard({
+  Widget _buildModernEditableRow({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Map<String, dynamic> vehicle,
+    required String fieldType,
+    required VoidCallback onUpdate,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue.shade700, size: 22),
+          const SizedBox(width: 16),
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.edit_square, color: Colors.blue.shade300, size: 20),
+            splashRadius: 20,
+            constraints: const BoxConstraints(),
+            padding: EdgeInsets.zero,
+            onPressed: () => _showEditDialog(context, label, value, vehicle, fieldType, onUpdate),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridStatBox({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color iconColor,
+    Color? valueColor,
+    bool isSmallText = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: iconColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: iconColor.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 16),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isSmallText ? 12 : 16,
+              color: valueColor ?? Colors.black87,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernPeminjamCard({
     required BuildContext context,
     required String peminjam,
     required String deviceId,
+    required String waktuAmbil,
+    required String waktuLepas,
   }) {
-    // Tombol hanya muncul jika ada yang meminjam
     bool isDipinjam = peminjam != '-';
 
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: isDipinjam
+            ? LinearGradient(colors: [Colors.blue.shade50, Colors.white], begin: Alignment.topLeft, end: Alignment.bottomRight)
+            : null,
+        color: isDipinjam ? null : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDipinjam ? Colors.blue.shade100 : Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: isDipinjam ? Colors.blue.shade100 : Colors.grey.shade300,
+                child: Icon(Icons.person, color: isDipinjam ? Colors.blue.shade800 : Colors.grey.shade600),
               ),
-              child: Icon(Icons.person, color: Colors.blue[900], size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Peminjam',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sedang Digunakan Oleh',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    peminjam,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                    Text(
+                      peminjam,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDipinjam ? Colors.blue.shade900 : Colors.black54,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            if (isDipinjam)
-              ElevatedButton.icon(
-                onPressed: () => _showLepasPaksaDialog(context, deviceId, peminjam),
-                icon: const Icon(Icons.output_rounded, size: 16),
-                label: const Text('Lepas'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[50],
-                  foregroundColor: Colors.red[700],
-                  elevation: 0,
+                  ],
                 ),
               ),
+              if (isDipinjam)
+                OutlinedButton.icon(
+                  onPressed: () => _showLepasPaksaDialog(context, deviceId, peminjam),
+                  icon: const Icon(Icons.power_settings_new, size: 16),
+                  label: const Text('Lepas'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade200),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildTimelineItem('Diambil', waktuAmbil, Icons.login),
+              _buildTimelineItem('Dilepas', waktuLepas, Icons.logout),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(String label, String time, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: Colors.grey.shade500),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            Text(time, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           ],
         ),
-      ),
+      ],
     );
   }
 
