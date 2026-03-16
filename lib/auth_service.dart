@@ -1,12 +1,11 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:mongo_dart/mongo_dart.dart';
+import 'package:http/http.dart' as http;
 
 class AuthService {
-  static const String _mongoUrl =
-      "mongodb+srv://0000:1111@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
-
-  static const String _collection = "sopir";
+  // Gunakan 10.0.2.2 jika diuji di Emulator Android.
+  // Jika di HP Fisik, ganti dengan IP Address WiFi Anda (misal 192.168.1.10)
+  static const String _baseUrl = "http://10.0.2.2:3000/api";
 
   static String hashPassword(String password) {
     var bytes = utf8.encode(password);
@@ -14,86 +13,38 @@ class AuthService {
     return digest.toString();
   }
 
-  /// 1. Fungsi "Pembuat Jejak Digital" (Hashing)
-  /// Menggabungkan string base64 dari selfie dan KTP, lalu membuat hash SHA-256.
-  static String _createImageHash(String base64Selfie, String base64Ktp) {
-    var combinedImageString = base64Selfie + base64Ktp;
-    var imageBytes = utf8.encode(combinedImageString);
-    var imageHash = sha256.convert(imageBytes).toString();
-    return imageHash;
-  }
-
-  /// 3. Update Fungsi login (Pengecekan Status)
   static Future<Map<String, dynamic>?> loginSopir(
     String email,
     String password,
   ) async {
-    Db? db;
     try {
-      db = await Db.create(_mongoUrl);
-      await db.open();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/login-sopir'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
 
-      var collection = db.collection(_collection);
-      var user = await collection.findOne(where.eq('email', email));
+      final decoded = jsonDecode(response.body);
 
-      if (user == null) {
-        print("AuthService: User not found for email $email");
+      // Status 200 = Sukses (aktif)
+      if (response.statusCode == 200) {
+        return decoded; 
+      } else {
+        // Status gagal (pending, ditolak, atau salah password)
         return {
-          'error': 'credentials',
-          'message': 'Email atau password salah.',
+          'error': decoded['error'] ?? 'unknown',
+          'message': decoded['message'] ?? 'Terjadi kesalahan server.',
         };
-      }
-
-      String inputHash = hashPassword(password);
-      if (user['password'] != inputHash) {
-        print("AuthService: Incorrect password for ${user['email']}");
-        return {
-          'error': 'credentials',
-          'message': 'Email atau password salah.',
-        };
-      }
-
-      // --- Alur Logika Baru: Cek Status Akun ---
-      final status = user['status_akun'];
-      print("AuthService: Account status for ${user['email']} is '$status'.");
-
-      switch (status) {
-        case 'aktif':
-          // Kondisi C (Aktif): Izinkan masuk
-          print("AuthService: Login successful for ${user['email']}");
-          return user;
-        case 'pending':
-          // Kondisi A (Pending): Jangan izinkan masuk
-          return {
-            'error': 'pending',
-            'message': 'Akun Anda sedang dalam proses verifikasi Manajer.',
-          };
-        case 'ditolak':
-          // Kondisi B (Ditolak): Jangan izinkan masuk
-          return {
-            'error': 'ditolak',
-            'message': 'Mohon maaf, pendaftaran Anda ditolak karena data tidak sesuai.',
-          };
-        default:
-          // Fallback untuk sopir lama yang mungkin belum punya status
-          if (status == null && user['role'] == 'sopir') {
-             print("AuthService: Login successful for old user ${user['email']} with null status.");
-             return user;
-          }
-           return {
-            'error': 'unknown',
-            'message': 'Status akun tidak diketahui. Hubungi administrator.',
-          };
       }
     } catch (e) {
-      print("Error Login: $e");
-      return {'error': 'exception', 'message': 'Terjadi kesalahan: $e'};
-    } finally {
-      await db?.close();
+      print("Error Login HTTP: $e");
+      return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server.'};
     }
   }
 
-  /// 2. Update Fungsi signUp (Pendaftaran)
   static Future<String> signUpSopir({
     required String email,
     required String password,
@@ -102,47 +53,29 @@ class AuthService {
     required String fotoSelfieBase64,
     required String fotoKtpBase64,
   }) async {
-    Db? db;
     try {
-      db = await Db.create(_mongoUrl);
-      await db.open();
-      var collection = db.collection(_collection);
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/register-sopir'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+          'nama': nama,
+          'noHp': noHp,
+          'base64Selfie': fotoSelfieBase64,
+          'base64Ktp': fotoKtpBase64,
+        }),
+      );
 
-      // Cek Duplikat Email
-      var existingUser = await collection.findOne(where.eq('email', email));
-      if (existingUser != null) {
-        return "Email sudah dipakai. Silakan pilih yang lain.";
+      if (response.statusCode == 201) {
+        return "Sukses";
+      } else {
+        final decoded = jsonDecode(response.body);
+        return decoded['message'] ?? "Pendaftaran gagal.";
       }
-      
-      // Generate Hash Jejak Digital
-      final String jejakHash = _createImageHash(fotoSelfieBase64, fotoKtpBase64);
-      
-      // Susun Dokumen Database
-      await collection.insert({
-        'nama': nama,
-        'email': email,
-        'password': hashPassword(password),
-        'no_hp': noHp,
-        'role': 'sopir',
-
-        // --- KOLOM BARU SESUAI PERMINTAAN ---
-        'status_akun': 'pending', // Default status
-        'tgl_daftar': DateTime.now().toIso8601String(),
-
-        // Data Privasi (Sementara)
-        'foto_selfie_temp': fotoSelfieBase64,
-        'foto_ktp_temp': fotoKtpBase64,
-
-        // Data Jejak (Permanen)
-        'foto_hash_jejak': jejakHash,
-      });
-
-      return "Sukses";
     } catch (e) {
-      print("Error during signUpSopir: $e");
-      return "Error: $e";
-    } finally {
-      await db?.close();
+      print("Error Register HTTP: $e");
+      return "Error jaringan: Tidak dapat terhubung ke server.";
     }
   }
 }
