@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/vehicle_api_service.dart';
 
 class ManagerSopirDetailPage extends StatefulWidget {
   final Map<String, dynamic> dataSopir;
@@ -42,7 +43,8 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
     }
 
     try {
-      final pekerjaan = await MongoDBService.getPekerjaanBySopir(namaSopir);
+      final pekerjaanList = await VehicleApiService.getPekerjaanSaya(namaSopir);
+      final pekerjaan = pekerjaanList.isNotEmpty ? pekerjaanList.first : null;
       if (mounted) {
         setState(() {
           statusPekerjaan = pekerjaan;

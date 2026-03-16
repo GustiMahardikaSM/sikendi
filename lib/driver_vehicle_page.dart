@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
-import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/vehicle_api_service.dart';
 
 class DriverVehiclePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -23,7 +22,7 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
 
   void _loadVehicles() {
     setState(() {
-      _vehiclesFuture = MongoDBService.getKendaraanTersedia();
+      _vehiclesFuture = VehicleApiService.getKendaraanTersedia();
       _loadMyJob(); 
     });
   }
@@ -32,7 +31,7 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
     // Menggunakan 'nama' atau 'nama_lengkap' untuk kompatibilitas
     final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'];
     if (namaSopir != null) {
-      final myJobs = await MongoDBService.getPekerjaanSaya(namaSopir);
+      final myJobs = await VehicleApiService.getPekerjaanSaya(namaSopir);
       if(myJobs.isNotEmpty && mounted) {
         setState(() {
           _selectedCar = myJobs.first;
@@ -49,9 +48,9 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
 
     try {
       final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'] ?? 'Nama Tidak Ditemukan';
-      final carId = car['_id'] as mongo.ObjectId;
+      final carId = car['_id'].toString(); // Diambil sebagai String dari API JSON
 
-      await MongoDBService.ambilKendaraan(carId, namaSopir);
+      await VehicleApiService.ambilKendaraan(carId, namaSopir);
       
       // Jeda untuk memastikan database selesai commit sebelum UI me-refresh
       await Future.delayed(const Duration(milliseconds: 300)); 
@@ -83,9 +82,9 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
     });
 
     try {
-      final carId = _selectedCar!['_id'] as mongo.ObjectId;
+      final carId = _selectedCar!['_id'].toString(); // Diambil sebagai String dari API JSON
 
-      await MongoDBService.selesaikanPekerjaan(carId);
+      await VehicleApiService.selesaikanPekerjaan(carId);
       
       // Jeda untuk memastikan database selesai commit sebelum UI me-refresh
       await Future.delayed(const Duration(milliseconds: 300));

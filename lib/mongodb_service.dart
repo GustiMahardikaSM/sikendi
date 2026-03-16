@@ -6,7 +6,7 @@ import 'package:sikendi/models/kegiatan_sopir.dart';
 class MongoDBService {
   // --- KONFIGURASI DB LOKASI---
   static final String _mongoLokasiUrl =
-      "rahasia";
+      "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
 
   static final String _collectionLokasiName = "gps_location";
   static final String _collectionKendaraanName = "kendaraan";
@@ -23,7 +23,7 @@ class MongoDBService {
 
   // --- KONFIGURASI DB JADWAL & SOPIR ---
   static final String _mongoJadwalUrl =
-      "rahasia";
+      "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
   static final String _collectionJadwalName = "kegiatan_sopir";
   static final String _collectionSopirName = "sopir";
   static final String _collectionManagerName = "manager"; // ✨ TAMBAHAN BARU
@@ -1534,42 +1534,6 @@ class MongoDBService {
   // =================================================================
   // BAGIAN AUTENTIKASI MANAJER
   // =================================================================
-
-  /// Fungsi untuk memverifikasi login manajer
-  /// Menerima email dan password yang sudah di-hash (SHA-256)
-  static Future<bool> loginManager(String email, String hashedPassword) async {
-    try {
-      // Pastikan koneksi database ke demo_akun sudah siap
-      if (_collectionManager == null) {
-        await connectJadwal();
-        if (_collectionManager == null) {
-          print("❌ Gagal: Collection Manager masih null (Cek Koneksi Internet)");
-          return false;
-        }
-      }
-
-      // Melakukan query pencarian ke collection manager
-      // Mencari dokumen yang email_manager dan pass_manager-nya cocok
-      final managerDoc = await _collectionManager!.findOne(
-        where
-          .eq('email_manager', email)
-          .eq('pass_manager', hashedPassword)
-      );
-
-      // Jika dokumen ditemukan, kembalikan nilai true (Berhasil Login)
-      if (managerDoc != null) {
-        print("✅ Login Manajer berhasil untuk: $email");
-        return true;
-      } else {
-        // Jika null, berarti email atau password salah
-        print("❌ Login Manajer gagal: Kredensial tidak cocok.");
-        return false;
-      }
-    } catch (e) {
-      print("Error saat proses login manager: $e");
-      return false;
-    }
-  }
 
   // =================================================================
   // BAGIAN TRIP HISTORY

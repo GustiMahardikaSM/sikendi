@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sikendi/auth_service.dart';
-import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/manager_page.dart';
 
 class ManagerLoginPage extends StatefulWidget {
@@ -93,15 +92,36 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
     final email = _emailController.text;
     final password = _passwordController.text;
 
-    final hashedPassword = AuthService.hashPassword(password);
-    final bool isLoggedIn = await MongoDBService.loginManager(email, hashedPassword);
+    // Panggil API Node.js untuk Login Manager
+    var result = await AuthService.loginManager(email, password);
 
     if (mounted) {
       setState(() {
         _isLoading = false;
       });
 
-      if (isLoggedIn) {
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Terjadi kesalahan koneksi atau server."),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+
+      if (result.containsKey('error')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? "Email atau Password salah."),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Kredensial Benar! Silakan setujui privasi data.'),
@@ -111,15 +131,6 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
           ),
         );
         _showPrivacyDialog();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Email atau Password salah.'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
       }
     }
   }

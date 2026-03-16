@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:sikendi/vehicle_api_service.dart';
 
 class ProfileSopirPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -137,7 +138,7 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
       
       // Memanggil fungsi yang sudah ada sebelumnya di MongoDBService
       // untuk mengecek pekerjaan/kendaraan yang sedang dipegang sopir
-      var pekerjaan = await MongoDBService.getPekerjaanSaya(namaSopir);
+      var pekerjaan = await VehicleApiService.getPekerjaanSaya(namaSopir);
       
       setState(() {
         if (pekerjaan.isNotEmpty) {
