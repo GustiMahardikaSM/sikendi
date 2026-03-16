@@ -4,7 +4,7 @@ import 'package:mongo_dart/mongo_dart.dart';
 
 class AuthService {
   static const String _mongoUrl =
-      "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
+      "mongodb+srv://0000:1111@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
 
   static const String _collection = "sopir";
 

@@ -6,7 +6,7 @@ import 'package:sikendi/models/kegiatan_sopir.dart';
 class MongoDBService {
   // --- KONFIGURASI DB LOKASI---
   static final String _mongoLokasiUrl =
-      "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
+      "mongodb+srv://0000:1111@cobamongo.4fwbqvt.mongodb.net/gps_1?retryWrites=true&w=majority";
 
   static final String _collectionLokasiName = "gps_location";
   static final String _collectionKendaraanName = "kendaraan";
@@ -23,7 +23,7 @@ class MongoDBService {
 
   // --- KONFIGURASI DB JADWAL & SOPIR ---
   static final String _mongoJadwalUrl =
-      "mongodb+srv://listaen:projekta1@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
+      "mongodb+srv://0000:1111@cobamongo.4fwbqvt.mongodb.net/demo_akun?retryWrites=true&w=majority";
   static final String _collectionJadwalName = "kegiatan_sopir";
   static final String _collectionSopirName = "sopir";
   static final String _collectionManagerName = "manager"; // ✨ TAMBAHAN BARU
