@@ -37,9 +37,10 @@ class AuthService {
           'message': decoded['message'] ?? 'Terjadi kesalahan server.',
         };
       }
-    } catch (e) {
+    } catch (e, s) {
       print("Error Login HTTP: $e");
-      return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server.'};
+      print("Stack trace: $s");
+      return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server. Detail: $e'};
     }
   }
 
@@ -67,9 +68,10 @@ class AuthService {
           'message': decoded['message'] ?? 'Terjadi kesalahan server.',
         };
       }
-    } catch (e) {
+    } catch (e, s) {
       print("Error Login Manager HTTP: $e");
-      return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server.'};
+      print("Stack trace: $s");
+      return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server. Detail: $e'};
     }
   }
 
@@ -101,9 +103,10 @@ class AuthService {
         final decoded = jsonDecode(response.body);
         return decoded['message'] ?? "Pendaftaran gagal.";
       }
-    } catch (e) {
+    } catch (e, s) {
       print("Error Register HTTP: $e");
-      return "Error jaringan: Tidak dapat terhubung ke server.";
+      print("Stack trace: $s");
+      return "Error jaringan: Tidak dapat terhubung ke server. Detail: $e";
     }
   }
 }
