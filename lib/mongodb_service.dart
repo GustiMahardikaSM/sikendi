@@ -200,10 +200,9 @@ class MongoDBService {
 
   static Future<Map<String, dynamic>?> lepasPaksaKendaraan(String deviceId) async {
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/lepas-paksa'),
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/lepas'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'deviceId': deviceId}),
       );
 
       if (response.statusCode == 200) {
