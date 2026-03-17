@@ -32,9 +32,13 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
     final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'];
     if (namaSopir != null) {
       final myJobs = await VehicleApiService.getPekerjaanSaya(namaSopir);
-      if(myJobs.isNotEmpty && mounted) {
+      if(mounted) {
         setState(() {
-          _selectedCar = myJobs.first;
+          if (myJobs.isNotEmpty) {
+            _selectedCar = myJobs.first;
+          } else {
+            _selectedCar = null; // Pastikan status ter-reset jika kosong
+          }
         });
       }
     }
@@ -48,14 +52,24 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
 
     try {
       final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'] ?? 'Nama Tidak Ditemukan';
-      final carId = car['_id'].toString(); // Diambil sebagai String dari API JSON
-
-      await VehicleApiService.ambilKendaraan(carId, namaSopir);
+      // Ekstrak deviceId asli, bukan _id (ObjectId)
+      final carId = car['gps_1']?.toString() ?? car['device_id']?.toString() ?? ''; 
       
-      // Jeda untuk memastikan database selesai commit sebelum UI me-refresh
-      await Future.delayed(const Duration(milliseconds: 300)); 
+      if (carId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: ID Kendaraan tidak valid"), backgroundColor: Colors.red));
+        return;
+      }
 
-      if (mounted) {
+      bool success = await VehicleApiService.ambilKendaraan(carId, namaSopir);
+      
+      if (success && mounted) {
+        // OPTIMISTIC UPDATE: Langsung ubah state lokal agar UI terasa instan!
+        setState(() {
+          _selectedCar = Map<String, dynamic>.from(car);
+          _selectedCar!['status'] = 'Dipakai';
+          _selectedCar!['peminjam'] = namaSopir;
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green,
@@ -82,7 +96,11 @@ class _DriverVehiclePageState extends State<DriverVehiclePage> {
     });
 
     try {
-      final carId = _selectedCar!['_id'].toString(); // Diambil sebagai String dari API JSON
+      final carId = _selectedCar!['gps_1']?.toString() ?? _selectedCar!['device_id']?.toString() ?? '';
+      if (carId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: ID Kendaraan tidak valid"), backgroundColor: Colors.red));
+        return;
+      }
 
       await VehicleApiService.selesaikanPekerjaan(carId);
       

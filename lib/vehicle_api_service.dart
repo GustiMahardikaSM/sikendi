@@ -21,7 +21,9 @@ class VehicleApiService {
   // READ (MY JOB)
   static Future<List<Map<String, dynamic>>> getPekerjaanSaya(String namaSopir) async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/kendaraan/pekerjaan-saya/$namaSopir'));
+      // Gunakan Uri.encodeComponent agar spasi pada nama tidak memecah URL API
+      final encodedNama = Uri.encodeComponent(namaSopir);
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/kendaraan/pekerjaan-saya/$encodedNama'));
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -34,12 +36,12 @@ class VehicleApiService {
   }
 
   // UPDATE (CHECK-IN)
-  static Future<bool> ambilKendaraan(String id, String namaSopir) async {
+  static Future<bool> ambilKendaraan(String deviceId, String namaSopir) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/check-in'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id': id, 'namaSopir': namaSopir}),
+        body: jsonEncode({'deviceId': deviceId, 'namaSopir': namaSopir}),
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -49,12 +51,11 @@ class VehicleApiService {
   }
 
   // UPDATE (CHECK-OUT)
-  static Future<bool> selesaikanPekerjaan(String id) async {
+  static Future<bool> selesaikanPekerjaan(String deviceId) async {
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/check-out'),
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/lepas'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id': id}),
       );
       return response.statusCode == 200;
     } catch (e) {

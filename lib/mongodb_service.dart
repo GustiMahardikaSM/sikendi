@@ -396,22 +396,15 @@ class MongoDBService {
   // READ (AVAILABLE): Sopir mencari mobil untuk bekerja
   static Future<List<Map<String, dynamic>>> getKendaraanTersedia() async {
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/tersedia'),
-      );
-
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/kendaraan/tersedia'));
+      
       if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
-        // ObjectId tidak lagi ada, pastikan UI tidak bergantung pada struktur ObjectId
-        // Jika UI memerlukan ID sebagai string, backend harus menyediakannya.
-        // Contoh: `item['_id'] = item['_id']['\$oid']` di backend sebelum mengirim.
+        List<dynamic> data = json.decode(response.body);
         return data.cast<Map<String, dynamic>>();
-      } else {
-        print("Gagal mengambil kendaraan tersedia: ${response.statusCode} - ${response.body}");
-        return [];
       }
+      return [];
     } catch (e) {
-      print("Terjadi error saat memanggil API kendaraan: $e");
+      print("Error GET Kendaraan Tersedia: $e");
       return [];
     }
   }
@@ -451,15 +444,20 @@ class MongoDBService {
   }
 
   // UPDATE (CHECK-IN): Sopir mengambil mobil
-  static Future<void> ambilKendaraan(Object id, String namaSopir) async { // Tipe ID mungkin perlu diubah menjadi String
+  static Future<bool> ambilKendaraan(String deviceId, String namaSopir) async {
     try {
-      await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/check-in'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id': id.toString(), 'namaSopir': namaSopir}),
+      // Endpoint diubah dari POST ke PUT agar lebih sesuai dengan REST convention
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/ambil'),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({"namaSopir": namaSopir}),
       );
+      
+      // Mengembalikan true jika berhasil
+      return response.statusCode == 200;
     } catch (e) {
-      print("Error API ambilKendaraan: $e");
+      print("Error PUT Ambil Kendaraan: $e");
+      return false;
     }
   }
 
