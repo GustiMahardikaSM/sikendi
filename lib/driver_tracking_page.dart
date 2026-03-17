@@ -5,7 +5,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:sikendi/mongodb_service.dart';
 
 class DriverTrackingPage extends StatefulWidget {
-  const DriverTrackingPage({super.key});
+  final String deviceId; // ✨ TAMBAHAN: Halaman ini butuh ID Kendaraan
+
+  const DriverTrackingPage({super.key, required this.deviceId});
 
   @override
   State<DriverTrackingPage> createState() => _DriverTrackingPageState();
@@ -34,7 +36,7 @@ class _DriverTrackingPageState extends State<DriverTrackingPage> {
   }
 
   Future<void> _fetchData() async {
-    final data = await MongoDBService.getLatestGpsData();
+    final data = await MongoDBService.getLatestGpsData(widget.deviceId);
     if (data == null || !mounted) return;
 
     final doc = data;

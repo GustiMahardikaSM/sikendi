@@ -478,10 +478,10 @@ class MongoDBService {
   // BAGIAN TRACKING
   // =================================================================
 
-  static Future<Map<String, dynamic>?> getLatestGpsData() async {
+  static Future<Map<String, dynamic>?> getLatestGpsData(String deviceId) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/tracking/latest'), // Sesuaikan endpoint jika berbeda di backend
+        Uri.parse('${ApiConfig.baseUrl}/tracking/latest/$deviceId'),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;

@@ -4,6 +4,7 @@ import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/driver_vehicle_page.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
+import 'package:sikendi/vehicle_api_service.dart'; // Tambahkan import ini
 import 'package:sikendi/profile_sopir_page.dart'; 
 
 // ==========================================================
@@ -61,11 +62,37 @@ class _DriverPageState extends State<DriverPage> {
         'title': 'Tracking GPS',
         'icon': Icons.map_outlined,
         'color': Colors.blueAccent,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const DriverTrackingPage()),
+        'onTap': () async {
+          // Tampilkan loading sebentar saat mengecek database
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(child: CircularProgressIndicator()),
           );
+
+          final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'];
+          String? idMobilDipinjam;
+
+          if (namaSopir != null) {
+            final myJobs = await VehicleApiService.getPekerjaanSaya(namaSopir);
+            if (myJobs.isNotEmpty) {
+              idMobilDipinjam = myJobs.first['gps_1']?.toString() ?? myJobs.first['device_id']?.toString();
+            }
+          }
+
+          if (context.mounted) Navigator.pop(context); // Tutup loading
+
+          if (idMobilDipinjam != null && idMobilDipinjam.isNotEmpty) {
+            if (context.mounted) {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => DriverTrackingPage(deviceId: idMobilDipinjam!)));
+            }
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Pilih dan ambil kendaraan terlebih dahulu!"), backgroundColor: Colors.orange),
+              );
+            }
+          }
         },
       },
       {
