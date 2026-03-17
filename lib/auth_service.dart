@@ -75,33 +75,36 @@ class AuthService {
     }
   }
 
-  static Future<String> signUpSopir({
+  // CREATE: Mendaftarkan akun sopir baru via REST API
+  static Future<String?> daftarAkunSopir({
+    required String nama,
     required String email,
     required String password,
-    required String nama,
     required String noHp,
-    required String fotoSelfieBase64,
-    required String fotoKtpBase64,
+    required String fotoKtpTemp,
+    required String fotoSelfieTemp,
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/auth/register-sopir'),
+        Uri.parse('${ApiConfig.baseUrl}/sopir/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': email,
-          'password': password,
-          'nama': nama,
-          'noHp': noHp,
-          'base64Selfie': fotoSelfieBase64,
-          'base64Ktp': fotoKtpBase64,
+          "nama": nama,
+          "email": email,
+          "password": password, // Pastikan Hash dilakukan sebelum dipanggil, atau sesuai logika Anda
+          "no_hp": noHp,
+          "foto_ktp_temp": fotoKtpTemp,
+          "foto_selfie_temp": fotoSelfieTemp,
         }),
       );
 
       if (response.statusCode == 201) {
-        return "Sukses";
+        return null; // Sukses! (Tidak ada pesan error)
+      } else if (response.statusCode == 409) {
+        return "Email sudah terdaftar! Gunakan email lain.";
       } else {
         final decoded = jsonDecode(response.body);
-        return decoded['message'] ?? "Pendaftaran gagal.";
+        return decoded['error'] ?? decoded['message'] ?? "Pendaftaran gagal. Kode: ${response.statusCode}";
       }
     } catch (e, s) {
       print("Error Register HTTP: $e");

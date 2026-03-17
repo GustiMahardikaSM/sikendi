@@ -138,19 +138,19 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = true);
 
     // 2. Kirim Data
-    String result = await AuthService.signUpSopir(
+    String? errorMessage = await AuthService.daftarAkunSopir(
       email: _emailController.text,
       password: _passwordController.text,
       nama: _namaController.text,
       noHp: _hpController.text,
-      fotoSelfieBase64: _base64Selfie!,
-      fotoKtpBase64: _base64Ktp!,
+      fotoSelfieTemp: _base64Selfie!,
+      fotoKtpTemp: _base64Ktp!,
     );
 
     setState(() => _isLoading = false);
 
     // 3. Feedback Sukses
-    if (result == "Sukses") {
+    if (errorMessage == null) {
       if (mounted) {
         showDialog(
           context: context,
@@ -177,7 +177,7 @@ class _SignUpPageState extends State<SignUpPage> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Gagal: $result")));
+            .showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     }
   }
