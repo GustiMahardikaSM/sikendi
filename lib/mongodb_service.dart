@@ -171,25 +171,45 @@ class MongoDBService {
     }
   }
 
-  static Future<void> updateDriverStatus(String id, String status) async {
+  // 2. PUT Approve Driver
+  static Future<bool> approveDriver(String driverId) async {
     try {
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/sopir/$id/status'),
+        Uri.parse('${ApiConfig.baseUrl}/sopir/$driverId/approve'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'status': status}),
       );
-
-      if (response.statusCode != 200) {
-        // Jika backend mengembalikan pesan error, kita bisa meneruskannya
-        final responseBody = jsonDecode(response.body);
-        throw Exception('Gagal memperbarui status sopir: ${responseBody['message'] ?? response.body}');
-      }
-      // Jika sukses (200 OK), fungsi selesai tanpa mengembalikan apa-apa.
+      return response.statusCode == 200;
     } catch (e) {
-      print("Terjadi error saat update status sopir: $e");
-      // Melempar kembali exception agar UI bisa menangkapnya (misalnya, untuk menampilkan snackbar)
-      rethrow;
+      print("Error Approve Driver: $e");
+      return false;
     }
+  }
+
+  // 3. DELETE Reject Driver
+  static Future<bool> rejectDriver(String driverId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/sopir/$driverId/reject'),
+        headers: {"Content-Type": "application/json"},
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Reject Driver: $e");
+      return false;
+    }
+  }
+
+  // 4. Jembatan Utama Update Status (Gunakan String untuk ID)
+  static Future<void> updateDriverStatus(String driverId, String status) async {
+    bool success;
+    if (status == 'aktif') {
+      success = await approveDriver(driverId);
+    } else if (status == 'ditolak') {
+      success = await rejectDriver(driverId);
+    } else {
+      throw Exception("Status tidak dikenal: $status");
+    }
+    if (!success) throw Exception("Gagal memperbarui status sopir dari server.");
   }
 
   // approveDriver dan rejectDriver akan menjadi logika di backend, tidak perlu di sini.
