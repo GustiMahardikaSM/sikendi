@@ -42,7 +42,8 @@ class MongoDBService {
   static Future<List<KegiatanSopir>> getKegiatan(String email) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/kegiatan/$email'),
+        // Sesuaikan dengan route backend yang baru
+        Uri.parse('${ApiConfig.baseUrl}/kegiatan/sopir/$email'),
       );
 
       if (response.statusCode == 200) {
