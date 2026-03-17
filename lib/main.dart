@@ -11,9 +11,6 @@ import 'package:sikendi/manager_login_page.dart'; // Library UI standar Flutter 
 Future<void> main() async {
   // Pastikan semua widget Flutter siap sebelum menjalankan kode async
   WidgetsFlutterBinding.ensureInitialized();
-  // Hubungkan ke database MongoDB sebelum aplikasi dimulai
-  await MongoDBService.connect();
-  await MongoDBService.connectJadwal();
 
   runApp(
     const MaterialApp(

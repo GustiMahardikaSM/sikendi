@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:sikendi/mongodb_service.dart';
 
 class ManagerVerifikasiDetailPage extends StatefulWidget {
@@ -33,7 +32,7 @@ class _ManagerVerifikasiDetailPageState
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
-    final driverId = widget.driver['_id'] as mongo.ObjectId;
+    final String driverId = widget.driver['_id'].toString();
 
     try {
       await MongoDBService.updateDriverStatus(driverId, status);

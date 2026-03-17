@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:sikendi/manager_verifikasi_detail_page.dart';
 import 'mongodb_service.dart';
 
