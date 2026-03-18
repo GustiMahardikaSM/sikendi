@@ -3,12 +3,22 @@ import 'dart:developer';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
 import 'package:sikendi/models/kegiatan_sopir.dart';
+import 'package:sikendi/auth_service.dart';
 
 // TODO: Ganti nama file ini menjadi 'api_service.dart' atau nama lain yang lebih sesuai
 class MongoDBService {
   // --- KONFIGURASI & KONEKSI LAMA (AKAN DIHAPUS) ---
   // Semua variabel dan fungsi koneksi (_mongoLokasiUrl, connect(), dll) telah dihapus
   // karena koneksi database sekarang ditangani oleh backend.
+
+  // --- HELPER UNTUK MENDAPATKAN HEADERS + TOKEN ---
+  static Future<Map<String, String>> _getHeaders() async {
+    final token = await AuthService.getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
 
   // =================================================================
   // BAGIAN JADWAL SOPIR
@@ -22,7 +32,7 @@ class MongoDBService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/kegiatan'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({
           'email': email,
           'judul': judul,
@@ -44,6 +54,7 @@ class MongoDBService {
       final response = await http.get(
         // Sesuaikan dengan route backend yang baru
         Uri.parse('${ApiConfig.baseUrl}/kegiatan/sopir/$email'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -69,6 +80,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/kegiatan'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -99,7 +111,7 @@ class MongoDBService {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kegiatan/${id.toString()}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({
           'judul': judul,
           'waktu': waktu.toIso8601String(),
@@ -118,6 +130,7 @@ class MongoDBService {
     try {
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/kegiatan/${id.toString()}'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode != 200) {
         print("Gagal menghapus kegiatan: ${response.statusCode} - ${response.body}");
@@ -135,6 +148,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/sopir'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -154,6 +168,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/sopir/pending'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -177,7 +192,7 @@ class MongoDBService {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/sopir/$driverId/approve'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -191,7 +206,7 @@ class MongoDBService {
     try {
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/sopir/$driverId/reject'),
-        headers: {"Content-Type": "application/json"},
+        headers: await _getHeaders(),
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -223,7 +238,7 @@ class MongoDBService {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/lepas'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -246,7 +261,7 @@ class MongoDBService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({
           'plat': plat,
           'model': model,
@@ -280,7 +295,7 @@ class MongoDBService {
 
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$gps1'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode(body),
       );
       
@@ -295,6 +310,7 @@ class MongoDBService {
     try {
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$gps1/metadata'),
+        headers: await _getHeaders(),
       );
       
       return response.statusCode == 200;
@@ -309,6 +325,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/manager/kendaraan/separated'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -336,6 +353,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/manager/kendaraan/all'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
@@ -354,6 +372,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/manager/fleet'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
@@ -372,6 +391,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/manager/dashboard/summary'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         Map<String, dynamic> data = jsonDecode(response.body);
@@ -397,7 +417,10 @@ class MongoDBService {
   // READ (AVAILABLE): Sopir mencari mobil untuk bekerja
   static Future<List<Map<String, dynamic>>> getKendaraanTersedia() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/kendaraan/tersedia'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/kendaraan/tersedia'),
+        headers: await _getHeaders(),
+      );
       
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
@@ -414,7 +437,8 @@ class MongoDBService {
   static Future<Map<String, dynamic>?> getPekerjaanBySopir(String namaSopir) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/pekerjaan-saya/$namaSopir')
+        Uri.parse('${ApiConfig.baseUrl}/kendaraan/pekerjaan-saya/$namaSopir'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
@@ -432,7 +456,8 @@ class MongoDBService {
   static Future<List<Map<String, dynamic>>> getPekerjaanSaya(String namaSopir) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/pekerjaan-saya/$namaSopir')
+        Uri.parse('${ApiConfig.baseUrl}/kendaraan/pekerjaan-saya/$namaSopir'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
@@ -450,7 +475,7 @@ class MongoDBService {
       // Endpoint diubah dari POST ke PUT agar lebih sesuai dengan REST convention
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/ambil'),
-        headers: {"Content-Type": "application/json"},
+        headers: await _getHeaders(),
         body: json.encode({"namaSopir": namaSopir}),
       );
       
@@ -467,7 +492,7 @@ class MongoDBService {
     try {
       await http.post(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/check-out'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({'id': id.toString()}),
       );
     } catch (e) {
@@ -483,6 +508,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/tracking/latest/$deviceId'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -501,8 +527,9 @@ class MongoDBService {
     String deviceId,
   ) async {
     try {
-      final response = await await http.get(
+      final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -521,7 +548,7 @@ class MongoDBService {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({'plat': plat, 'model': model}),
       );
       return response.statusCode == 200;
@@ -538,7 +565,7 @@ class MongoDBService {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/foto'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({'foto_url': fotoData}),
       );
       return response.statusCode == 200;
@@ -556,7 +583,7 @@ class MongoDBService {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/sopir/$email/foto'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({'foto_profil': base64Image}),
       );
       return response.statusCode == 200;
@@ -574,6 +601,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$gpsId/history'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
@@ -589,6 +617,7 @@ class MongoDBService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/sopir/$namaSopir/history'),
+        headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);

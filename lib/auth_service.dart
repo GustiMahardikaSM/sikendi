@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
 
@@ -9,6 +10,22 @@ class AuthService {
     var bytes = utf8.encode(password);
     var digest = sha256.convert(bytes);
     return digest.toString();
+  }
+
+  // --- MANAJEMEN TOKEN JWT ---
+  static Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jwt_token', token);
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jwt_token');
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
   }
 
   static Future<Map<String, dynamic>?> loginSopir(
@@ -29,6 +46,10 @@ class AuthService {
 
       // Status 200 = Sukses (aktif)
       if (response.statusCode == 200) {
+        // Simpan token ke memori lokal HP
+        if (decoded['token'] != null) {
+          await saveToken(decoded['token']);
+        }
         return decoded; 
       } else {
         // Status gagal (pending, ditolak, atau salah password)
@@ -61,6 +82,10 @@ class AuthService {
       final decoded = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        // Simpan token manajer ke memori lokal HP
+        if (decoded['token'] != null) {
+          await saveToken(decoded['token']);
+        }
         return decoded; 
       } else {
         return {
