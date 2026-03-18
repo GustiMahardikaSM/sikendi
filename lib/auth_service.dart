@@ -3,9 +3,11 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
+
+  static const storage = FlutterSecureStorage();
 
   static String hashPassword(String password) {
     var bytes = utf8.encode(password);
@@ -15,18 +17,15 @@ class AuthService {
 
   // --- MANAJEMEN TOKEN JWT ---
   static Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('jwt_token', token);
+    await storage.write(key: 'jwt_token', value: token);
   }
 
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('jwt_token');
+    return await storage.read(key: 'jwt_token');
   }
 
   static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt_token');
+    await storage.delete(key: 'jwt_token');
   }
 
   static Future<Map<String, dynamic>?> loginSopir(
