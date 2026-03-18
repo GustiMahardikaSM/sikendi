@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
@@ -111,7 +112,7 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
         }
       }
     } catch (e) {
-      print("Error saat memproses foto: $e");
+      debugPrint("Error saat memproses foto: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Terjadi kesalahan saat memproses foto."), backgroundColor: Colors.red),
       );
@@ -149,7 +150,7 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
         }
       });
     } catch (e) {
-      print("Gagal mengambil data kendaraan: $e");
+      debugPrint("Gagal mengambil data kendaraan: $e");
     } finally {
       setState(() {
         _isLoading = false;

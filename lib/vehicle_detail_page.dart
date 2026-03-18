@@ -1,5 +1,6 @@
 import 'dart:convert'; // Untuk Base64
 import 'dart:io'; // Untuk File
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Plugin ambil gambar
 import 'package:sikendi/manager_map_page.dart';
@@ -112,7 +113,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
         }
       }
     } catch (e) {
-      print("Error pick image: $e");
+      debugPrint("Error pick image: $e");
       if (mounted) {
         setState(() => _isUploadingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -136,7 +137,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
         return NetworkImage(fotoData);
       }
     } catch (e) {
-      print("Error loading image: $e");
+      debugPrint("Error loading image: $e");
     }
 
     return null;
@@ -193,7 +194,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
         ),
       );
     } catch (e) {
-      print("Error parsing coordinates: $e");
+      debugPrint("Error parsing coordinates: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Gagal membuka peta: Format koordinat salah"),

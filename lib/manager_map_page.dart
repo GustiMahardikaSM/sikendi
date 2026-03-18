@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -68,7 +69,7 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
             }
           }
         } catch (e) {
-          print("Map not ready for move: $e");
+          debugPrint("Map not ready for move: $e");
         }
       }
     }
@@ -132,7 +133,7 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
         );
       }
     } catch (e) {
-      print("Error parsing lokasi untuk ${vehicle['plat']}: $e");
+      debugPrint("Error parsing lokasi untuk ${vehicle['plat']}: $e");
     }
     return null;
   }
@@ -386,4 +387,3 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
     );
   }
 }
-

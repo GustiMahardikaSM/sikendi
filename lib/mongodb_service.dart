@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
 import 'package:sikendi/models/kegiatan_sopir.dart';
@@ -42,10 +43,10 @@ class MongoDBService {
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        print("Gagal menambah kegiatan: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal menambah kegiatan: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      print('Error adding kegiatan: $e');
+      debugPrint('Error adding kegiatan: $e');
     }
   }
 
@@ -67,11 +68,11 @@ class MongoDBService {
           status: json['status'] ?? 'Belum',
         )).toList();
       } else {
-        print("Gagal mengambil jadwal kegiatan: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal mengambil jadwal kegiatan: ${response.statusCode} - ${response.body}");
         return [];
       }
     } catch (e) {
-      print('Error getting kegiatan: $e');
+      debugPrint('Error getting kegiatan: $e');
       return [];
     }
   }
@@ -93,11 +94,11 @@ class MongoDBService {
           status: json['status'] ?? 'Belum',
         )).toList();
       } else {
-        print("Gagal mengambil semua jadwal kegiatan: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal mengambil semua jadwal kegiatan: ${response.statusCode} - ${response.body}");
         return [];
       }
     } catch (e) {
-      print('Error getting all kegiatan: $e');
+      debugPrint('Error getting all kegiatan: $e');
       return [];
     }
   }
@@ -119,10 +120,10 @@ class MongoDBService {
         }),
       );
       if (response.statusCode != 200) {
-        print("Gagal update kegiatan: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal update kegiatan: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      print('Error updating kegiatan: $e');
+      debugPrint('Error updating kegiatan: $e');
     }
   }
 
@@ -133,10 +134,10 @@ class MongoDBService {
         headers: await _getHeaders(),
       );
       if (response.statusCode != 200) {
-        print("Gagal menghapus kegiatan: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal menghapus kegiatan: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      print('Error deleting kegiatan: $e');
+      debugPrint('Error deleting kegiatan: $e');
     }
   }
 
@@ -155,11 +156,11 @@ class MongoDBService {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
       } else {
-        print("Gagal mengambil data sopir: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal mengambil data sopir: ${response.statusCode} - ${response.body}");
         return [];
       }
     } catch (e) {
-      print("Terjadi error saat memanggil API sopir: $e");
+      debugPrint("Terjadi error saat memanggil API sopir: $e");
       return [];
     }
   }
@@ -175,11 +176,11 @@ class MongoDBService {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
       } else {
-        print("Gagal mengambil data sopir pending: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal mengambil data sopir pending: ${response.statusCode} - ${response.body}");
         return [];
       }
     } catch (e) {
-      print("Terjadi error saat memanggil API sopir pending: $e");
+      debugPrint("Terjadi error saat memanggil API sopir pending: $e");
       // Di implementasi lama, error di-throw ulang. Kita bisa memilih untuk
       // melempar exception atau mengembalikan list kosong tergantung kebutuhan UI.
       // Untuk konsistensi, kita kembalikan list kosong.
@@ -196,7 +197,7 @@ class MongoDBService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error Approve Driver: $e");
+      debugPrint("Error Approve Driver: $e");
       return false;
     }
   }
@@ -210,7 +211,7 @@ class MongoDBService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error Reject Driver: $e");
+      debugPrint("Error Reject Driver: $e");
       return false;
     }
   }
@@ -244,11 +245,11 @@ class MongoDBService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        print("Gagal melakukan lepas paksa kendaraan: ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal melakukan lepas paksa kendaraan: ${response.statusCode} - ${response.body}");
         return null;
       }
     } catch (e) {
-      print("Terjadi error saat API lepas paksa kendaraan: $e");
+      debugPrint("Terjadi error saat API lepas paksa kendaraan: $e");
       return null;
     }
   }
@@ -271,7 +272,7 @@ class MongoDBService {
       // Berhasil jika status code 200 (OK) atau 201 (Created)
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print("Terjadi error saat API tambah kendaraan: $e");
+      debugPrint("Terjadi error saat API tambah kendaraan: $e");
       return false;
     }
   }
@@ -301,7 +302,7 @@ class MongoDBService {
       
       return response.statusCode == 200;
     } catch (e) {
-      print("Terjadi error saat API update kendaraan: $e");
+      debugPrint("Terjadi error saat API update kendaraan: $e");
       return false;
     }
   }
@@ -315,7 +316,7 @@ class MongoDBService {
       
       return response.statusCode == 200;
     } catch (e) {
-      print("Terjadi error saat API hapus metadata kendaraan: $e");
+      debugPrint("Terjadi error saat API hapus metadata kendaraan: $e");
       return false;
     }
   }
@@ -340,11 +341,11 @@ class MongoDBService {
 
         return {'defined': defined, 'undefined': undefined};
       } else {
-        print("Gagal mengambil data manager (dipisah): ${response.statusCode} - ${response.body}");
+        debugPrint("Gagal mengambil data manager (dipisah): ${response.statusCode} - ${response.body}");
         return {'defined': [], 'undefined': []};
       }
     } catch (e) {
-      print("Terjadi error saat API data manager (dipisah): $e");
+      debugPrint("Terjadi error saat API data manager (dipisah): $e");
       return {'defined': [], 'undefined': []};
     }
   }
@@ -359,11 +360,11 @@ class MongoDBService {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
       } else {
-        print("Gagal mengambil semua data manager: ${response.statusCode}");
+        debugPrint("Gagal mengambil semua data manager: ${response.statusCode}");
         return [];
       }
     } catch (e) {
-      print("Error API getSemuaDataUntukManager: $e");
+      debugPrint("Error API getSemuaDataUntukManager: $e");
       return [];
     }
   }
@@ -378,11 +379,11 @@ class MongoDBService {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
       } else {
-        print("Gagal mengambil data armada (fleet): ${response.statusCode}");
+        debugPrint("Gagal mengambil data armada (fleet): ${response.statusCode}");
         return [];
       }
     } catch (e) {
-      print("Error API getFleetDataForManager: $e");
+      debugPrint("Error API getFleetDataForManager: $e");
       return [];
     }
   }
@@ -402,10 +403,10 @@ class MongoDBService {
           'pending': data['pending'] ?? 0,
         };
       } else {
-        print("Gagal mengambil dashboard summary: ${response.statusCode}");
+        debugPrint("Gagal mengambil dashboard summary: ${response.statusCode}");
       }
     } catch (e) {
-      print("Error API getDashboardSummary: $e");
+      debugPrint("Error API getDashboardSummary: $e");
     }
     return {'total': 0, 'dipakai': 0, 'tersedia': 0, 'pending': 0};
   }
@@ -428,7 +429,7 @@ class MongoDBService {
       }
       return [];
     } catch (e) {
-      print("Error GET Kendaraan Tersedia: $e");
+      debugPrint("Error GET Kendaraan Tersedia: $e");
       return [];
     }
   }
@@ -447,7 +448,7 @@ class MongoDBService {
         }
       }
     } catch (e) {
-      print("Error API getPekerjaanBySopir: $e");
+      debugPrint("Error API getPekerjaanBySopir: $e");
     }
     return null;
   }
@@ -464,7 +465,7 @@ class MongoDBService {
         return data.cast<Map<String, dynamic>>();
       }
     } catch (e) {
-      print("Error API getPekerjaanSaya: $e");
+      debugPrint("Error API getPekerjaanSaya: $e");
     }
     return [];
   }
@@ -482,7 +483,7 @@ class MongoDBService {
       // Mengembalikan true jika berhasil
       return response.statusCode == 200;
     } catch (e) {
-      print("Error PUT Ambil Kendaraan: $e");
+      debugPrint("Error PUT Ambil Kendaraan: $e");
       return false;
     }
   }
@@ -496,7 +497,7 @@ class MongoDBService {
         body: jsonEncode({'id': id.toString()}),
       );
     } catch (e) {
-      print("Error API selesaikanPekerjaan: $e");
+      debugPrint("Error API selesaikanPekerjaan: $e");
     }
   }
 
@@ -514,7 +515,7 @@ class MongoDBService {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      print("Error API getLatestGpsData: $e");
+      debugPrint("Error API getLatestGpsData: $e");
     }
     return null;
   }
@@ -535,7 +536,7 @@ class MongoDBService {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      print("Error API getDetailKendaraan: $e");
+      debugPrint("Error API getDetailKendaraan: $e");
     }
     return null;
   }
@@ -553,7 +554,7 @@ class MongoDBService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error API updateKendaraanDetail: $e");
+      debugPrint("Error API updateKendaraanDetail: $e");
     }
     return false;
   }
@@ -570,7 +571,7 @@ class MongoDBService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error API updateFotoKendaraan: $e");
+      debugPrint("Error API updateFotoKendaraan: $e");
     }
     return false;
   }
@@ -588,7 +589,7 @@ class MongoDBService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error API updateFotoProfilSopir: $e");
+      debugPrint("Error API updateFotoProfilSopir: $e");
     }
     return false;
   }
@@ -608,7 +609,7 @@ class MongoDBService {
         return data.cast<Map<String, dynamic>>();
       }
     } catch (e) {
-      print("Error API getTripHistory: $e");
+      debugPrint("Error API getTripHistory: $e");
     }
     return [];
   }
@@ -624,7 +625,7 @@ class MongoDBService {
         return data.cast<Map<String, dynamic>>();
       }
     } catch (e) {
-      print("Error API getTripHistoryBySopir: $e");
+      debugPrint("Error API getTripHistoryBySopir: $e");
     }
     return [];
   }

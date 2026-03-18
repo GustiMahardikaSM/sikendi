@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -59,8 +60,8 @@ class AuthService {
         };
       }
     } catch (e, s) {
-      print("Error Login HTTP: $e");
-      print("Stack trace: $s");
+      debugPrint("Error Login HTTP: $e");
+      debugPrint("Stack trace: $s");
       return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server. Detail: $e'};
     }
   }
@@ -94,8 +95,8 @@ class AuthService {
         };
       }
     } catch (e, s) {
-      print("Error Login Manager HTTP: $e");
-      print("Stack trace: $s");
+      debugPrint("Error Login Manager HTTP: $e");
+      debugPrint("Stack trace: $s");
       return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server. Detail: $e'};
     }
   }
@@ -132,8 +133,8 @@ class AuthService {
         return decoded['error'] ?? decoded['message'] ?? "Pendaftaran gagal. Kode: ${response.statusCode}";
       }
     } catch (e, s) {
-      print("Error Register HTTP: $e");
-      print("Stack trace: $s");
+      debugPrint("Error Register HTTP: $e");
+      debugPrint("Stack trace: $s");
       return "Error jaringan: Tidak dapat terhubung ke server. Detail: $e";
     }
   }

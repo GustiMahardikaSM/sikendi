@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
 import 'package:sikendi/auth_service.dart';
@@ -27,7 +28,7 @@ class VehicleApiService {
       }
       return [];
     } catch (e) {
-      print("Error API getKendaraanTersedia: $e");
+      debugPrint("Error API getKendaraanTersedia: $e");
       return [];
     }
   }
@@ -48,7 +49,7 @@ class VehicleApiService {
       }
       return [];
     } catch (e) {
-      print("Error API getPekerjaanSaya: $e");
+      debugPrint("Error API getPekerjaanSaya: $e");
       return [];
     }
   }
@@ -64,7 +65,7 @@ class VehicleApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error API ambilKendaraan: $e");
+      debugPrint("Error API ambilKendaraan: $e");
       return false;
     }
   }
@@ -80,7 +81,7 @@ class VehicleApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error API selesaikanPekerjaan: $e");
+      debugPrint("Error API selesaikanPekerjaan: $e");
       return false;
     }
   }
