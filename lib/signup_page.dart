@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'auth_service.dart';
-import 'login_page.dart'; // Import login page for navigation
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -13,48 +12,84 @@ class SignUpPage extends StatefulWidget {
   State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> {
-  // Controllers for form fields
+class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _namaController = TextEditingController();
   final _hpController = TextEditingController();
 
-  // State variables for images
   File? _imageSelfie;
   File? _imageKtp;
   String? _base64Selfie;
   String? _base64Ktp;
 
-  // Image picker instance
   final ImagePicker _picker = ImagePicker();
 
-  // UI state
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
-  /// Smart function to handle picking, compressing, and converting an image.
+  // Tema Warna (Disesuaikan dengan LoginPage)
+  final Color primaryColor = const Color(0xFF003366);
+  final Color accentColor = const Color(0xFFFFD700);
+
+  // Variabel Animasi
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
+      ),
+    );
+
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _namaController.dispose();
+    _hpController.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickImage(ImageSource source, bool isSelfie) async {
     final XFile? image = await _picker.pickImage(source: source);
-
-    // If the user cancels, do nothing.
     if (image == null) return;
     
-    // 1. Define a target path in a temporary directory
     final tempDir = Directory.systemTemp;
     final targetPath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-    // 2. Kompresi (Sangat Penting) using the correct method
     final XFile? compressedXFile = await FlutterImageCompress.compressAndGetFile(
       image.path,
       targetPath,
-      quality: 65, // Target kualitas 50-70%
+      quality: 65,
     );
 
     if (compressedXFile == null) {
-      // Handle compression error if needed
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Gagal memproses gambar.")),
@@ -63,11 +98,9 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    // 3. Read the bytes from the compressed file for Base64 conversion
     final List<int> compressedBytes = await compressedXFile.readAsBytes();
     final String base64String = base64Encode(compressedBytes);
 
-    // 4. Update UI (setState)
     setState(() {
       if (isSelfie) {
         _imageSelfie = File(compressedXFile.path);
@@ -79,27 +112,27 @@ class _SignUpPageState extends State<SignUpPage> {
     });
   }
   
-  /// Shows a dialog to choose between Camera or Gallery for the ID card photo.
   void _showKtpPicker(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext ctx) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("Pilih Sumber Gambar"),
           content: const Text("Ambil foto KTP dari kamera atau galeri?"),
           actions: <Widget>[
             TextButton(
-              child: const Text("Kamera"),
+              child: Text("Kamera", style: TextStyle(color: primaryColor)),
               onPressed: () {
                 Navigator.of(ctx).pop();
-                _pickImage(ImageSource.camera, false); // isSelfie = false
+                _pickImage(ImageSource.camera, false);
               },
             ),
             TextButton(
-              child: const Text("Galeri"),
+              child: Text("Galeri", style: TextStyle(color: primaryColor)),
               onPressed: () {
                 Navigator.of(ctx).pop();
-                _pickImage(ImageSource.gallery, false); // isSelfie = false
+                _pickImage(ImageSource.gallery, false);
               },
             ),
           ],
@@ -108,36 +141,48 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  /// Handles the entire sign-up process.
   void _handleSignUp() async {
-    // 1. Validasi Tambahan
     if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _namaController.text.isEmpty ||
         _hpController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mohon lengkapi semua data teks.")),
+        SnackBar(
+          content: const Text("Mohon lengkapi semua data teks."),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return;
     }
     
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password dan konfirmasi tidak cocok.")),
+        SnackBar(
+          content: const Text("Password dan konfirmasi tidak cocok."),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return;
     }
 
     if (_base64Selfie == null || _base64Ktp == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mohon lengkapi foto Selfie dan KTP.")),
+        SnackBar(
+          content: const Text("Mohon lengkapi foto Selfie dan KTP."),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
 
-    // 2. Kirim Data
     String? errorMessage = await AuthService.daftarAkunSopir(
       email: _emailController.text,
       password: _passwordController.text,
@@ -149,7 +194,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
     setState(() => _isLoading = false);
 
-    // 3. Feedback Sukses
     if (errorMessage == null) {
       if (mounted) {
         showDialog(
@@ -157,17 +201,27 @@ class _SignUpPageState extends State<SignUpPage> {
           barrierDismissible: false,
           builder: (BuildContext ctx) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              icon: Icon(Icons.check_circle_outline, color: primaryColor, size: 48),
               title: const Text("Registrasi Berhasil"),
               content: const Text(
-                  "Data Anda sedang diverifikasi Manajer. Mohon tunggu persetujuan."),
+                "Data Anda sedang diverifikasi Manajer. Mohon tunggu persetujuan.",
+                textAlign: TextAlign.center,
+              ),
               actions: <Widget>[
-                TextButton(
-                  child: const Text("OK"),
-                  onPressed: () {
-                    // Arahkan kembali ke LoginPage
-                    Navigator.of(ctx).pop(); // Close the dialog
-                    Navigator.of(context).pop(); // Kembali ke halaman Login sebelumnya
-                  },
+                Center(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text("Kembali ke Login"),
+                    onPressed: () {
+                      Navigator.of(ctx).pop(); 
+                      Navigator.of(context).pop(); 
+                    },
+                  ),
                 ),
               ],
             );
@@ -176,148 +230,292 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(errorMessage)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          )
+        );
       }
     }
+  }
+
+  // Desain Input yang lebih ringkas (isDense: true) agar muat di 1 layar
+  InputDecoration _buildInputDecoration(String label, String hint, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: primaryColor, size: 20),
+      isDense: true, // Membuat tinggi kolom lebih kecil
+      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      labelStyle: const TextStyle(fontSize: 14),
+      hintStyle: const TextStyle(fontSize: 12),
+      filled: true,
+      fillColor: Colors.grey[50],
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey[200]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: primaryColor, width: 2),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Daftar Akun Sopir")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // --- Form Fields ---
-            TextField(
-              controller: _namaController,
-              decoration: const InputDecoration(labelText: "Nama Lengkap", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              obscureText: !_isPasswordVisible,
-              decoration: InputDecoration(
-                labelText: "Password",
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
-                ),
+      extendBodyBehindAppBar: true,
+      // PENTING: Mencegah error overflow saat keyboard HP naik karena tidak ada scroll
+      resizeToAvoidBottomInset: false, 
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: const BackButton(color: Colors.white),
+      ),
+      body: Stack(
+        children: [
+          // Background Gradient (Sama seperti LoginPage)
+          Container(
+            height: MediaQuery.of(context).size.height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  primaryColor,
+                  const Color(0xFF001F3F), 
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-             TextField(
-              controller: _confirmPasswordController,
-              obscureText: !_isConfirmPasswordVisible,
-              decoration: InputDecoration(
-                labelText: "Konfirmasi Password",
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _hpController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: "Nomor HP", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 24),
+          ),
+          
+          // Ornamen Lingkaran
+          Positioned(top: -50, right: -50, child: _buildCircleOrnament(250, 0.03)),
+          Positioned(bottom: -100, left: -100, child: _buildCircleOrnament(300, 0.02)),
 
-            // --- Image Pickers ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // A. Area Selfie
-                Column(
-                  children: [
-                    const Text("Foto Selfie", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () => _pickImage(ImageSource.camera, true), // Wajib Kamera
-                      child: CircleAvatar(
-                        radius: 60,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: _imageSelfie != null ? FileImage(_imageSelfie!) : null,
-                        child: _imageSelfie == null
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+          SafeArea(
+            child: Padding(
+              // Padding fleksibel, tidak menggunakan SingleChildScrollView
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 30,
+                                offset: const Offset(0, 15),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // --- Header (Ikon & Judul) ---
+                              Icon(Icons.person_add_alt_1_rounded, size: 36, color: primaryColor),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Daftar Akun',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: primaryColor,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Lengkapi identitas untuk pendaftaran',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
+                              ),
+                              
+                              const Spacer(flex: 2),
+
+                              // --- Area Form Teks (Fleksibel membagi ruang) ---
+                              Expanded(
+                                flex: 12,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    TextField(
+                                      controller: _namaController,
+                                      decoration: _buildInputDecoration("Nama Lengkap", "Sesuai KTP", Icons.person_outline),
+                                      enabled: !_isLoading,
+                                    ),
+                                    TextField(
+                                      controller: _emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      decoration: _buildInputDecoration("Email", "Email aktif", Icons.email_outlined),
+                                      enabled: !_isLoading,
+                                    ),
+                                    TextField(
+                                      controller: _hpController,
+                                      keyboardType: TextInputType.phone,
+                                      decoration: _buildInputDecoration("Nomor HP", "Contoh: 08123456789", Icons.phone_android_outlined),
+                                      enabled: !_isLoading,
+                                    ),
+                                    TextField(
+                                      controller: _passwordController,
+                                      obscureText: !_isPasswordVisible,
+                                      decoration: _buildInputDecoration("Kata Sandi", "Buat kata sandi", Icons.lock_outline).copyWith(
+                                        suffixIcon: IconButton(
+                                          icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey[500], size: 20),
+                                          onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                                        ),
+                                      ),
+                                      enabled: !_isLoading,
+                                    ),
+                                    TextField(
+                                      controller: _confirmPasswordController,
+                                      obscureText: !_isConfirmPasswordVisible,
+                                      decoration: _buildInputDecoration("Konfirmasi Kata Sandi", "Ulangi kata sandi", Icons.lock_reset).copyWith(
+                                        suffixIcon: IconButton(
+                                          icon: Icon(_isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey[500], size: 20),
+                                          onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                                        ),
+                                      ),
+                                      enabled: !_isLoading,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const Spacer(flex: 2),
+
+                              // --- Area Image Pickers ---
+                              Text("Dokumen Pendukung", style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 13)),
+                              const SizedBox(height: 8),
+                              Row(
                                 children: [
-                                  Icon(Icons.camera_alt, size: 40, color: Colors.grey[600]),
-                                  Text("Ambil Selfie", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                  // Selfie
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => _pickImage(ImageSource.camera, true),
+                                      child: Container(
+                                        height: 75,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          border: Border.all(color: Colors.grey[300]!, width: 1.5),
+                                          borderRadius: BorderRadius.circular(12),
+                                          image: _imageSelfie != null ? DecorationImage(image: FileImage(_imageSelfie!), fit: BoxFit.cover) : null,
+                                        ),
+                                        child: _imageSelfie == null
+                                            ? Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.camera_front, size: 24, color: primaryColor.withOpacity(0.6)),
+                                                  const SizedBox(height: 4),
+                                                  Text("Selfie", style: TextStyle(color: primaryColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                                ],
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // KTP
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => _showKtpPicker(context),
+                                      child: Container(
+                                        height: 75,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          border: Border.all(color: Colors.grey[300]!, width: 1.5),
+                                          borderRadius: BorderRadius.circular(12),
+                                          image: _imageKtp != null ? DecorationImage(image: FileImage(_imageKtp!), fit: BoxFit.cover) : null,
+                                        ),
+                                        child: _imageKtp == null
+                                            ? Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.badge_outlined, size: 24, color: primaryColor.withOpacity(0.6)),
+                                                  const SizedBox(height: 4),
+                                                  Text("KTP", style: TextStyle(color: primaryColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                                ],
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
                                 ],
-                              )
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // B. Area KTP
-                Column(
-                  children: [
-                    const Text("Foto KTP/SIM", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () => _showKtpPicker(context), // Boleh Kamera/Galeri
-                      child: Container(
-                        height: 120,
-                        width: 180,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8),
-                          image: _imageKtp != null
-                              ? DecorationImage(image: FileImage(_imageKtp!), fit: BoxFit.cover)
-                              : null,
+                              ),
+                              
+                              const Spacer(flex: 2),
+
+                              // --- Tombol Submit ---
+                              Container(
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primaryColor.withOpacity(0.4),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _handleSignUp,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20, width: 20,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                        )
+                                      : const Text(
+                                          'DAFTAR',
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: _imageKtp == null
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.credit_card, size: 40, color: Colors.grey[600]),
-                                  Text("Upload KTP", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                                ],
-                              )
-                            : null,
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-
-            // --- Submit Button ---
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: _handleSignUp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text(
-                      "DAFTAR",
-                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
-          ],
-        ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper untuk lingkaran ornamen background
+  Widget _buildCircleOrnament(double size, double opacity) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(opacity),
       ),
     );
   }
