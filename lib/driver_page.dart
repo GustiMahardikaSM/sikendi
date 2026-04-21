@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
-import 'package:sikendi/vehicle_api_service.dart'; // Tambahkan import ini
+import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/profile_sopir_page.dart'; 
+import 'package:sikendi/driver_tugas_page.dart';
+import 'package:sikendi/driver_incoming_task_page.dart';
 
 // ==========================================================
 // KELAS UTAMA HALAMAN SOPIR
@@ -19,6 +21,44 @@ class DriverPage extends StatefulWidget {
 }
 
 class _DriverPageState extends State<DriverPage> {
+  Timer? _pollingTimer;
+  bool _isShowingIncoming = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    // Poll every 5 seconds to check for new tasks
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      if (_isShowingIncoming) return; // Prevent multiple popups
+      
+      final nama = widget.user['nama'] ?? widget.user['nama_lengkap'];
+      if (nama != null) {
+        final tugas = await MongoDBService.getTugasSekarang(nama);
+        if (tugas != null && tugas['konfirmasi_sopir'] == 'pending' && !_isShowingIncoming) {
+          _isShowingIncoming = true;
+          if (mounted) {
+            await Navigator.push(context, MaterialPageRoute(
+              builder: (_) => DriverIncomingTaskPage(
+                tugas: tugas,
+                onDecision: () { } // The status update is handled inside the page
+              )
+            ));
+            _isShowingIncoming = false;
+          }
+        }
+      }
+    });
+  }
 
   void _handleLogout(BuildContext context) {
     showDialog(
@@ -58,6 +98,19 @@ class _DriverPageState extends State<DriverPage> {
     // Definisi Menu Items di dalam build agar bisa akses context & widget.user
     final List<Map<String, dynamic>> menuItems = [
       {
+        'title': 'Informasi Tugas',
+        'icon': Icons.assignment,
+        'color': Colors.green,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DriverTugasPage(user: widget.user),
+            ),
+          );
+        },
+      },
+      {
         'title': 'Tracking GPS',
         'icon': Icons.map_outlined,
         'color': Colors.blueAccent,
@@ -73,9 +126,9 @@ class _DriverPageState extends State<DriverPage> {
           String? idMobilDipinjam;
 
           if (namaSopir != null) {
-            final myJobs = await VehicleApiService.getPekerjaanSaya(namaSopir);
-            if (myJobs.isNotEmpty) {
-              idMobilDipinjam = myJobs.first['gps_1']?.toString() ?? myJobs.first['device_id']?.toString();
+            final tugas = await MongoDBService.getTugasSekarang(namaSopir);
+            if (tugas != null && tugas['konfirmasi_sopir'] == 'accepted') {
+              idMobilDipinjam = tugas['deviceId']?.toString() ?? tugas['device_id']?.toString() ?? tugas['gps_1']?.toString();
             }
           }
 
@@ -88,7 +141,7 @@ class _DriverPageState extends State<DriverPage> {
           } else {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Anda belum ditugaskan ke kendaraan manapun. Hubungi manager."), backgroundColor: Colors.orange),
+                const SnackBar(content: Text("Anda belum menerima tugas apapun. Cek 'Informasi Tugas'."), backgroundColor: Colors.orange),
               );
             }
           }
@@ -108,7 +161,6 @@ class _DriverPageState extends State<DriverPage> {
           );
         },
       },
-      // --- TAMBAHKAN KODE INI UNTUK MENU PROFIL ---
       {
         'title': 'Profil Saya',
         'icon': Icons.person, // Ikon profil
@@ -123,7 +175,6 @@ class _DriverPageState extends State<DriverPage> {
           );
         },
       },
-      // --- AKHIR TAMBAHAN KODE ---
     ];
 
     return Scaffold(
@@ -146,7 +197,7 @@ class _DriverPageState extends State<DriverPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- MULAI HEADER (Langkah 4) ---
+              // --- MULAI HEADER ---
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
@@ -191,7 +242,7 @@ class _DriverPageState extends State<DriverPage> {
 
               const SizedBox(height: 20), // Jarak antara header dan grid
 
-              // --- MULAI GRIDVIEW (Langkah 5) ---
+              // --- MULAI GRIDVIEW ---
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: GridView.builder(

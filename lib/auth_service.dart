@@ -50,6 +50,15 @@ class AuthService {
         if (decoded['token'] != null) {
           await saveToken(decoded['token']);
         }
+        
+        final user = decoded['user'];
+        if (user != null) {
+          final nama = user['nama'] ?? user['nama_lengkap'];
+          if (nama != null) {
+            await storage.write(key: 'nama_sopir', value: nama);
+          }
+        }
+        
         return decoded; 
       } else {
         // Status gagal (pending, ditolak, atau salah password)

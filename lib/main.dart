@@ -5,12 +5,15 @@ import 'package:sikendi/manager_page.dart'; // Import halaman manager
 import 'package:flutter/material.dart';
 import 'package:sikendi/manager_login_page.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
 
+import 'package:sikendi/background_service.dart';
+
 // ==========================================================
 // 1. FUNGSI UTAMA (Main Entry Point)
 // ==========================================================
 Future<void> main() async {
   // Pastikan semua widget Flutter siap sebelum menjalankan kode async
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeService();
 
   runApp(
     const MaterialApp(

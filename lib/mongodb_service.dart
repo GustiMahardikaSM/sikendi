@@ -697,4 +697,52 @@ class MongoDBService {
       return {'success': false, 'message': 'Gagal terhubung ke server'};
     }
   }
+
+  // =================================================================
+  // BAGIAN PENUGASAN (DRIVER SIDE)
+  // =================================================================
+
+  static Future<Map<String, dynamic>?> getTugasSekarang(String namaSopir) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/sopir/$namaSopir/tugas-sekarang'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return body['tugas'];
+      }
+    } catch (e) {
+      debugPrint("Error API getTugasSekarang: $e");
+    }
+    return null;
+  }
+
+  static Future<bool> acceptTugas(String deviceId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/sopir/tugas/accept'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'deviceId': deviceId}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Error API acceptTugas: $e");
+      return false;
+    }
+  }
+
+  static Future<bool> rejectTugas(String deviceId, String alasan) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/sopir/tugas/reject'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'deviceId': deviceId, 'alasan': alasan}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Error API rejectTugas: $e");
+      return false;
+    }
+  }
 }
