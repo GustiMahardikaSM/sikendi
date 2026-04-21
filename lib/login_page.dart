@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:sikendi/driver_page.dart';
+import 'package:sikendi/mongodb_service.dart';
 import 'auth_service.dart';
 import 'signup_page.dart';
 
@@ -117,6 +119,16 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       String status = result['status_akun'] ?? 'pending';
 
       if (status == 'aktif') {
+        // Setelah login berhasil, dapatkan dan simpan FCM token ke database
+        try {
+          String? fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            // Panggil service untuk update token di backend
+            await MongoDBService.updateFcmToken(_emailController.text, fcmToken);
+          }
+        } catch (e) {
+          print("Gagal mendapatkan atau menyimpan FCM token: $e");
+        }
         _showConsentDialog(result);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

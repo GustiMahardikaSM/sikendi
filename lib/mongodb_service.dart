@@ -594,6 +594,25 @@ class MongoDBService {
     return false;
   }
 
+  // Fungsi baru untuk menyimpan FCM Token ke backend
+  static Future<void> updateFcmToken(String email, String fcmToken) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/sopir/$email/fcm-token'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'fcmToken': fcmToken}),
+      );
+      if (response.statusCode == 200) {
+        debugPrint("FCM Token berhasil disimpan untuk $email");
+      } else {
+        debugPrint(
+            "Gagal menyimpan FCM Token: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Error API updateFcmToken: $e");
+    }
+  }
+
   // =================================================================
   // BAGIAN TRIP HISTORY
   // =================================================================

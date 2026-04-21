@@ -1,25 +1,44 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_page.dart'; // Import halaman driver
 import 'package:sikendi/login_page.dart';
 import 'package:sikendi/manager_page.dart'; // Import halaman manager
 import 'package:flutter/material.dart';
 import 'package:sikendi/manager_login_page.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
-
-import 'package:sikendi/background_service.dart';
+import 'package:sikendi/auth_service.dart';
+import 'package:sikendi/driver_incoming_task_page.dart';
 
 // ==========================================================
 // 1. FUNGSI UTAMA (Main Entry Point)
 // ==========================================================
+
+// Fungsi ini harus berada di top-level (di luar kelas) untuk menangani notifikasi
+// saat aplikasi berada di background atau terminated.
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Inisialisasi Firebase diperlukan agar plugin bisa bekerja di background.
+  await Firebase.initializeApp();
+  print("Menangani pesan di background: ${message.messageId}");
+}
+
+// GlobalKey untuk navigasi dari luar widget tree (diperlukan oleh FCM)
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   // Pastikan semua widget Flutter siap sebelum menjalankan kode async
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeService();
+  // Inisialisasi Firebase
+  await Firebase.initializeApp();
+  // Set background message handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   runApp(
-    const MaterialApp(
+    MaterialApp(
       debugShowCheckedModeBanner:
           false, // Menghilangkan banner "Debug" di pojok kanan atas
       title: 'SiKenDi App',
+      navigatorKey: navigatorKey, // Set GlobalKey untuk navigasi
       // Aplikasi dimulai dari Halaman Awal (RoleSelectionPage)
       home: RoleSelectionPage(),
     ),
@@ -29,8 +48,67 @@ Future<void> main() async {
 // ==========================================================
 // 2. HALAMAN PEMILIHAN PERAN (UI MODERN)
 // ==========================================================
-class RoleSelectionPage extends StatelessWidget {
+class RoleSelectionPage extends StatefulWidget {
   const RoleSelectionPage({super.key});
+
+  @override
+  State<RoleSelectionPage> createState() => _RoleSelectionPageState();
+}
+
+class _RoleSelectionPageState extends State<RoleSelectionPage> {
+  @override
+  void initState() {
+    super.initState();
+    _setupFCM();
+  }
+
+  // Fungsi untuk setup listener dan izin FCM
+  Future<void> _setupFCM() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // 1. Minta izin notifikasi (wajib untuk iOS & Android 13+)
+    await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
+
+    // 2. Listener untuk saat notifikasi diketuk (app dari background/terminated)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('Notifikasi diketuk!');
+      _handleNotificationNavigation(message.data);
+    });
+
+    // 3. Cek jika app dibuka dari notifikasi saat app dalam kondisi terminated
+    RemoteMessage? initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationNavigation(initialMessage.data);
+    }
+  }
+
+  // Fungsi untuk navigasi ke halaman tugas saat notifikasi diketuk
+  void _handleNotificationNavigation(Map<String, dynamic> data) async {
+    final String? deviceId = data['deviceId'];
+    if (deviceId != null && navigatorKey.currentContext != null) {
+      // Ambil data user yang sedang login untuk diteruskan ke halaman tugas
+      final user = await AuthService.getCurrentUser();
+      if (user == null) return; // Jika tidak ada user login, jangan lakukan apa-apa
+
+      // Ambil detail tugas lengkap dari server
+      final tugas = await MongoDBService.getDetailKendaraan(deviceId);
+
+      if (tugas != null) {
+        navigatorKey.currentState?.push(MaterialPageRoute(
+          builder: (_) => DriverIncomingTaskPage(
+            tugas: tugas,
+            user: user,
+            onDecision: () {},
+          ),
+        ));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

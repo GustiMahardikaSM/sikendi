@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
@@ -26,6 +27,22 @@ class AuthService {
 
   static Future<void> logout() async {
     await storage.delete(key: 'jwt_token');
+    await storage.delete(key: 'nama_sopir');
+  }
+
+  // Fungsi baru untuk mendapatkan data user dari token yang tersimpan
+  static Future<Map<String, dynamic>?> getCurrentUser() async {
+    final token = await getToken();
+    if (token != null) {
+      try {
+        // Decode token untuk mendapatkan payload (data user)
+        Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+        return decodedToken;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   static Future<Map<String, dynamic>?> loginSopir(

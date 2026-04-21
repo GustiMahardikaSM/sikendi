@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sikendi/driver_tracking_page.dart';
+import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
 import 'package:sikendi/mongodb_service.dart';
@@ -21,63 +21,44 @@ class DriverPage extends StatefulWidget {
 }
 
 class _DriverPageState extends State<DriverPage> {
-  Timer? _pollingTimer;
-  bool _isShowingIncoming = false;
-  String? _lastNotifiedTaskId;
   String _currentStatus = "Sedang memuat...";
   bool _hasPendingTask = false;
 
   @override
   void initState() {
     super.initState();
-    _startPolling();
+    _checkCurrentTask();
   }
 
   @override
   void dispose() {
-    _pollingTimer?.cancel();
     super.dispose();
   }
 
-  void _startPolling() {
-    // Poll every 5 seconds to check for new tasks
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      final nama = widget.user['nama'] ?? widget.user['nama_lengkap'];
-      if (nama != null) {
-        final tugas = await MongoDBService.getTugasSekarang(nama);
-        if (mounted) {
-          if (tugas == null) {
-            setState(() {
-              _currentStatus = "Tidak ada tugas";
-              _hasPendingTask = false;
-            });
-          } else if (tugas['konfirmasi_sopir'] == 'pending') {
-            setState(() {
-              _currentStatus = "Ada tugas perlu konfirmasi!";
-              _hasPendingTask = true;
-            });
-            final taskId = tugas['deviceId']?.toString();
-            if (taskId != null && taskId != _lastNotifiedTaskId && !_isShowingIncoming) {
-              _lastNotifiedTaskId = taskId;
-              _isShowingIncoming = true;
-              await Navigator.push(context, MaterialPageRoute(
-                builder: (_) => DriverIncomingTaskPage(
-                  tugas: tugas,
-                  user: widget.user,
-                  onDecision: () { } // The status update is handled inside the page
-                )
-              ));
-              _isShowingIncoming = false;
-            }
-          } else if (tugas['konfirmasi_sopir'] == 'accepted') {
-            setState(() {
-              _currentStatus = "Sedang bertugas";
-              _hasPendingTask = false;
-            });
-          }
+  // Fungsi untuk mengecek status tugas saat halaman dibuka atau di-refresh
+  Future<void> _checkCurrentTask() async {
+    final nama = widget.user['nama'] ?? widget.user['nama_lengkap'];
+    if (nama != null) {
+      final tugas = await MongoDBService.getTugasSekarang(nama);
+      if (mounted) {
+        if (tugas == null) {
+          setState(() {
+            _currentStatus = "Tidak ada tugas";
+            _hasPendingTask = false;
+          });
+        } else if (tugas['konfirmasi_sopir'] == 'pending') {
+          setState(() {
+            _currentStatus = "Ada tugas perlu konfirmasi!";
+            _hasPendingTask = true;
+          });
+        } else if (tugas['konfirmasi_sopir'] == 'accepted') {
+          setState(() {
+            _currentStatus = "Sedang bertugas";
+            _hasPendingTask = false;
+          });
         }
       }
-    });
+    }
   }
 
   void _handleLogout(BuildContext context) {
@@ -96,6 +77,8 @@ class _DriverPageState extends State<DriverPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
+              // Hapus token JWT & nama sopir dari storage
+              AuthService.logout();
               Navigator.of(ctx).pop();
 
               // Kembali ke halaman awal & hapus riwayat navigasi
@@ -213,156 +196,160 @@ class _DriverPageState extends State<DriverPage> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- MULAI HEADER ---
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-                decoration: BoxDecoration(
-                  color: Colors.blue[900],
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
+      body: RefreshIndicator(
+        onRefresh: _checkCurrentTask,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- MULAI HEADER ---
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[900],
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Selamat bertugas,",
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      widget.user['nama'] ?? widget.user['nama_lengkap'] ?? 'Sopir',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Selamat bertugas,",
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: const [
-                        Icon(Icons.badge, color: Colors.white70, size: 16),
-                        SizedBox(width: 8),
-                        Text(
-                          "Sopir Kendaraan Dinas - Undip",
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _currentStatus == "Ada tugas perlu konfirmasi!" 
-                            ? Colors.red 
-                            : _currentStatus == "Sedang bertugas" 
-                                ? Colors.green 
-                                : Colors.white24,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        "Status: $_currentStatus",
+                      const SizedBox(height: 5),
+                      Text(
+                        widget.user['nama'] ?? widget.user['nama_lengkap'] ?? 'Sopir',
                         style: const TextStyle(
                           color: Colors.white,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              // --- AKHIR HEADER ---
-
-              const SizedBox(height: 20), // Jarak antara header dan grid
-
-              // --- MULAI GRIDVIEW ---
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: menuItems.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.0, // Kotak 1:1
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = menuItems[index];
-                    return Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: const [
+                          Icon(Icons.badge, color: Colors.white70, size: 16),
+                          SizedBox(width: 8),
+                          Text(
+                            "Sopir Kendaraan Dinas - Undip",
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
                       ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(15),
-                        onTap: item['onTap'], // Fungsi navigasi dari Langkah 2
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Lingkaran latar belakang ikon
-                                Container(
-                                  padding: const EdgeInsets.all(15),
-                                  decoration: BoxDecoration(
-                                    color: (item['color'] as Color).withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    item['icon'],
-                                    color: item['color'],
-                                    size: 40,
-                                  ),
-                                ),
-                                const SizedBox(height: 15),
-                                // Teks Judul Menu
-                                Text(
-                                  item['title'],
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                            if (item['hasBadge'] == true)
-                              Positioned(
-                                top: 10,
-                                right: 10,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Text(
-                                    "!",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                          ],
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _currentStatus == "Ada tugas perlu konfirmasi!"
+                              ? Colors.red
+                              : _currentStatus == "Sedang bertugas"
+                                  ? Colors.green
+                                  : Colors.white24,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          "Status: $_currentStatus",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
-              ),
-              // --- AKHIR GRIDVIEW ---
+                // --- AKHIR HEADER ---
 
-              const SizedBox(height: 30), // Ruang kosong di paling bawah
-            ],
+                const SizedBox(height: 20), // Jarak antara header dan grid
+
+                // --- MULAI GRIDVIEW ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: menuItems.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.0, // Kotak 1:1
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = menuItems[index];
+                      return Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(15),
+                          onTap: item['onTap'], // Fungsi navigasi dari Langkah 2
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Lingkaran latar belakang ikon
+                                  Container(
+                                    padding: const EdgeInsets.all(15),
+                                    decoration: BoxDecoration(
+                                      color: (item['color'] as Color).withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      item['icon'],
+                                      color: item['color'],
+                                      size: 40,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 15),
+                                  // Teks Judul Menu
+                                  Text(
+                                    item['title'],
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                              if (item['hasBadge'] == true)
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Text(
+                                      "!",
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // --- AKHIR GRIDVIEW ---
+
+                const SizedBox(height: 30), // Ruang kosong di paling bawah
+              ],
+            ),
           ),
         ),
       ),

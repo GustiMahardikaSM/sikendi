@@ -35,17 +35,28 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Informasi Tugas"), backgroundColor: Colors.blue[900], foregroundColor: Colors.white),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : _tugas == null
+      appBar: AppBar(
+        title: const Text("Informasi Tugas"),
+        backgroundColor: Colors.blue[900],
+        foregroundColor: Colors.white,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _tugas == null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.assignment_late, size: 80, color: Colors.grey[400]),
+                  Icon(
+                    Icons.assignment_late,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 16),
-                  Text("Tidak ada tugas saat ini.", style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                  Text(
+                    "Tidak ada tugas saat ini.",
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  ),
                 ],
               ),
             )
@@ -55,18 +66,46 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _tugas!['konfirmasi_sopir'] == 'pending' ? "Tugas Pending" : "Tugas Saat Ini",
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    _tugas!['konfirmasi_sopir'] == 'pending'
+                        ? "Tugas Pending"
+                        : "Tugas Saat Ini",
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Card(
                     elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // FOTO MOBIL Placeholder
+                          Container(
+                            width: double.infinity,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.directions_car, size: 60, color: Colors.grey[400]),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Foto Mobil Belum Tersedia",
+                                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
                           Row(
                             children: [
                               Container(
@@ -174,30 +213,59 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16), backgroundColor: Colors.orange),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.all(16),
+                          backgroundColor: Colors.orange,
+                        ),
                         onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => DriverIncomingTaskPage(tugas: _tugas!, onDecision: _loadTugas, user: widget.user)
-                          ));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DriverIncomingTaskPage(
+                                tugas: _tugas!,
+                                onDecision: _loadTugas,
+                                user: widget.user,
+                              ),
+                            ),
+                          );
                         },
-                        child: const Text("Tanggapi Penugasan", style: TextStyle(fontSize: 16, color: Colors.white)),
+                        child: const Text(
+                          "Tanggapi Penugasan",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                       ),
                     )
                   else
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16), backgroundColor: Colors.blue[800]),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.all(16),
+                          backgroundColor: Colors.blue[800],
+                        ),
                         onPressed: () {
-                          final deviceId = _tugas!['deviceId']?.toString() ?? _tugas!['device_id']?.toString() ?? _tugas!['gps_1']?.toString() ?? '';
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => DriverTrackingPage(deviceId: deviceId)));
+                          final deviceId =
+                              _tugas!['deviceId']?.toString() ??
+                              _tugas!['device_id']?.toString() ??
+                              _tugas!['gps_1']?.toString() ??
+                              '';
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  DriverTrackingPage(deviceId: deviceId),
+                            ),
+                          );
                         },
-                        child: const Text("Buka Tracking GPS", style: TextStyle(fontSize: 16, color: Colors.white)),
+                        child: const Text(
+                          "Buka Tracking GPS",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                       ),
-                    )
+                    ),
                 ],
               ),
-            )
+            ),
     );
   }
 }

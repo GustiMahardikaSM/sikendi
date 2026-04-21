@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "824525759359",
+    "project_id": "sikendi-2d528",
+    "storage_bucket": "sikendi-2d528.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:824525759359:android:506a74e670b3377bb0704a",
+        "android_client_info": {
+          "package_name": "com.example.sikendi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJIwDl0IxkDKG4WAk-y0PZjHNvw43d7VQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
