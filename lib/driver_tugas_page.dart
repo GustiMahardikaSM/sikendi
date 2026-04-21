@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
@@ -30,6 +31,26 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
       _tugas = await MongoDBService.getTugasSekarang(nama);
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  // Helper: Menampilkan Gambar (URL vs Base64) - Logika sama dengan VehicleDetailPage
+  ImageProvider? _getImageProvider(String? fotoData) {
+    if (fotoData == null || fotoData.isEmpty) {
+      return null;
+    }
+
+    try {
+      if (fotoData.startsWith('BASE64:')) {
+        String rawBase64 = fotoData.substring(7); // Buang prefix 'BASE64:'
+        return MemoryImage(base64Decode(rawBase64));
+      } else if (fotoData.startsWith('http')) {
+        return NetworkImage(fotoData);
+      }
+    } catch (e) {
+      debugPrint("Error loading image: $e");
+    }
+
+    return null;
   }
 
   @override
@@ -85,25 +106,37 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // FOTO MOBIL Placeholder
+                          // FOTO MOBIL (Logika sama dengan VehicleDetailPage)
                           Container(
                             width: double.infinity,
-                            height: 150,
+                            height: 180,
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(12),
+                              image: (_tugas!['foto_url'] != null &&
+                                      _tugas!['foto_url'].toString().isNotEmpty &&
+                                      _getImageProvider(_tugas!['foto_url'].toString()) != null)
+                                  ? DecorationImage(
+                                      image: _getImageProvider(_tugas!['foto_url'].toString())!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.directions_car, size: 60, color: Colors.grey[400]),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "Foto Mobil Belum Tersedia",
-                                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                                ),
-                              ],
-                            ),
+                            child: (_tugas!['foto_url'] == null ||
+                                    _tugas!['foto_url'].toString().isEmpty ||
+                                    _getImageProvider(_tugas!['foto_url'].toString()) == null)
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.directions_car, size: 60, color: Colors.grey[400]),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "Foto Mobil Belum Tersedia",
+                                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                                      ),
+                                    ],
+                                  )
+                                : null,
                           ),
                           const SizedBox(height: 20),
                           Row(
