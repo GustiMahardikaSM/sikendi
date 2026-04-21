@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:convert';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_page.dart'; // Import halaman driver
 import 'package:sikendi/login_page.dart';
@@ -17,9 +19,65 @@ import 'package:sikendi/driver_incoming_task_page.dart';
 // saat aplikasi berada di background atau terminated.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Inisialisasi Firebase diperlukan agar plugin bisa bekerja di background.
   await Firebase.initializeApp();
   print("Menangani pesan di background: ${message.messageId}");
+
+  // UBAH KONDISI INI: Kita membaca dari message.data, bukan message.notification
+  if (message.data['deviceId'] != null && message.data['type'] == 'panggilan_tugas') {
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+    // Inisialisasi plugin (diperlukan untuk background isolate)
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    // Saat menginisialisasi di background isolate, kita perlu menyediakan callback
+    // untuk menangani tap notifikasi.
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
+
+    // Definisikan channel notifikasi (ID harus sama dengan yang di AndroidManifest.xml & service)
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'my_foreground', // ID channel yang konsisten
+      'Panggilan Tugas',
+      description: 'Notifikasi penting untuk panggilan tugas baru.',
+      importance: Importance.max,
+    );
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    // Tampilkan notifikasi full-screen
+    await flutterLocalNotificationsPlugin.show(
+      id: 889, // ID notifikasi yang unik
+      title: message.data['title'] ?? 'PANGGILAN TUGAS BARU!', // Ambil dari data
+      body: message.data['body'] ?? 'Ketuk untuk melihat tugas', // Ambil dari data
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
+          priority: Priority.high,
+          importance: Importance.max,
+          fullScreenIntent: true, // Akan bekerja jika payload-nya Data-Only
+          sound: const RawResourceAndroidNotificationSound('universfield_ringtone_055_494939'), // Memakai ringtone dari app
+          playSound: true,
+          enableVibration: true,
+        ),
+      ),
+      payload: jsonEncode(message.data), // Kirim data notifikasi untuk ditangani saat diketuk
+    );
+  }
+}
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  // Handler ini diperlukan oleh plugin 'flutter_local_notifications' saat
+  // notifikasi di-tap dari background. Logika navigasi utama tetap
+  // ditangani oleh 'onMessageOpenedApp' di main isolate saat aplikasi dibuka.
+  // ignore: avoid_print
+  print('Notification tapped in background with payload: ${notificationResponse.payload}');
 }
 
 // GlobalKey untuk navigasi dari luar widget tree (diperlukan oleh FCM)
@@ -74,13 +132,23 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       provisional: false,
     );
 
-    // 2. Listener untuk saat notifikasi diketuk (app dari background/terminated)
+    // 2. Listener untuk pesan FCM saat aplikasi di foreground
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Pesan diterima saat aplikasi di foreground: ${message.notification?.title}');
+      // Cek jika ini adalah notifikasi penugasan baru (data-only)
+      if (message.data['deviceId'] != null && message.data['type'] == 'panggilan_tugas') {
+        // Langsung tangani navigasi untuk menampilkan halaman telepon masuk
+        _handleNotificationNavigation(message.data);
+      }
+    });
+
+    // 3. Listener untuk saat notifikasi diketuk (app dari background/terminated)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print('Notifikasi diketuk!');
       _handleNotificationNavigation(message.data);
     });
 
-    // 3. Cek jika app dibuka dari notifikasi saat app dalam kondisi terminated
+    // 4. Cek jika app dibuka dari notifikasi saat app dalam kondisi terminated
     RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleNotificationNavigation(initialMessage.data);
@@ -99,13 +167,15 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       final tugas = await MongoDBService.getDetailKendaraan(deviceId);
 
       if (tugas != null) {
-        navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (_) => DriverIncomingTaskPage(
-            tugas: tugas,
-            user: user,
-            onDecision: () {},
-          ),
-        ));
+        // Gunakan navigatorKey untuk push halaman dari mana saja
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => DriverIncomingTaskPage(
+              tugas: tugas,
+              user: user,
+              onDecision: () {}, // Callback bisa diisi jika perlu aksi setelah keputusan
+            ),
+          ));
       }
     }
   }

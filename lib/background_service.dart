@@ -53,48 +53,7 @@ void onStart(ServiceInstance service) async {
   service.on('stopService').listen((event) {
     service.stopSelf();
   });
-
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   
-  // Setup local notifications to handle tap
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-  await flutterLocalNotificationsPlugin.initialize(settings: initializationSettings);
-
-  String? currentPendingTaskId;
-
-  Timer.periodic(const Duration(seconds: 5), (timer) async {
-    final namaSopir = await AuthService.storage.read(key: 'nama_sopir');
-    
-    if (namaSopir != null && namaSopir.isNotEmpty) {
-      final tugas = await MongoDBService.getTugasSekarang(namaSopir);
-      
-      if (tugas != null && tugas['konfirmasi_sopir'] == 'pending') {
-        final taskId = tugas['deviceId']?.toString() ?? '';
-        
-        if (taskId != currentPendingTaskId) {
-          currentPendingTaskId = taskId;
-          
-          flutterLocalNotificationsPlugin.show(
-            id: 889,
-            title: 'PANGGILAN PENUGASAN BARU!',
-            body: 'Ketuk untuk melihat tugas: ${tugas['tugas'] ?? '-'}',
-            notificationDetails: const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'my_foreground',
-                'Layanan Penugasan Sopir',
-                importance: Importance.max,
-                priority: Priority.high,
-                fullScreenIntent: true,
-                playSound: true,
-              ),
-            ),
-          );
-        }
-      } else {
-        // Jika tugas tidak ada atau sudah diterima/ditolak, hapus pending state
-        currentPendingTaskId = null;
-      }
-    }
-  });
+  // Polling logic has been removed and replaced by a real-time FCM handler in main.dart
+  debugPrint("Background service is running without polling for tasks.");
 }

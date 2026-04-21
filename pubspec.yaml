@@ -47,6 +47,7 @@ dependencies:
   firebase_core: ^2.27.0
   firebase_messaging: ^14.7.19
   jwt_decoder: ^2.0.1
+  flutter_local_notifications: ^20.1.0
 
 dev_dependencies:
   flutter_test:
