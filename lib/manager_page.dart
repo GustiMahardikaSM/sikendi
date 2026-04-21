@@ -3,6 +3,7 @@ import 'package:sikendi/main.dart';
 import 'package:sikendi/manager_map_page.dart';
 import 'package:sikendi/manager_peringatan_page.dart';
 import 'package:sikendi/manager_sopir_page.dart';
+import 'package:sikendi/manager_penugasan_page.dart';
 import 'package:sikendi/manager_vehicle_page.dart';
 import 'package:sikendi/manager_verifikasi_page.dart';
 import 'package:sikendi/mongodb_service.dart';
@@ -35,6 +36,12 @@ class _ManagerPageState extends State<ManagerPage> {
       'icon': Icons.people_alt_outlined,
       'color': Colors.teal,
       'page': () => const ManagerSopirPage(),
+    },
+    {
+      'title': 'Penugasan Sopir',
+      'icon': Icons.assignment_ind,
+      'color': Colors.deepPurple,
+      'page': () => const ManagerPenugasanPage(),
     },
     {
       'title': 'Verifikasi Sopir',

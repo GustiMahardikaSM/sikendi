@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sikendi/driver_tracking_page.dart';
-import 'package:sikendi/driver_vehicle_page.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
 import 'package:sikendi/vehicle_api_service.dart'; // Tambahkan import ini
@@ -89,24 +88,10 @@ class _DriverPageState extends State<DriverPage> {
           } else {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Pilih dan ambil kendaraan terlebih dahulu!"), backgroundColor: Colors.orange),
+                const SnackBar(content: Text("Anda belum ditugaskan ke kendaraan manapun. Hubungi manager."), backgroundColor: Colors.orange),
               );
             }
           }
-        },
-      },
-      {
-        'title': 'Pilih Kendaraan',
-        'icon': Icons.directions_car_filled,
-        'color': Colors.green,
-        'onTap': () {
-          // Mengirim data user agar sopir bisa check-in
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DriverVehiclePage(user: widget.user),
-            ),
-          );
         },
       },
       {

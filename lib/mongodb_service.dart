@@ -629,4 +629,72 @@ class MongoDBService {
     }
     return [];
   }
+
+  // =================================================================
+  // BAGIAN PENUGASAN SOPIR (Driver Assignment)
+  // =================================================================
+
+  /// Ambil semua data penugasan (kendaraan + status penugasan)
+  static Future<List<Map<String, dynamic>>> getSemuaPenugasan() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/penugasan'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        debugPrint("Gagal mengambil data penugasan: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Error API getSemuaPenugasan: $e");
+    }
+    return [];
+  }
+
+  /// Buat penugasan baru: assign sopir ke kendaraan dengan tugas
+  static Future<Map<String, dynamic>> buatPenugasan({
+    required String deviceId,
+    required String namaSopir,
+    String? tugas,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/manager/penugasan'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'deviceId': deviceId,
+          'namaSopir': namaSopir,
+          'tugas': tugas,
+        }),
+      );
+      final body = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': body['message'] ?? 'Terjadi kesalahan',
+      };
+    } catch (e) {
+      debugPrint("Error API buatPenugasan: $e");
+      return {'success': false, 'message': 'Gagal terhubung ke server'};
+    }
+  }
+
+  /// Cabut penugasan: unassign sopir dari kendaraan
+  static Future<Map<String, dynamic>> cabutPenugasan(String deviceId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/manager/penugasan/$deviceId'),
+        headers: await _getHeaders(),
+      );
+      final body = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': body['message'] ?? 'Terjadi kesalahan',
+      };
+    } catch (e) {
+      debugPrint("Error API cabutPenugasan: $e");
+      return {'success': false, 'message': 'Gagal terhubung ke server'};
+    }
+  }
 }
