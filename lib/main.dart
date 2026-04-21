@@ -37,11 +37,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     );
 
     // Definisikan channel notifikasi (ID harus sama dengan yang di AndroidManifest.xml & service)
+    // Gunakan ID BARU agar Android mereset aturan notifikasinya
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'my_foreground', // ID channel yang konsisten
-      'Panggilan Tugas',
-      description: 'Notifikasi penting untuk panggilan tugas baru.',
+      'channel_tugas_urgent_v2', // Naikkan versi channel agar perubahan suara diterapkan
+      'Panggilan Tugas Urgent',
+      description: 'Notifikasi penting layar penuh untuk tugas baru.',
       importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('ringtone_task'),
+      enableVibration: true,
     );
 
     await flutterLocalNotificationsPlugin
@@ -61,7 +65,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           priority: Priority.high,
           importance: Importance.max,
           fullScreenIntent: true, // Akan bekerja jika payload-nya Data-Only
-          sound: const RawResourceAndroidNotificationSound('universfield_ringtone_055_494939'), // Memakai ringtone dari app
+          sound: const RawResourceAndroidNotificationSound('ringtone_task'), // Sesuai dengan file di res/raw/ringtone_task.mp3
           playSound: true,
           enableVibration: true,
         ),
@@ -123,6 +127,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   // Fungsi untuk setup listener dan izin FCM
   Future<void> _setupFCM() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
     // 1. Minta izin notifikasi (wajib untuk iOS & Android 13+)
     await messaging.requestPermission(
@@ -132,9 +137,27 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       provisional: false,
     );
 
-    // 2. Listener untuk pesan FCM saat aplikasi di foreground
+    // 2. Inisialisasi Local Notifications untuk menangani tap di foreground/background
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        if (response.payload != null) {
+          try {
+            final Map<String, dynamic> data = jsonDecode(response.payload!);
+            _handleNotificationNavigation(data);
+          } catch (e) {
+            print("Error parsing local notification payload: $e");
+          }
+        }
+      },
+    );
+
+    // 3. Listener untuk pesan FCM saat aplikasi di foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Pesan diterima saat aplikasi di foreground: ${message.notification?.title}');
+      print('Pesan diterima saat aplikasi di foreground: ${message.data['title']}');
       // Cek jika ini adalah notifikasi penugasan baru (data-only)
       if (message.data['deviceId'] != null && message.data['type'] == 'panggilan_tugas') {
         // Langsung tangani navigasi untuk menampilkan halaman telepon masuk
@@ -142,16 +165,30 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       }
     });
 
-    // 3. Listener untuk saat notifikasi diketuk (app dari background/terminated)
+    // 4. Listener untuk saat notifikasi diketuk (app dari background/terminated - FCM standard)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('Notifikasi diketuk!');
+      print('Notifikasi FCM diketuk!');
       _handleNotificationNavigation(message.data);
     });
 
-    // 4. Cek jika app dibuka dari notifikasi saat app dalam kondisi terminated
+    // 5. Cek jika app dibuka dari notifikasi saat app dalam kondisi terminated (FCM)
     RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleNotificationNavigation(initialMessage.data);
+    }
+
+    // 6. Cek jika app dibuka dari NOTIFIKASI LOKAL saat terminated
+    final NotificationAppLaunchDetails? notificationAppLaunchDetails = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+    if (notificationAppLaunchDetails?.didNotificationLaunchApp ?? false) {
+      final payload = notificationAppLaunchDetails?.notificationResponse?.payload;
+      if (payload != null) {
+        try {
+          final Map<String, dynamic> data = jsonDecode(payload);
+          _handleNotificationNavigation(data);
+        } catch (e) {
+          print("Error parsing local notification launch payload: $e");
+        }
+      }
     }
   }
 
