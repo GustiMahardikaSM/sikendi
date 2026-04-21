@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/auth_service.dart';
@@ -23,15 +24,22 @@ class DriverPage extends StatefulWidget {
 class _DriverPageState extends State<DriverPage> {
   String _currentStatus = "Sedang memuat...";
   bool _hasPendingTask = false;
+  String? _activeDeviceId;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _checkCurrentTask();
+    // Refresh otomatis setiap 10 detik
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _checkCurrentTask();
+    });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
@@ -45,20 +53,75 @@ class _DriverPageState extends State<DriverPage> {
           setState(() {
             _currentStatus = "Tidak ada tugas";
             _hasPendingTask = false;
+            _activeDeviceId = null;
           });
         } else if (tugas['konfirmasi_sopir'] == 'pending') {
           setState(() {
             _currentStatus = "Ada tugas perlu konfirmasi!";
             _hasPendingTask = true;
+            _activeDeviceId = tugas['deviceId'] ?? tugas['gps_1'] ?? tugas['device_id'];
           });
         } else if (tugas['konfirmasi_sopir'] == 'accepted') {
           setState(() {
             _currentStatus = "Sedang bertugas";
             _hasPendingTask = false;
+            _activeDeviceId = tugas['deviceId'] ?? tugas['gps_1'] ?? tugas['device_id'];
           });
         }
       }
     }
+  }
+
+  void _showFinishTaskConfirmation() {
+    if (_activeDeviceId == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Selesaikan Tugas"),
+        content: const Text(
+          "Apakah Anda yakin ingin menyelesaikan tugas ini? Kendaraan akan dilepas dan status Anda kembali tersedia.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () async {
+              Navigator.of(ctx).pop(); // Tutup dialog
+              
+              // Tampilkan loading
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(child: CircularProgressIndicator()),
+              );
+
+              try {
+                await MongoDBService.selesaikanPekerjaan(_activeDeviceId!);
+                await _checkCurrentTask(); // Refresh status
+                if (mounted) {
+                  Navigator.of(context).pop(); // Tutup loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Tugas berhasil diselesaikan!"), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.of(context).pop(); // Tutup loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Gagal menyelesaikan tugas: $e"), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text("Ya, Selesai", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleLogout(BuildContext context) {
@@ -346,6 +409,51 @@ class _DriverPageState extends State<DriverPage> {
                   ),
                 ),
                 // --- AKHIR GRIDVIEW ---
+
+                const SizedBox(height: 20),
+
+                // --- TOMBOL SELESAIKAN TUGAS (Hanya muncul jika sedang bertugas) ---
+                if (_currentStatus == "Sedang bertugas")
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      width: double.infinity,
+                      height: 55,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Colors.green, Color(0xFF2E7D32)],
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        onPressed: _showFinishTaskConfirmation,
+                        icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+                        label: const Text(
+                          "SELESAIKAN TUGAS",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
 
                 const SizedBox(height: 30), // Ruang kosong di paling bawah
               ],
