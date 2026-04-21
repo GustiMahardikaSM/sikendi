@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/driver_tugas_page.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'dart:async';
 
 class DriverIncomingTaskPage extends StatefulWidget {
   final Map<String, dynamic> tugas;
@@ -16,8 +18,36 @@ class DriverIncomingTaskPage extends StatefulWidget {
 
 class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
   bool _isProcessing = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  int _playCount = 0;
+  StreamSubscription? _playerCompleteSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _playRingtone();
+  }
+
+  void _playRingtone() async {
+    await _audioPlayer.play(AssetSource('sounds/universfield-ringtone-055-494939.mp3'));
+    _playerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((event) {
+      _playCount++;
+      if (_playCount < 10 && mounted) {
+        _audioPlayer.play(AssetSource('sounds/universfield-ringtone-055-494939.mp3'));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _playerCompleteSubscription?.cancel();
+    _audioPlayer.stop();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
 
   void _accept() async {
+    _audioPlayer.stop();
     setState(() => _isProcessing = true);
     final deviceId = widget.tugas['deviceId']?.toString() ?? widget.tugas['device_id']?.toString() ?? widget.tugas['gps_1']?.toString() ?? '';
     final success = await MongoDBService.acceptTugas(deviceId);
@@ -54,6 +84,7 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
   }
 
   void _reject() {
+    _audioPlayer.stop();
     final reasonController = TextEditingController();
     showDialog(
       context: context,
@@ -151,6 +182,7 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
                       children: [
                         GestureDetector(
                           onTap: () {
+                            _audioPlayer.stop();
                             widget.onDecision();
                             Navigator.pop(context); // Tutup pop up
                             Navigator.push(context, MaterialPageRoute(builder: (_) => DriverTugasPage(user: widget.user)));
