@@ -442,18 +442,32 @@ class _ManagerPenugasanPageState extends State<ManagerPenugasanPage>
                           margin: const EdgeInsets.only(top: 4),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
+                            color: item['konfirmasi_sopir'] == 'pending'
+                                ? Colors.amber.withOpacity(0.15)
+                                : Colors.green.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.circle, color: Colors.orange, size: 8),
-                              SizedBox(width: 6),
+                              Icon(
+                                item['konfirmasi_sopir'] == 'pending'
+                                    ? Icons.access_time
+                                    : Icons.circle,
+                                color: item['konfirmasi_sopir'] == 'pending'
+                                    ? Colors.amber[800]
+                                    : Colors.green[700],
+                                size: item['konfirmasi_sopir'] == 'pending' ? 14 : 8,
+                              ),
+                              const SizedBox(width: 6),
                               Text(
-                                "Sedang Bertugas",
+                                item['konfirmasi_sopir'] == 'pending'
+                                    ? "Menunggu Konfirmasi"
+                                    : "Sedang Bertugas",
                                 style: TextStyle(
-                                    color: Colors.orange,
+                                    color: item['konfirmasi_sopir'] == 'pending'
+                                        ? Colors.amber[800]
+                                        : Colors.green[700],
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12),
                               ),

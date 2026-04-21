@@ -23,6 +23,9 @@ class DriverPage extends StatefulWidget {
 class _DriverPageState extends State<DriverPage> {
   Timer? _pollingTimer;
   bool _isShowingIncoming = false;
+  String? _lastNotifiedTaskId;
+  String _currentStatus = "Sedang memuat...";
+  bool _hasPendingTask = false;
 
   @override
   void initState() {
@@ -39,21 +42,38 @@ class _DriverPageState extends State<DriverPage> {
   void _startPolling() {
     // Poll every 5 seconds to check for new tasks
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      if (_isShowingIncoming) return; // Prevent multiple popups
-      
       final nama = widget.user['nama'] ?? widget.user['nama_lengkap'];
       if (nama != null) {
         final tugas = await MongoDBService.getTugasSekarang(nama);
-        if (tugas != null && tugas['konfirmasi_sopir'] == 'pending' && !_isShowingIncoming) {
-          _isShowingIncoming = true;
-          if (mounted) {
-            await Navigator.push(context, MaterialPageRoute(
-              builder: (_) => DriverIncomingTaskPage(
-                tugas: tugas,
-                onDecision: () { } // The status update is handled inside the page
-              )
-            ));
-            _isShowingIncoming = false;
+        if (mounted) {
+          if (tugas == null) {
+            setState(() {
+              _currentStatus = "Tidak ada tugas";
+              _hasPendingTask = false;
+            });
+          } else if (tugas['konfirmasi_sopir'] == 'pending') {
+            setState(() {
+              _currentStatus = "Ada tugas perlu konfirmasi!";
+              _hasPendingTask = true;
+            });
+            final taskId = tugas['deviceId']?.toString();
+            if (taskId != null && taskId != _lastNotifiedTaskId && !_isShowingIncoming) {
+              _lastNotifiedTaskId = taskId;
+              _isShowingIncoming = true;
+              await Navigator.push(context, MaterialPageRoute(
+                builder: (_) => DriverIncomingTaskPage(
+                  tugas: tugas,
+                  user: widget.user,
+                  onDecision: () { } // The status update is handled inside the page
+                )
+              ));
+              _isShowingIncoming = false;
+            }
+          } else if (tugas['konfirmasi_sopir'] == 'accepted') {
+            setState(() {
+              _currentStatus = "Sedang bertugas";
+              _hasPendingTask = false;
+            });
           }
         }
       }
@@ -101,6 +121,7 @@ class _DriverPageState extends State<DriverPage> {
         'title': 'Informasi Tugas',
         'icon': Icons.assignment,
         'color': Colors.green,
+        'hasBadge': _hasPendingTask,
         'onTap': () {
           Navigator.push(
             context,
@@ -235,6 +256,25 @@ class _DriverPageState extends State<DriverPage> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _currentStatus == "Ada tugas perlu konfirmasi!" 
+                            ? Colors.red 
+                            : _currentStatus == "Sedang bertugas" 
+                                ? Colors.green 
+                                : Colors.white24,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "Status: $_currentStatus",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -265,32 +305,53 @@ class _DriverPageState extends State<DriverPage> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(15),
                         onTap: item['onTap'], // Fungsi navigasi dari Langkah 2
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            // Lingkaran latar belakang ikon
-                            Container(
-                              padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: (item['color'] as Color).withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                item['icon'],
-                                color: item['color'],
-                                size: 40,
-                              ),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Lingkaran latar belakang ikon
+                                Container(
+                                  padding: const EdgeInsets.all(15),
+                                  decoration: BoxDecoration(
+                                    color: (item['color'] as Color).withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    item['icon'],
+                                    color: item['color'],
+                                    size: 40,
+                                  ),
+                                ),
+                                const SizedBox(height: 15),
+                                // Teks Judul Menu
+                                Text(
+                                  item['title'],
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 15),
-                            // Teks Judul Menu
-                            Text(
-                              item['title'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            if (item['hasBadge'] == true)
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Text(
+                                    "!",
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
                           ],
                         ),
                       ),

@@ -59,7 +59,7 @@ void onStart(ServiceInstance service) async {
   // Setup local notifications to handle tap
   const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
   const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(settings: initializationSettings);
 
   String? currentPendingTaskId;
 
@@ -76,10 +76,10 @@ void onStart(ServiceInstance service) async {
           currentPendingTaskId = taskId;
           
           flutterLocalNotificationsPlugin.show(
-            889,
-            'PANGGILAN PENUGASAN BARU!',
-            'Ketuk untuk melihat tugas: ${tugas['tugas'] ?? '-'}',
-            const NotificationDetails(
+            id: 889,
+            title: 'PANGGILAN PENUGASAN BARU!',
+            body: 'Ketuk untuk melihat tugas: ${tugas['tugas'] ?? '-'}',
+            notificationDetails: const NotificationDetails(
               android: AndroidNotificationDetails(
                 'my_foreground',
                 'Layanan Penugasan Sopir',

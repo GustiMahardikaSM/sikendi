@@ -83,7 +83,7 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                         style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16), backgroundColor: Colors.orange),
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => DriverIncomingTaskPage(tugas: _tugas!, onDecision: _loadTugas)
+                            builder: (_) => DriverIncomingTaskPage(tugas: _tugas!, onDecision: _loadTugas, user: widget.user)
                           ));
                         },
                         child: const Text("Tanggapi Penugasan", style: TextStyle(fontSize: 16, color: Colors.white)),

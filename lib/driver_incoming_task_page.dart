@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_tracking_page.dart';
+import 'package:sikendi/driver_tugas_page.dart';
 
 class DriverIncomingTaskPage extends StatefulWidget {
   final Map<String, dynamic> tugas;
+  final Map<String, dynamic> user;
   final VoidCallback onDecision;
 
-  const DriverIncomingTaskPage({super.key, required this.tugas, required this.onDecision});
+  const DriverIncomingTaskPage({super.key, required this.tugas, required this.onDecision, required this.user});
 
   @override
   State<DriverIncomingTaskPage> createState() => _DriverIncomingTaskPageState();
@@ -138,10 +140,25 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
                       children: [
                         GestureDetector(
                           onTap: _reject,
-                          child: const CircleAvatar(radius: 35, backgroundColor: Colors.red, child: Icon(Icons.close, color: Colors.white, size: 35)),
+                          child: const CircleAvatar(radius: 30, backgroundColor: Colors.red, child: Icon(Icons.close, color: Colors.white, size: 30)),
                         ),
                         const SizedBox(height: 8),
                         const Text("Tolak", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    // Tombol Detail
+                    Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            widget.onDecision();
+                            Navigator.pop(context); // Tutup pop up
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => DriverTugasPage(user: widget.user)));
+                          },
+                          child: const CircleAvatar(radius: 30, backgroundColor: Colors.orange, child: Icon(Icons.info_outline, color: Colors.white, size: 30)),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text("Detail", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     // Tombol Terima
@@ -149,7 +166,7 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
                       children: [
                         GestureDetector(
                           onTap: _accept,
-                          child: const CircleAvatar(radius: 35, backgroundColor: Colors.green, child: Icon(Icons.check, color: Colors.white, size: 35)),
+                          child: const CircleAvatar(radius: 30, backgroundColor: Colors.green, child: Icon(Icons.check, color: Colors.white, size: 30)),
                         ),
                         const SizedBox(height: 8),
                         const Text("Terima", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
