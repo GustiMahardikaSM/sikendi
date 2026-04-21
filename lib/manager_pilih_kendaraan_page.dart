@@ -14,10 +14,19 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
   List<Map<String, dynamic>> _kendaraanTersedia = [];
   bool _isLoading = true;
 
+  final TextEditingController _searchKendaraanController = TextEditingController();
+  String _searchKendaraanQuery = '';
+
   @override
   void initState() {
     super.initState();
     _loadKendaraan();
+  }
+
+  @override
+  void dispose() {
+    _searchKendaraanController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadKendaraan() async {
@@ -38,6 +47,17 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
         );
       }
     }
+  }
+
+  List<Map<String, dynamic>> get _filteredKendaraan {
+    if (_searchKendaraanQuery.isEmpty) return _kendaraanTersedia;
+
+    final q = _searchKendaraanQuery.toLowerCase();
+    return _kendaraanTersedia.where((k) {
+      final model = (k['model'] ?? '').toLowerCase();
+      final plat = (k['plat'] ?? '').toLowerCase();
+      return model.contains(q) || plat.contains(q);
+    }).toList();
   }
 
   void _showFormTugas(Map<String, dynamic> kendaraan) {
@@ -193,20 +213,58 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text("Kendaraan Tersedia", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Kendaraan Tersedia", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text("${_filteredKendaraan.length} ditemukan", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ),
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _searchKendaraanController,
+              decoration: InputDecoration(
+                hintText: 'Cari model / plat...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchKendaraanQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchKendaraanController.clear();
+                          setState(() => _searchKendaraanQuery = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onChanged: (val) => setState(() => _searchKendaraanQuery = val),
+            ),
           ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _kendaraanTersedia.isEmpty
-                    ? const Center(child: Text("Tidak ada kendaraan tersedia.", style: TextStyle(fontSize: 16, color: Colors.grey)))
+                : _filteredKendaraan.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchKendaraanQuery.isNotEmpty 
+                            ? "Kendaraan tidak ditemukan." 
+                            : "Tidak ada kendaraan tersedia.", 
+                          style: const TextStyle(fontSize: 16, color: Colors.grey)
+                        )
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _kendaraanTersedia.length,
+                        itemCount: _filteredKendaraan.length,
                         itemBuilder: (context, index) {
-                          final item = _kendaraanTersedia[index];
+                          final item = _filteredKendaraan[index];
                           return Card(
                             margin: const EdgeInsets.only(bottom: 10),
                             elevation: 2,
