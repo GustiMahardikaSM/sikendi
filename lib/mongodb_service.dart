@@ -653,6 +653,24 @@ class MongoDBService {
     return [];
   }
 
+  static Future<List<Map<String, dynamic>>> getHasilPenugasan() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/hasil-penugasan'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        debugPrint("Gagal mengambil data hasil penugasan: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Error API getHasilPenugasan: $e");
+    }
+    return [];
+  }
+
   /// Buat penugasan baru: assign sopir ke kendaraan dengan tugas
   static Future<Map<String, dynamic>> buatPenugasan({
     required String deviceId,

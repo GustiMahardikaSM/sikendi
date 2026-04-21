@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
 import 'package:sikendi/driver_tracking_page.dart';
+import 'package:intl/intl.dart';
 
 class DriverTugasPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -60,17 +61,110 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                   const SizedBox(height: 20),
                   Card(
                     elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Kendaraan", style: TextStyle(color: Colors.grey)),
-                          Text("${_tugas!['model']} (${_tugas!['plat']})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          const Divider(height: 30),
-                          const Text("Deskripsi Tugas", style: TextStyle(color: Colors.grey)),
-                          Text(_tugas!['tugas'] ?? '-', style: const TextStyle(fontSize: 16)),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(Icons.directions_car, color: Colors.blue[700], size: 28),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text("Kendaraan", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                                    Text("${_tugas!['model']} (${_tugas!['plat']})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Divider(),
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                              const SizedBox(width: 8),
+                              const Text("Status", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _tugas!['konfirmasi_sopir'] == 'pending' ? Colors.orange.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _tugas!['konfirmasi_sopir'] == 'pending' ? Icons.access_time : Icons.check_circle,
+                                  color: _tugas!['konfirmasi_sopir'] == 'pending' ? Colors.orange[800] : Colors.green[700],
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _tugas!['konfirmasi_sopir'] == 'pending' ? "Menunggu Konfirmasi" : "Sedang Dijalankan",
+                                  style: TextStyle(
+                                    color: _tugas!['konfirmasi_sopir'] == 'pending' ? Colors.orange[800] : Colors.green[700],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Icon(Icons.access_time_filled, color: Colors.blue[700], size: 20),
+                              const SizedBox(width: 8),
+                              const Text("Waktu Penugasan", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _tugas!['waktu_ambil'] != null
+                                ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(_tugas!['waktu_ambil']).toLocal())
+                                : '-',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Divider(),
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.assignment, color: Colors.blue[700], size: 20),
+                              const SizedBox(width: 8),
+                              const Text("Deskripsi Tugas", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              _tugas!['tugas'] ?? 'Tidak ada detail tugas',
+                              style: const TextStyle(fontSize: 15, height: 1.4),
+                            ),
+                          ),
                         ],
                       ),
                     ),

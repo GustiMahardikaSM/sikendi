@@ -7,6 +7,7 @@ import 'package:sikendi/manager_penugasan_page.dart';
 import 'package:sikendi/manager_vehicle_page.dart';
 import 'package:sikendi/manager_verifikasi_page.dart';
 import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/manager_informasi_tugas_page.dart';
 
 class ManagerPage extends StatefulWidget {
   final String? focusDeviceId;
@@ -54,6 +55,12 @@ class _ManagerPageState extends State<ManagerPage> {
       'icon': Icons.notifications_active_outlined,
       'color': Colors.amber,
       'page': () => const ManagerPeringatanPage(),
+    },
+    {
+      'title': 'Status Penugasan',
+      'icon': Icons.history_edu,
+      'color': Colors.blueGrey,
+      'page': () => const ManagerInformasiTugasPage(),
     },
   ];
 
