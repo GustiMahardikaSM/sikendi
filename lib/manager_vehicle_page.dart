@@ -476,13 +476,14 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text("Kendaraan berhasil didefinisikan."),
+                content: Text("Kendaraan berhasil ditambahkan dan langsung aktif."),
                 backgroundColor: Colors.green,
               ),
             );
             widget.onVehicleDefined();
             Navigator.of(context).pop();
           } else {
+
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("Gagal: Device ID mungkin sudah terdaftar."),
@@ -593,6 +594,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
                       }),
                 ),
               ],
+
               if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
