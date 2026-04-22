@@ -12,7 +12,7 @@ Future<void> initializeService() async {
     'my_foreground', 
     'Layanan Penugasan Sopir',
     description: 'Menjaga agar notifikasi penugasan masuk',
-    importance: Importance.max,
+    importance: Importance.min, // Sangat rendah: tidak ada ikon di status bar, tidak ada suara
   );
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -26,10 +26,10 @@ Future<void> initializeService() async {
       onStart: onStart,
       autoStart: true, // Auto start on boot or app start
       isForegroundMode: true,
-      notificationChannelId: 'my_foreground',
       initialNotificationTitle: 'Layanan Sopir SiKenDi Aktif',
       initialNotificationContent: 'Menunggu penugasan...',
       foregroundServiceNotificationId: 888,
+      notificationChannelId: 'my_foreground',
     ),
     iosConfiguration: IosConfiguration(
       autoStart: true,

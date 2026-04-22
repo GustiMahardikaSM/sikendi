@@ -7,10 +7,13 @@ import 'package:sikendi/driver_page.dart'; // Import halaman driver
 import 'package:sikendi/login_page.dart';
 import 'package:sikendi/manager_page.dart'; // Import halaman manager
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // Tambahkan ini untuk defaultTargetPlatform
 import 'package:sikendi/manager_login_page.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
 import 'package:sikendi/background_service.dart'; // Import background service
+import 'package:flutter_background_service/flutter_background_service.dart';
+
 
 // ==========================================================
 // 1. FUNGSI UTAMA (Main Entry Point)
@@ -156,7 +159,29 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         } catch (e) {
           print("Auto-login: Gagal update FCM token: $e");
         }
-        
+
+        // --- CEK APAKAH ADA TUGAS PENDING ---
+        final nama = user['nama'] ?? user['nama_lengkap'];
+        if (nama != null) {
+          final tugas = await MongoDBService.getTugasSekarang(nama);
+          if (tugas != null && tugas['konfirmasi_sopir'] == 'pending') {
+            final deviceId = tugas['deviceId'] ?? tugas['gps_1'] ?? tugas['device_id'];
+            if (deviceId != null) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DriverIncomingTaskPage(
+                    tugas: tugas,
+                    user: user,
+                    onDecision: () {}, // Callback kosong karena di awal app
+                  ),
+                ),
+              );
+              return; // Berhenti di sini, jangan lanjut ke DriverPage
+            }
+          }
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => DriverPage(user: user)),
@@ -205,10 +230,9 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
     // 3. Listener untuk pesan FCM saat aplikasi di foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Pesan diterima saat aplikasi di foreground: ${message.data['title']}');
+      print('🚀 FCM Foreground: ${message.data['title']} | Type: ${message.data['type']} | Device: ${message.data['deviceId']}');
       // Cek jika ini adalah notifikasi penugasan baru (data-only)
       if (message.data['deviceId'] != null && message.data['type'] == 'panggilan_tugas') {
-        // Langsung tangani navigasi untuk menampilkan halaman telepon masuk
         _handleNotificationNavigation(message.data);
       }
     });

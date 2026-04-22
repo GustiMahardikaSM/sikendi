@@ -8,6 +8,8 @@ import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/profile_sopir_page.dart'; 
 import 'package:sikendi/driver_tugas_page.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 // ==========================================================
 // KELAS UTAMA HALAMAN SOPIR
@@ -61,6 +63,20 @@ class _DriverPageState extends State<DriverPage> {
             _hasPendingTask = true;
             _activeDeviceId = tugas['deviceId'] ?? tugas['gps_1'] ?? tugas['device_id'];
           });
+          
+          // --- AUTO REDIRECT JIKA ADA TUGAS PENDING ---
+          if (_activeDeviceId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DriverIncomingTaskPage(
+                  tugas: tugas,
+                  user: widget.user,
+                  onDecision: _checkCurrentTask,
+                ),
+              ),
+            );
+          }
         } else if (tugas['konfirmasi_sopir'] == 'accepted') {
           setState(() {
             _currentStatus = "Sedang bertugas";
@@ -121,6 +137,40 @@ class _DriverPageState extends State<DriverPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // Fungsi untuk mengetes notifikasi secara lokal (tanpa FCM)
+  Future<void> _testLocalNotification() async {
+    final notifPlugin = FlutterLocalNotificationsPlugin();
+    
+    const androidDetails = AndroidNotificationDetails(
+      'channel_tugas_urgent_v2',
+      'Panggilan Tugas Urgent',
+      importance: Importance.max,
+      priority: Priority.max, // Set ke max agar di paling atas
+      fullScreenIntent: true,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('ringtone_task'),
+    );
+    
+    // Inisialisasi dulu sebelum digunakan (Wajib!)
+    const initializationSettings = InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    );
+    await notifPlugin.initialize(settings: initializationSettings);
+
+    const generalDetails = NotificationDetails(android: androidDetails);
+    
+    await notifPlugin.show(
+      id: 999,
+      title: 'TES NOTIFIKASI BERHASIL!',
+      body: 'Jika Anda melihat ini, sistem notifikasi di HP Anda sudah benar.',
+      notificationDetails: generalDetails,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Mencoba mengirim notifikasi tes..."), backgroundColor: Colors.blue),
     );
   }
 
@@ -241,6 +291,12 @@ class _DriverPageState extends State<DriverPage> {
             ),
           );
         },
+      },
+      {
+        'title': 'Tes Notifikasi',
+        'icon': Icons.notification_important,
+        'color': Colors.redAccent,
+        'onTap': _testLocalNotification,
       },
     ];
 

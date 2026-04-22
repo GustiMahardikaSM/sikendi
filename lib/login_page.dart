@@ -130,6 +130,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
           String? fcmToken = await FirebaseMessaging.instance.getToken();
           if (fcmToken != null) {
+            // CETAK TOKEN UNTUK DEBUGGING (PENTING!)
+            debugPrint("=====================================================");
+            debugPrint("TOKEN FCM HP ASLI: $fcmToken");
+            debugPrint("=====================================================");
+            
             // Panggil service untuk update token di backend
             await MongoDBService.updateFcmToken(_emailController.text, fcmToken);
           }

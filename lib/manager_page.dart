@@ -17,8 +17,9 @@ import 'package:sikendi/manager_profile_page.dart';
 
 class ManagerPage extends StatefulWidget {
   final String? focusDeviceId;
+  final Map<String, dynamic>? user;
 
-  const ManagerPage({super.key, this.focusDeviceId});
+  const ManagerPage({super.key, this.focusDeviceId, this.user});
 
   @override
   State<ManagerPage> createState() => _ManagerPageState();
@@ -124,7 +125,8 @@ class _ManagerPageState extends State<ManagerPage> {
   }
 
   Future<void> _loadUserAndSummary() async {
-    final user = await AuthService.getCurrentUser();
+    // Gunakan user dari constructor jika ada (untuk auto-login), jika tidak ambil dari storage
+    final user = widget.user ?? await AuthService.getCurrentUser();
     setState(() {
       _currentUser = user;
     });
