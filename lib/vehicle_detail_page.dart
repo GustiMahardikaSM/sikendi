@@ -880,13 +880,13 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
         canTransfer = true; // Univ bisa transfer apapun
       } else if (userLevel == 'fakultas') {
         // Manajer Fak bisa transfer kendaraan miliknya atau departemen di bawahnya
-        if (vehicleLevel == 'fakultas' && vehicle['fakultas'] == _currentUser!['fakultas']) {
-          canTransfer = true;
-        } else if (vehicleLevel == 'departemen' && vehicle['fakultas'] == _currentUser!['fakultas']) {
+        if (vehicleLevel != 'universitas' && vehicle['fakultas'] == _currentUser!['fakultas']) {
           canTransfer = true;
         }
       }
+      // Manajer departemen otomatis canTransfer = false
     }
+
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1542,18 +1542,24 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
+
                       isExpanded: true,
                       value: selectedLevel,
                       decoration: const InputDecoration(labelText: 'Tingkat'),
-                      items: const [
-                        DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
-                        DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
-                        DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
+                      items: [
+                        if (_currentUser?['level'] == 'universitas')
+                          const DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
+                        const DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
+                        const DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
                       ],
                       onChanged: isLoading ? null : (v) => setDialogState(() {
-
                         selectedLevel = v!;
-                        selectedFakultas = null;
+                        // Jika bukan univ, otomatis pilih fakultas user sendiri
+                        if (_currentUser?['level'] == 'fakultas') {
+                          selectedFakultas = _currentUser!['fakultas'];
+                        } else {
+                          selectedFakultas = null;
+                        }
                         selectedDepartemen = null;
                       }),
                     ),
@@ -1563,8 +1569,11 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                         isExpanded: true,
                         value: selectedFakultas,
                         decoration: const InputDecoration(labelText: 'Fakultas'),
-                        items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: isLoading ? null : (v) => setDialogState(() {
+                        // Jika manajer fakultas, dropdown fakultas dikunci/disabled
+                        items: _currentUser?['level'] == 'fakultas' 
+                          ? [DropdownMenuItem(value: _currentUser!['fakultas'], child: Text(_currentUser!['fakultas'].toString()))]
+                          : HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: (isLoading || _currentUser?['level'] == 'fakultas') ? null : (v) => setDialogState(() {
                           selectedFakultas = v;
                           selectedDepartemen = null;
                         }),
@@ -1580,9 +1589,9 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                         onChanged: isLoading ? null : (v) => setDialogState(() => selectedDepartemen = v),
                       ),
                     ],
-
                   ],
                 ),
+
               ),
               actions: [
                 TextButton(

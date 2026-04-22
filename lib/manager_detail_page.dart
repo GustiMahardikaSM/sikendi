@@ -152,21 +152,50 @@ class _ManagerDetailPageState extends State<ManagerDetailPage> {
           itemCount: activities.length,
           itemBuilder: (context, index) {
             final log = activities[index];
+            final type = log['type'] ?? '';
+            
+            IconData icon;
+            Color iconColor;
+            
+            if (type.contains('assignment')) {
+              icon = Icons.assignment_ind;
+              iconColor = Colors.blue;
+            } else if (type.contains('vehicle')) {
+              icon = Icons.directions_car;
+              iconColor = Colors.orange;
+            } else if (type.contains('verify')) {
+              icon = Icons.verified_user;
+              iconColor = Colors.green;
+            } else {
+              icon = Icons.history;
+              iconColor = Colors.grey;
+            }
+
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
+              elevation: 1,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               child: ListTile(
-                leading: const Icon(Icons.assignment_turned_in, color: Colors.green),
-                title: Text("Tugas: ${log['tugas'] ?? 'Umum'}"),
-                subtitle: Text("Driver: ${log['namaSopir']}\nMobil: ${log['model']} (${log['plat']})"),
-                isThreeLine: true,
-                trailing: Text(
-                  _formatDate(log['waktu_selesai']),
-                  style: const TextStyle(fontSize: 10),
+                leading: CircleAvatar(
+                  backgroundColor: iconColor.withOpacity(0.1),
+                  child: Icon(icon, color: iconColor, size: 20),
+                ),
+                title: Text(
+                  log['description'] ?? 'Tanpa deskripsi',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    _formatDate(log['timestamp']),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
                 ),
               ),
             );
           },
         );
+
       },
     );
   }
