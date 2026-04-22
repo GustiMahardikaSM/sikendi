@@ -469,6 +469,73 @@ class MongoDBService {
     return [];
   }
 
+  static Future<List<Map<String, dynamic>>> getManagerHierarchy() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/hierarchy'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      debugPrint("Error getManagerHierarchy: $e");
+    }
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> getManagerActivityLog(String email) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/activity/$email'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      debugPrint("Error getManagerActivityLog: $e");
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>?> getManagerMe() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/me'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint("Error getManagerMe: $e");
+    }
+    return null;
+  }
+
+  static Future<bool> updateManagerMe({String? noHp, String? base64Selfie}) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/manager/update-me'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          if (noHp != null) 'no_hp': noHp,
+          if (base64Selfie != null) 'foto_selfie': base64Selfie,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Error updateManagerMe: $e");
+      return false;
+    }
+  }
+
+
+
+
 
   static Future<bool> verifyManager(String managerId, String action) async {
     try {

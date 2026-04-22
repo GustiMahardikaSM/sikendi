@@ -9,6 +9,10 @@ import 'package:sikendi/manager_verifikasi_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/manager_informasi_tugas_page.dart';
 import 'package:sikendi/auth_service.dart';
+import 'package:sikendi/manager_list_page.dart';
+import 'package:sikendi/manager_profile_page.dart';
+
+
 
 
 class ManagerPage extends StatefulWidget {
@@ -66,7 +70,14 @@ class _ManagerPageState extends State<ManagerPage> {
       'color': Colors.blueGrey,
       'page': () => const ManagerInformasiTugasPage(),
     },
+    {
+      'title': 'Data Saya',
+      'icon': Icons.person_outline,
+      'color': Colors.teal,
+      'page': () => const ManagerProfilePage(),
+    },
   ];
+
 
   List<Map<String, dynamic>> get _filteredMenuItems {
     List<Map<String, dynamic>> items = List.from(_menuItems);
@@ -80,8 +91,15 @@ class _ManagerPageState extends State<ManagerPage> {
           'color': Colors.redAccent,
           'page': () => const ManagerVerifikasiPage(isManagerVerif: true),
         });
+        items.add({
+          'title': 'Data Manajer',
+          'icon': Icons.badge_outlined,
+          'color': Colors.blueGrey[700],
+          'page': () => const ManagerListPage(),
+        });
       }
     }
+
     return items;
   }
 
