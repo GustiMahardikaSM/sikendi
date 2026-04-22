@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 class AuthService {
 
@@ -28,6 +29,12 @@ class AuthService {
   static Future<void> logout() async {
     await storage.delete(key: 'jwt_token');
     await storage.delete(key: 'nama_sopir');
+    
+    // Hentikan Background Service jika sedang berjalan
+    final service = FlutterBackgroundService();
+    if (await service.isRunning()) {
+      service.invoke('stopService');
+    }
   }
 
   // Fungsi baru untuk mendapatkan data user dari token yang tersimpan
@@ -35,6 +42,11 @@ class AuthService {
     final token = await getToken();
     if (token != null) {
       try {
+        // Cek apakah token sudah expired
+        if (JwtDecoder.isExpired(token)) {
+          await logout(); // Hapus token jika sudah expired
+          return null;
+        }
         // Decode token untuk mendapatkan payload (data user)
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
         return decodedToken;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:sikendi/driver_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'auth_service.dart';
@@ -121,6 +122,12 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       if (status == 'aktif') {
         // Setelah login berhasil, dapatkan dan simpan FCM token ke database
         try {
+          // Aktifkan Background Service saat login berhasil (Sopir)
+          final service = FlutterBackgroundService();
+          if (!(await service.isRunning())) {
+            service.startService();
+          }
+
           String? fcmToken = await FirebaseMessaging.instance.getToken();
           if (fcmToken != null) {
             // Panggil service untuk update token di backend

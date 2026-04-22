@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:sikendi/manager_login_page.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
+import 'package:sikendi/background_service.dart'; // Import background service
 
 // ==========================================================
 // 1. FUNGSI UTAMA (Main Entry Point)
@@ -92,6 +93,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Inisialisasi Firebase
   await Firebase.initializeApp();
+  // Inisialisasi Background Service (Konfigurasi awal)
+  await initializeService();
   // Set background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -121,7 +124,45 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   @override
   void initState() {
     super.initState();
+    _checkAutoLogin();
     _setupFCM();
+  }
+
+  Future<void> _checkAutoLogin() async {
+    final user = await AuthService.getCurrentUser();
+    if (user != null && mounted) {
+      final role = user['role']?.toString().toLowerCase();
+      
+      // Jika user sudah login, arahkan ke halaman yang sesuai
+      if (role == 'manager') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ManagerPage(user: user)),
+        );
+      } else if (role == 'sopir') {
+        // Untuk sopir, pastikan Background Service aktif agar proses tidak dibunuh OS
+        final service = FlutterBackgroundService();
+        bool isRunning = await service.isRunning();
+        if (!isRunning) {
+          service.startService();
+        }
+
+        // Untuk sopir, pastikan FCM token tetap terupdate di server
+        try {
+          String? fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            await MongoDBService.updateFcmToken(user['email'], fcmToken);
+          }
+        } catch (e) {
+          print("Auto-login: Gagal update FCM token: $e");
+        }
+        
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => DriverPage(user: user)),
+        );
+      }
+    }
   }
 
   // Fungsi untuk setup listener dan izin FCM
@@ -129,13 +170,20 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-    // 1. Minta izin notifikasi (wajib untuk iOS & Android 13+)
+    // 1. Minta izin notifikasi FCM (wajib untuk iOS & Android 13+)
     await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
       provisional: false,
     );
+
+    // 1b. Minta izin spesifik untuk Android 13+ melalui Local Notifications Plugin
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+    }
 
     // 2. Inisialisasi Local Notifications untuk menangani tap di foreground/background
     const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
