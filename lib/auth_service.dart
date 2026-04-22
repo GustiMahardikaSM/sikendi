@@ -41,19 +41,22 @@ class AuthService {
   static Future<Map<String, dynamic>?> getCurrentUser() async {
     final token = await getToken();
     if (token != null) {
+      print("DEBUG AUTH: Token ditemukan.");
       try {
-        // Cek apakah token sudah expired
         if (JwtDecoder.isExpired(token)) {
-          await logout(); // Hapus token jika sudah expired
+          print("DEBUG AUTH: Token KADALUARSA (Expired).");
+          await logout();
           return null;
         }
-        // Decode token untuk mendapatkan payload (data user)
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+        print("DEBUG AUTH: Token Valid. Payload: $decodedToken");
         return decodedToken;
       } catch (e) {
+        print("DEBUG AUTH: Error decoding token: $e");
         return null;
       }
     }
+    print("DEBUG AUTH: Token tidak ditemukan (null).");
     return null;
   }
 

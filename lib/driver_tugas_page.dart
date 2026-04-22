@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
 import 'package:sikendi/driver_tracking_page.dart';
+import 'package:sikendi/main.dart';
+import 'package:sikendi/driver_page.dart';
 import 'package:intl/intl.dart';
 
 class DriverTugasPage extends StatefulWidget {
@@ -60,6 +63,38 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
         title: const Text("Informasi Tugas"),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () async {
+            // Jika kita punya data user lengkap, langsung ke DriverPage
+            if (widget.user.containsKey('nama') || widget.user.containsKey('nama_lengkap')) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => DriverPage(user: widget.user)),
+                (route) => false,
+              );
+            } else {
+              // Jika data user kosong (dari notifikasi), ambil dulu dari storage
+              final currentUser = await AuthService.getCurrentUser();
+              if (context.mounted) {
+                if (currentUser != null) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => DriverPage(user: currentUser)),
+                    (route) => false,
+                  );
+                } else {
+                  // Fallback terakhir jika benar-benar tidak ada session
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                    (route) => false,
+                  );
+                }
+              }
+            }
+          },
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

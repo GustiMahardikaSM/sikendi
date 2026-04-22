@@ -4,6 +4,8 @@ import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/driver_tugas_page.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:sikendi/driver_page.dart';
+import 'package:sikendi/main.dart';
+import 'package:sikendi/auth_service.dart';
 import 'dart:async';
 
 class DriverIncomingTaskPage extends StatefulWidget {
@@ -73,14 +75,27 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
             content: const Text("Tugas sedang dilaksanakan."),
             actions: [
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(ctx); // Tutup Dialog
-                  // Kembali ke Dashboard dan hapus riwayat navigasi (agar tidak bisa back ke halaman panggilan)
-                  Navigator.pushAndRemoveUntil(
-                    context, 
-                    MaterialPageRoute(builder: (_) => DriverPage(user: widget.user)),
-                    (route) => false
-                  );
+                  
+                  // Ambil data user dari storage untuk navigasi balik yang aman
+                  final currentUser = await AuthService.getCurrentUser();
+                  if (mounted) {
+                    if (currentUser != null) {
+                      Navigator.pushAndRemoveUntil(
+                        context, 
+                        MaterialPageRoute(builder: (_) => DriverPage(user: currentUser)),
+                        (route) => false
+                      );
+                    } else {
+                      // Fallback ke RoleSelectionPage jika session hilang
+                      Navigator.pushAndRemoveUntil(
+                        context, 
+                        MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                        (route) => false
+                      );
+                    }
+                  }
                 },
                 child: const Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),
               )
@@ -133,11 +148,22 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
     if (mounted) {
       widget.onDecision();
       if (success) {
-        Navigator.pushAndRemoveUntil(
-          context, 
-          MaterialPageRoute(builder: (_) => DriverPage(user: widget.user)),
-          (route) => false
-        );
+        final currentUser = await AuthService.getCurrentUser();
+        if (mounted) {
+          if (currentUser != null) {
+            Navigator.pushAndRemoveUntil(
+              context, 
+              MaterialPageRoute(builder: (_) => DriverPage(user: currentUser)),
+              (route) => false
+            );
+          } else {
+            Navigator.pushAndRemoveUntil(
+              context, 
+              MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+              (route) => false
+            );
+          }
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal menolak tugas"), backgroundColor: Colors.red));
         setState(() => _isProcessing = false);

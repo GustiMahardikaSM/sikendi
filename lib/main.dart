@@ -124,6 +124,9 @@ class RoleSelectionPage extends StatefulWidget {
 }
 
 class _RoleSelectionPageState extends State<RoleSelectionPage> {
+  bool _isChecking = true;
+  bool _isNavigating = false; // Flag untuk mencegah navigasi ganda
+
   @override
   void initState() {
     super.initState();
@@ -132,61 +135,78 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   }
 
   Future<void> _checkAutoLogin() async {
+    print("DEBUG: Memulai pengecekan login otomatis...");
     final user = await AuthService.getCurrentUser();
-    if (user != null && mounted) {
-      final role = user['role']?.toString().toLowerCase();
-      
-      // Jika user sudah login, arahkan ke halaman yang sesuai
-      if (role == 'manager') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ManagerPage(user: user)),
-        );
-      } else if (role == 'sopir') {
-        // Untuk sopir, pastikan Background Service aktif agar proses tidak dibunuh OS
-        final service = FlutterBackgroundService();
-        bool isRunning = await service.isRunning();
-        if (!isRunning) {
-          service.startService();
-        }
+    
+    if (user != null) {
+      print("DEBUG: Sesi ditemukan! Role: ${user['role']}");
+      if (mounted && !_isNavigating) {
+        _isNavigating = true;
+        _navigateToDashboard(user);
+      }
+    } else {
+      print("DEBUG: Sesi tidak ditemukan atau token expired.");
+      if (mounted) setState(() => _isChecking = false);
+    }
+  }
 
-        // Untuk sopir, pastikan FCM token tetap terupdate di server
-        try {
-          String? fcmToken = await FirebaseMessaging.instance.getToken();
-          if (fcmToken != null) {
-            await MongoDBService.updateFcmToken(user['email'], fcmToken);
-          }
-        } catch (e) {
-          print("Auto-login: Gagal update FCM token: $e");
-        }
+  void _navigateToDashboard(Map<String, dynamic> user) {
+    if (!mounted) return;
+    final role = user['role']?.toString().toLowerCase();
+    print("DEBUG: Menentukan arah navigasi untuk role: $role");
+    
+    if (role == 'manager') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => ManagerPage(user: user)),
+      );
+    } else if (role == 'sopir') {
+      _startSopirAutoFlow(user);
+    } else {
+      setState(() => _isChecking = false);
+    }
+  }
 
-        // --- CEK APAKAH ADA TUGAS PENDING ---
-        final nama = user['nama'] ?? user['nama_lengkap'];
-        if (nama != null) {
-          final tugas = await MongoDBService.getTugasSekarang(nama);
-          if (tugas != null && tugas['konfirmasi_sopir'] == 'pending') {
-            final deviceId = tugas['deviceId'] ?? tugas['gps_1'] ?? tugas['device_id'];
-            if (deviceId != null) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DriverIncomingTaskPage(
-                    tugas: tugas,
-                    user: user,
-                    onDecision: () {}, // Callback kosong karena di awal app
-                  ),
+  Future<void> _startSopirAutoFlow(Map<String, dynamic> user) async {
+    try {
+      print("DEBUG: Menjalankan layanan latar belakang untuk sopir...");
+      final service = FlutterBackgroundService();
+      if (!(await service.isRunning())) {
+        await service.startService();
+      }
+
+      final nama = user['nama'] ?? user['nama_lengkap'];
+      if (nama != null) {
+        print("DEBUG: Memeriksa tugas untuk: $nama");
+        final tugas = await MongoDBService.getTugasSekarang(nama);
+        if (tugas != null && tugas['konfirmasi_sopir'] == 'pending') {
+          print("DEBUG: Ditemukan tugas PENDING, mengalihkan ke halaman panggilan...");
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DriverIncomingTaskPage(
+                  tugas: tugas,
+                  user: user,
+                  onDecision: () {},
                 ),
-              );
-              return; // Berhenti di sini, jangan lanjut ke DriverPage
-            }
+              ),
+            );
+            return;
           }
         }
+      }
 
+      print("DEBUG: Tidak ada tugas mendesak, masuk ke Dashboard Utama...");
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => DriverPage(user: user)),
         );
       }
+    } catch (e) {
+      print("DEBUG ERROR di _startSopirAutoFlow: $e");
+      if (mounted) setState(() => _isChecking = false);
     }
   }
 
@@ -266,8 +286,14 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
   // Fungsi untuk navigasi ke halaman tugas saat notifikasi diketuk
   void _handleNotificationNavigation(Map<String, dynamic> data) async {
+    if (_isNavigating) {
+      print("DEBUG: Navigasi sedang berlangsung, mengabaikan pemicu kedua.");
+      return;
+    }
+
     final String? deviceId = data['deviceId'];
     if (deviceId != null && navigatorKey.currentContext != null) {
+      _isNavigating = true;
       // Ambil data user yang sedang login untuk diteruskan ke halaman tugas
       final user = await AuthService.getCurrentUser();
       if (user == null) return; // Jika tidak ada user login, jangan lakukan apa-apa
@@ -291,6 +317,15 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF003366),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
     // Definisikan warna utama agar konsisten
     const primaryColor = Color(0xFF003366); // Navy Blue
     const managerButtonColor = Color(0xFF005A9C); // Slightly Lighter Blue
