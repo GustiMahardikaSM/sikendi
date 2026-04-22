@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/constants/hierarchy.dart';
 
@@ -22,7 +25,8 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
   final TextEditingController _noHpController = TextEditingController();
 
 
-  String _selectedLevel = 'universitas';
+  String _selectedLevel = 'fakultas';
+
   String? _selectedFakultas;
   String? _selectedDepartemen;
 
@@ -56,10 +60,29 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
     }
   }
 
-  String? _fileToBase64(File? file) {
+  Future<String?> _compressAndGetBase64(File? file) async {
     if (file == null) return null;
-    List<int> imageBytes = file.readAsBytesSync();
-    return base64Encode(imageBytes);
+    
+    final filePath = file.absolute.path;
+    final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
+    final splitted = filePath.substring(0, (lastIndex));
+    final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
+
+    final result = await FlutterImageCompress.compressAndGetFile(
+      file.absolute.path,
+      outPath,
+      quality: 25, // Lower quality for better upload success
+      minWidth: 600,
+      minHeight: 600,
+    );
+
+    if (result == null) return null;
+    final bytes = await result.readAsBytes();
+    
+    // Clean up temporary file
+    try { File(outPath).delete(); } catch (_) {}
+    
+    return base64Encode(bytes);
   }
 
   Future<void> _register() async {
@@ -74,17 +97,27 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
 
     setState(() => _isLoading = true);
 
-    final result = await MongoDBService.registerManager(
-      email: _emailController.text,
-      password: _passwordController.text,
-      nama: _namaController.text,
-      no_hp: _noHpController.text,
-      level: _selectedLevel,
-      fakultas: _selectedFakultas,
-      departemen: _selectedDepartemen,
-      base64Selfie: _fileToBase64(_selfieImage),
-      base64Ktp: _fileToBase64(_ktpImage),
-    );
+    try {
+      debugPrint("⏳ Memulai kompresi gambar...");
+      final base64Selfie = await _compressAndGetBase64(_selfieImage);
+      final base64Ktp = await _compressAndGetBase64(_ktpImage);
+      
+      debugPrint("🚀 Mengirim data pendaftaran ke server...");
+      
+      final result = await MongoDBService.registerManager(
+        email: _emailController.text,
+        password: _passwordController.text,
+        nama: _namaController.text,
+        no_hp: _noHpController.text,
+        level: _selectedLevel,
+        fakultas: _selectedFakultas,
+        departemen: _selectedDepartemen,
+        base64Selfie: base64Selfie,
+        base64Ktp: base64Ktp,
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
+        return {'success': false, 'message': 'Koneksi lambat (Timeout). Pastikan sinyal stabil.'};
+      });
+
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -112,9 +145,54 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
         );
       }
     }
+  } catch (e) {
+      debugPrint("Error saat pendaftaran: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal mendaftar: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+
+
+  void _showImageSourceDialog(bool isSelfie) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Pilih Sumber Gambar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Kamera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera, isSelfie);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Galeri'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery, isSelfie);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
+
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -179,20 +257,24 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
                       controller: _noHpController,
                       decoration: _buildInputDecoration('Nomor HP', Icons.phone),
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
                     ),
+
                     
                     const SizedBox(height: 32),
                     _buildSectionTitle('Tingkatan Manajer'),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       value: _selectedLevel,
                       decoration: _buildInputDecoration('Pilih Tingkatan', Icons.layers),
                       items: const [
-                        DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
                         DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
                         DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
                       ],
+
+
                       onChanged: (v) {
                         setState(() {
                           _selectedLevel = v!;
@@ -202,28 +284,31 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
                       },
                     ),
 
-                    if (_selectedLevel != 'universitas') ...[
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: _selectedFakultas,
-                        decoration: _buildInputDecoration('Pilih Fakultas', Icons.account_balance),
-                        items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (v) {
-                          setState(() {
-                            _selectedFakultas = v;
-                            _selectedDepartemen = null;
-                          });
-                        },
-                        validator: (v) => v == null ? 'Wajib pilih fakultas' : null,
-                      ),
-                    ],
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _selectedFakultas,
+                      decoration: _buildInputDecoration('Pilih Fakultas', Icons.account_balance),
+                      items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedFakultas = v;
+                          _selectedDepartemen = null;
+                        });
+                      },
+                      validator: (v) => v == null ? 'Wajib pilih fakultas' : null,
+                    ),
+
 
                     if (_selectedLevel == 'departemen' && _selectedFakultas != null) ...[
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _selectedDepartemen,
                         decoration: _buildInputDecoration('Pilih Departemen', Icons.business),
                         items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+
                         onChanged: (v) => setState(() => _selectedDepartemen = v),
                         validator: (v) => v == null ? 'Wajib pilih departemen' : null,
                       ),
@@ -236,9 +321,10 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
                       children: [
                         Expanded(child: _buildImagePicker('Foto Selfie', _selfieImage, () => _pickImage(ImageSource.camera, true))),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildImagePicker('Foto KTP', _ktpImage, () => _pickImage(ImageSource.camera, false))),
+                        Expanded(child: _buildImagePicker('Foto KTP / Kartu Identitas', _ktpImage, () => _showImageSourceDialog(false))),
                       ],
                     ),
+
 
                     const SizedBox(height: 48),
                     ElevatedButton(
