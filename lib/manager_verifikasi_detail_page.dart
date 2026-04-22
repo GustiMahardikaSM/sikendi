@@ -6,8 +6,10 @@ import 'package:sikendi/mongodb_service.dart';
 
 class ManagerVerifikasiDetailPage extends StatefulWidget {
   final Map<String, dynamic> driver;
+  final bool isManager;
 
-  const ManagerVerifikasiDetailPage({super.key, required this.driver});
+  const ManagerVerifikasiDetailPage({super.key, required this.driver, this.isManager = false});
+
 
   @override
   State<ManagerVerifikasiDetailPage> createState() =>
@@ -32,12 +34,17 @@ class _ManagerVerifikasiDetailPageState
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
-    final String driverId = widget.driver['_id'].toString();
+    final String id = widget.driver['_id'].toString();
 
     try {
-      await MongoDBService.updateDriverStatus(driverId, status);
+      if (widget.isManager) {
+        await MongoDBService.verifyManager(id, status);
+      } else {
+        await MongoDBService.updateDriverStatus(id, status);
+      }
+      
       if (mounted) {
-        final message = "Status sopir berhasil diubah menjadi '$status'";
+        final message = "Status ${widget.isManager ? 'manajer' : 'sopir'} berhasil diubah menjadi '$status'";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), backgroundColor: Colors.green),
         );
@@ -57,14 +64,16 @@ class _ManagerVerifikasiDetailPageState
     }
   }
 
+
   void _showConfirmationDialog(String status) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text("Konfirmasi Tindakan"),
+        title: const Text("Konfirmasi Tindakan"),
         content: Text(
-          "Apakah Anda yakin ingin ${status == 'aktif' ? 'menyetujui' : 'menolak'} pendaftaran sopir ini?",
+          "Apakah Anda yakin ingin ${status == 'aktif' ? 'menyetujui' : 'menolak'} pendaftaran ${widget.isManager ? 'manajer' : 'sopir'} ini?",
         ),
+
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
@@ -106,10 +115,11 @@ class _ManagerVerifikasiDetailPageState
           children: [
             _buildInfoCard(),
             const SizedBox(height: 16),
-            _buildPhotoCard("Foto Selfie", widget.driver['foto_selfie_temp']),
+            _buildPhotoCard("Foto Selfie", widget.driver['foto_selfie'] ?? widget.driver['foto_selfie_temp']),
             const SizedBox(height: 16),
-            _buildPhotoCard("Foto KTP / ID Card", widget.driver['foto_ktp_temp']),
+            _buildPhotoCard("Foto KTP / ID Card", widget.driver['foto_ktp'] ?? widget.driver['foto_ktp_temp']),
             const SizedBox(height: 24),
+
             _buildActionButtons(),
           ],
         ),
@@ -132,14 +142,22 @@ class _ManagerVerifikasiDetailPageState
             ),
             const SizedBox(height: 8),
             const Divider(),
-            _buildDetailItem(Icons.person_outline, "Nama", widget.driver['nama'] ?? 'N/A'),
-            _buildDetailItem(Icons.email_outlined, "Email", widget.driver['email'] ?? 'N/A'),
+            _buildDetailItem(Icons.person_outline, "Nama", widget.driver['nama_manager'] ?? widget.driver['nama'] ?? 'N/A'),
+            _buildDetailItem(Icons.email_outlined, "Email", widget.driver['email_manager'] ?? widget.driver['email'] ?? 'N/A'),
             _buildDetailItem(Icons.phone_outlined, "No. HP", widget.driver['no_hp'] ?? 'N/A'),
+            if (widget.isManager) ...[
+              _buildDetailItem(Icons.layers_outlined, "Level", widget.driver['level']?.toUpperCase() ?? 'N/A'),
+              if (widget.driver['fakultas'] != null)
+                _buildDetailItem(Icons.account_balance_outlined, "Fakultas", widget.driver['fakultas']),
+              if (widget.driver['departemen'] != null)
+                _buildDetailItem(Icons.business_outlined, "Departemen", widget.driver['departemen']),
+            ],
           ],
         ),
       ),
     );
   }
+
 
   Widget _buildDetailItem(IconData icon, String label, String value) {
     return Padding(

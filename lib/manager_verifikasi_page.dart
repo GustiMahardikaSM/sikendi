@@ -5,21 +5,20 @@ import 'package:sikendi/manager_verifikasi_detail_page.dart';
 import 'mongodb_service.dart';
 
 class ManagerVerifikasiPage extends StatefulWidget {
-  const ManagerVerifikasiPage({super.key});
+  final bool isManagerVerif;
+  const ManagerVerifikasiPage({super.key, this.isManagerVerif = false});
 
   @override
   State<ManagerVerifikasiPage> createState() => _ManagerVerifikasiPageState();
 }
 
+
 class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
-
-  late Future<List<Map<String, dynamic>>> _pendingDriversFuture;
-
-
+  late Future<List<Map<String, dynamic>>> _pendingDataFuture;
 
   @override
-
   void initState() {
+
 
     super.initState();
 
@@ -30,30 +29,30 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
 
 
   void _loadData() {
-
     setState(() {
-
-      _pendingDriversFuture = MongoDBService.getPendingDrivers();
-
+      if (widget.isManagerVerif) {
+        _pendingDataFuture = MongoDBService.getManagerList(status: 'pending');
+      } else {
+        _pendingDataFuture = MongoDBService.getPendingDrivers();
+      }
     });
-
   }
+
 
 
 
   // Widget baru untuk kartu verifikasi
 
-  Widget _buildVerifikasiCard(Map<String, dynamic> driver) {
-
-    final nama = driver['nama'] ?? 'Tanpa Nama';
-
-    final hp = driver['no_hp'] ?? '-';
-
-    final tglDaftar = driver['tgl_daftar'] != null
-
-        ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(driver['tgl_daftar']))
-
+  Widget _buildVerifikasiCard(Map<String, dynamic> data) {
+    final nama = data['nama_manager'] ?? data['nama'] ?? 'Tanpa Nama';
+    final hp = data['no_hp'] ?? '-';
+    final level = data['level'] ?? 'Sopir';
+    final scope = data['fakultas'] != null ? ' - ${data['fakultas']}' : '';
+    
+    final tglDaftar = data['tgl_daftar'] != null
+        ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(data['tgl_daftar']))
         : 'Tanggal tidak diketahui';
+
 
 
 
@@ -70,26 +69,20 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
         borderRadius: BorderRadius.circular(12),
 
         onTap: () async {
-
           final bool? result = await Navigator.push(
-
             context,
-
             MaterialPageRoute(
-
-              builder: (context) => ManagerVerifikasiDetailPage(driver: driver),
-
+              builder: (context) => ManagerVerifikasiDetailPage(
+                driver: data, 
+                isManager: widget.isManagerVerif
+              ),
             ),
-
           );
-
           if (result == true && mounted) {
-
             _loadData();
-
           }
-
         },
+
 
         child: Padding(
 
@@ -134,14 +127,16 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
                   children: [
 
                     Text(
-
                       nama,
-
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-
                     ),
+                    if (widget.isManagerVerif)
+                      Text(
+                        "${level.toUpperCase()}$scope",
+                        style: TextStyle(color: Colors.blue[800], fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    const SizedBox(height: 4),
 
-                    const SizedBox(height: 8),
 
                     Row(
 
@@ -202,30 +197,22 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
   Widget build(BuildContext context) {
 
     return Scaffold(
-
       appBar: AppBar(
-
-        title: const Text("Verifikasi Pendaftaran Sopir"),
-
+        title: Text(widget.isManagerVerif ? "Verifikasi Pendaftaran Manajer" : "Verifikasi Pendaftaran Sopir"),
         backgroundColor: Colors.blue[900],
-
         foregroundColor: Colors.white,
-
         elevation: 0,
-
       ),
+
 
       backgroundColor: Colors.grey[100],
 
       body: RefreshIndicator(
-
         onRefresh: () async => _loadData(),
-
         child: FutureBuilder<List<Map<String, dynamic>>>(
-
-          future: _pendingDriversFuture,
-
+          future: _pendingDataFuture,
           builder: (context, snapshot) {
+
 
             if (snapshot.connectionState == ConnectionState.waiting) {
 
@@ -281,30 +268,19 @@ class _ManagerVerifikasiPageState extends State<ManagerVerifikasiPage> {
 
 
 
-            final drivers = snapshot.data!;
+            final items = snapshot.data!;
 
             return ListView.builder(
-
               padding: const EdgeInsets.only(top: 8, bottom: 8),
-
-              itemCount: drivers.length,
-
+              itemCount: items.length,
               itemBuilder: (context, index) {
-
-                return _buildVerifikasiCard(drivers[index]);
-
+                return _buildVerifikasiCard(items[index]);
               },
-
             );
-
           },
-
         ),
-
       ),
-
     );
-
   }
-
 }
+

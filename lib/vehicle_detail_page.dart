@@ -7,7 +7,10 @@ import 'package:sikendi/manager_map_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_map/flutter_map.dart'; // ✨ TAMBAHAN BARU UNTUK PETA OVERVIEW
+import 'package:flutter_map/flutter_map.dart'; 
+import 'package:sikendi/auth_service.dart';
+import 'package:sikendi/constants/hierarchy.dart';
+
 
 // ==========================================================
 // HALAMAN DETAIL KENDARAAN
@@ -28,12 +31,21 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
   bool _isRefreshing = false;
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingPhoto = false;
+  Map<String, dynamic>? _currentUser;
+
 
   @override
   void initState() {
     super.initState();
+    _loadUser();
     _loadVehicleDetail();
   }
+
+  Future<void> _loadUser() async {
+    final user = await AuthService.getCurrentUser();
+    setState(() => _currentUser = user);
+  }
+
 
   void _loadVehicleDetail() {
     setState(() {
@@ -311,6 +323,16 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           final waktuAmbil = vehicleData!['waktu_ambil']?.toString();
           final gps1 = vehicleData!['gps_1'] ?? '-';
           final waktuLepas = vehicleData!['waktu_lepas']?.toString();
+
+          
+          // Data kepemilikan
+          final kepemilikan = vehicleData!['kepemilikan'] ?? 'universitas';
+          final fakultas = vehicleData!['fakultas'];
+          final departemen = vehicleData!['departemen'];
+          
+
+
+
 
           // Tentukan warna status
           Color statusColor;
@@ -594,7 +616,63 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                           ),
                         ),
 
+
+
                         const SizedBox(height: 24),
+                        const Text(
+                          'Kepemilikan & Otoritas',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.shade100,
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _buildModernTransferableRow(
+                                context: context,
+                                icon: Icons.account_balance_outlined,
+                                label: 'Unit Kerja',
+                                value: kepemilikan.toString().toUpperCase(),
+                                vehicle: vehicleData!,
+                                onUpdate: () => _loadVehicleDetail(),
+                              ),
+                              if (kepemilikan != 'universitas' && fakultas != null) ...[
+                                Divider(height: 1, color: Colors.grey.shade100, indent: 56),
+                                _buildModernInfoRow(
+                                  icon: Icons.business_outlined,
+                                  label: 'Fakultas',
+                                  value: fakultas,
+                                ),
+                              ],
+                              if (kepemilikan == 'departemen' && departemen != null) ...[
+                                Divider(height: 1, color: Colors.grey.shade100, indent: 56),
+                                _buildModernInfoRow(
+                                  icon: Icons.layers_outlined,
+                                  label: 'Departemen',
+                                  value: departemen,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
                         const Text(
                           'Status & Telemetri',
                           style: TextStyle(
@@ -723,18 +801,26 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
         children: [
           Icon(icon, color: Colors.grey.shade500, size: 22),
           const SizedBox(width: 16),
-          Text(
-            label,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+
+
   }
 
   Widget _buildModernEditableRow({
@@ -773,6 +859,75 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       ),
     );
   }
+
+  Widget _buildModernTransferableRow({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    required Map<String, dynamic> vehicle,
+    required VoidCallback onUpdate,
+  }) {
+
+
+    // Cek apakah user boleh transfer
+    bool canTransfer = false;
+    if (_currentUser != null) {
+      final userLevel = _currentUser!['level'];
+      final vehicleLevel = vehicle['kepemilikan'] ?? 'universitas';
+      
+      if (userLevel == 'universitas') {
+        canTransfer = true; // Univ bisa transfer apapun
+      } else if (userLevel == 'fakultas') {
+        // Manajer Fak bisa transfer kendaraan miliknya atau departemen di bawahnya
+        if (vehicleLevel == 'fakultas' && vehicle['fakultas'] == _currentUser!['fakultas']) {
+          canTransfer = true;
+        } else if (vehicleLevel == 'departemen' && vehicle['fakultas'] == _currentUser!['fakultas']) {
+          canTransfer = true;
+        }
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue.shade700, size: 22),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+
+
+
+
+          if (canTransfer) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.swap_horiz, color: Colors.orange.shade700, size: 22),
+              splashRadius: 20,
+              constraints: const BoxConstraints(),
+              padding: EdgeInsets.zero,
+              onPressed: () => _showTransferDialog(context, vehicle, onUpdate),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildGridStatBox({
     required IconData icon,
@@ -1368,4 +1523,121 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       ],
     );
   }
+
+  void _showTransferDialog(BuildContext context, Map<String, dynamic> vehicle, VoidCallback onUpdate) {
+    String selectedLevel = vehicle['kepemilikan'] ?? 'universitas';
+    String? selectedFakultas = vehicle['fakultas'];
+    String? selectedDepartemen = vehicle['departemen'];
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Transfer Kepemilikan"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: selectedLevel,
+                      decoration: const InputDecoration(labelText: 'Tingkat'),
+                      items: const [
+                        DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
+                        DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
+                        DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
+                      ],
+                      onChanged: isLoading ? null : (v) => setDialogState(() {
+
+                        selectedLevel = v!;
+                        selectedFakultas = null;
+                        selectedDepartemen = null;
+                      }),
+                    ),
+                    if (selectedLevel != 'universitas') ...[
+                      const SizedBox(height: 15),
+                      DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: selectedFakultas,
+                        decoration: const InputDecoration(labelText: 'Fakultas'),
+                        items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: isLoading ? null : (v) => setDialogState(() {
+                          selectedFakultas = v;
+                          selectedDepartemen = null;
+                        }),
+                      ),
+                    ],
+                    if (selectedLevel == 'departemen' && selectedFakultas != null) ...[
+                      const SizedBox(height: 15),
+                      DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: selectedDepartemen,
+                        decoration: const InputDecoration(labelText: 'Departemen'),
+                        items: HierarchyData.getDepartemen(selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: isLoading ? null : (v) => setDialogState(() => selectedDepartemen = v),
+                      ),
+                    ],
+
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: const Text("Batal"),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () async {
+                    if (selectedLevel != 'universitas' && selectedFakultas == null) return;
+                    if (selectedLevel == 'departemen' && selectedDepartemen == null) return;
+
+                    setDialogState(() => isLoading = true);
+                    try {
+                      final gps1 = vehicle['gps_1'] ?? vehicle['device_id'] ?? widget.deviceId;
+                      final success = await MongoDBService.transferKendaraan(
+                        gps1,
+                        kepemilikan: selectedLevel,
+                        fakultas: selectedFakultas,
+                        departemen: selectedDepartemen,
+                      );
+
+
+                      if (mounted) {
+                        Navigator.pop(dialogContext);
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Berhasil mentransfer kendaraan"), backgroundColor: Colors.green),
+                          );
+                          onUpdate();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Gagal mentransfer kendaraan"), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                        );
+                      }
+                    } finally {
+                      setDialogState(() => isLoading = false);
+                    }
+                  },
+                  child: isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text("Simpan"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
+

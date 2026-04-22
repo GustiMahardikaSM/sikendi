@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/manager_page.dart';
+import 'package:sikendi/manager_signup_page.dart';
+
 
 class ManagerLoginPage extends StatefulWidget {
   const ManagerLoginPage({super.key});
@@ -282,6 +284,33 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
                       ),
                     ),
                     const SizedBox(height: 32),
+                    // Link Daftar Baru
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Belum punya akun manajer? ',
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ManagerSignUpPage()),
+                            );
+                          },
+                          child: Text(
+                            'Daftar Baru',
+                            style: TextStyle(
+                              color: accentColor,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
 
                     // --- ANIMASI CARD LOGIN ---
                     SlideTransition(

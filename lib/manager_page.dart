@@ -8,6 +8,8 @@ import 'package:sikendi/manager_vehicle_page.dart';
 import 'package:sikendi/manager_verifikasi_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/manager_informasi_tugas_page.dart';
+import 'package:sikendi/auth_service.dart';
+
 
 class ManagerPage extends StatefulWidget {
   final String? focusDeviceId;
@@ -19,7 +21,10 @@ class ManagerPage extends StatefulWidget {
 }
 
 class _ManagerPageState extends State<ManagerPage> {
+  Map<String, dynamic>? _currentUser;
+  
   final List<Map<String, dynamic>> _menuItems = [
+
     {
       'title': 'Monitoring Peta',
       'icon': Icons.map_outlined,
@@ -64,6 +69,24 @@ class _ManagerPageState extends State<ManagerPage> {
     },
   ];
 
+  List<Map<String, dynamic>> get _filteredMenuItems {
+    List<Map<String, dynamic>> items = List.from(_menuItems);
+    
+    if (_currentUser != null) {
+      final level = _currentUser!['level'];
+      if (level == 'universitas' || level == 'fakultas') {
+        items.add({
+          'title': 'Verifikasi Manajer',
+          'icon': Icons.manage_accounts,
+          'color': Colors.redAccent,
+          'page': () => const ManagerVerifikasiPage(isManagerVerif: true),
+        });
+      }
+    }
+    return items;
+  }
+
+
   Map<String, int> _summaryData = {
     'total': 0,
     'dipakai': 0,
@@ -75,8 +98,17 @@ class _ManagerPageState extends State<ManagerPage> {
   @override
   void initState() {
     super.initState();
+    _loadUserAndSummary();
+  }
+
+  Future<void> _loadUserAndSummary() async {
+    final user = await AuthService.getCurrentUser();
+    setState(() {
+      _currentUser = user;
+    });
     _refreshDashboard();
   }
+
 
   Future<void> _refreshDashboard() async {
     setState(() => _isLoadingSummary = true);
@@ -269,15 +301,35 @@ class _ManagerPageState extends State<ManagerPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Ringkasan Operasional",
-                      style: TextStyle(
-                        fontSize: 18,
+                    Text(
+                      _currentUser != null 
+                        ? "Halo, ${_currentUser!['nama'] ?? 'Manajer'}"
+                        : "Ringkasan Operasional",
+                      style: const TextStyle(
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    if (_currentUser != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          "${_currentUser!['level']?.toUpperCase()}${_currentUser!['fakultas'] != null ? ' - ${_currentUser!['fakultas']}' : ''}${_currentUser!['departemen'] != null ? ' - ${_currentUser!['departemen']}' : ''}",
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Ringkasan Operasional",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
                     Row(
                       children: [
                         _buildSummaryCard(
@@ -341,11 +393,12 @@ class _ManagerPageState extends State<ManagerPage> {
                   mainAxisSpacing: 16,
                   mainAxisExtent: 140, // <--- TAMBAHKAN INI (Tinggi kotak dikunci di 140 pixel)
                 ),
-                itemCount: _menuItems.length,
+                itemCount: _filteredMenuItems.length,
                 itemBuilder: (context, index) {
-                  return _buildMenuCard(_menuItems[index]);
+                  return _buildMenuCard(_filteredMenuItems[index]);
                 },
               ),
+
             ],
           ),
         ),

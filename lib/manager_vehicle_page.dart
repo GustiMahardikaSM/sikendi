@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/vehicle_detail_page.dart';
+import 'package:sikendi/auth_service.dart';
+import 'package:sikendi/constants/hierarchy.dart';
+
 
 // ==========================================================
 // TAB 4: MANAJEMEN KENDARAAN (REFACTORED - Dua Bagian)
@@ -20,9 +23,20 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
   @override
   void initState() {
     super.initState();
+    _loadUser();
     _loadVehicles();
     _searchController.addListener(_onSearchChanged);
   }
+
+  Map<String, dynamic>? _currentUser;
+  
+  Future<void> _loadUser() async {
+    final user = await AuthService.getCurrentUser();
+    setState(() {
+      _currentUser = user;
+    });
+  }
+
 
   @override
   void dispose() {
@@ -82,6 +96,13 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
     BuildContext context,
     Map<String, dynamic> vehicle,
   ) {
+    if (_currentUser?['level'] != 'universitas') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Hanya Manajer Universitas yang dapat mendefinisikan kendaraan baru")),
+      );
+      return;
+    }
+    
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -94,6 +115,7 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
       },
     );
   }
+
 
   void _showVehicleCrudDialog(
     BuildContext context,
@@ -298,7 +320,9 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
                           vertical: 4,
                         ),
                         child: ListTile(
+                          onLongPress: () => _showVehicleCrudDialog(context, vehicle),
                           leading: Icon(
+
                             Icons.directions_car,
                             color: status == 'Tersedia'
                                 ? Colors.green
@@ -400,7 +424,14 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _platController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
+
+  
+  String _selectedKepemilikan = 'universitas';
+  String? _selectedFakultas;
+  String? _selectedDepartemen;
+  
   bool _isLoading = false;
+
 
   @override
   void dispose() {
@@ -418,7 +449,11 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
           _platController.text.toUpperCase(),
           _modelController.text,
           widget.gps1,
+          kepemilikan: _selectedKepemilikan,
+          fakultas: _selectedFakultas,
+          departemen: _selectedDepartemen,
         );
+
 
         if (mounted) {
           if (success) {
@@ -497,10 +532,48 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 20),
+              const Text("Kepemilikan", style: TextStyle(fontWeight: FontWeight.bold)),
+              DropdownButtonFormField<String>(
+                value: _selectedKepemilikan,
+                decoration: const InputDecoration(labelText: 'Tingkat'),
+                items: const [
+                  DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
+                  DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
+                  DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
+                ],
+                onChanged: (v) => setState(() {
+                  _selectedKepemilikan = v!;
+                  _selectedFakultas = null;
+                  _selectedDepartemen = null;
+                }),
+              ),
+              if (_selectedKepemilikan != 'universitas') ...[
+                const SizedBox(height: 15),
+                DropdownButtonFormField<String>(
+                  value: _selectedFakultas,
+                  decoration: const InputDecoration(labelText: 'Fakultas'),
+                  items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: (v) => setState(() {
+                    _selectedFakultas = v;
+                    _selectedDepartemen = null;
+                  }),
+                ),
+              ],
+              if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
+                const SizedBox(height: 15),
+                DropdownButtonFormField<String>(
+                  value: _selectedDepartemen,
+                  decoration: const InputDecoration(labelText: 'Departemen'),
+                  items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: (v) => setState(() => _selectedDepartemen = v),
+                ),
+              ],
             ],
           ),
         ),
       ),
+
       actions: <Widget>[
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
@@ -541,7 +614,13 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
   late TextEditingController _platController;
   late TextEditingController _modelController;
   late String _selectedStatus;
+  
+  String _selectedKepemilikan = 'universitas';
+  String? _selectedFakultas;
+  String? _selectedDepartemen;
+  
   bool _isLoading = false;
+
 
   @override
   void initState() {
@@ -551,7 +630,11 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
       text: widget.vehicle['model'] ?? '',
     );
     _selectedStatus = widget.vehicle['status'] ?? 'Tersedia';
+    _selectedKepemilikan = widget.vehicle['kepemilikan'] ?? 'universitas';
+    _selectedFakultas = widget.vehicle['fakultas'];
+    _selectedDepartemen = widget.vehicle['departemen'];
   }
+
 
   @override
   void dispose() {
@@ -572,7 +655,11 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
           _platController.text.toUpperCase(),
           _modelController.text,
           _selectedStatus,
+          kepemilikan: _selectedKepemilikan,
+          fakultas: _selectedFakultas,
+          departemen: _selectedDepartemen,
         );
+
 
         if (mounted) {
           if (success) {
@@ -732,10 +819,48 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
                   }
                 },
               ),
+              const SizedBox(height: 20),
+              const Text("Transfer Kepemilikan", style: TextStyle(fontWeight: FontWeight.bold)),
+              DropdownButtonFormField<String>(
+                value: _selectedKepemilikan,
+                decoration: const InputDecoration(labelText: 'Tingkat'),
+                items: const [
+                  DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
+                  DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
+                  DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
+                ],
+                onChanged: (v) => setState(() {
+                  _selectedKepemilikan = v!;
+                  _selectedFakultas = null;
+                  _selectedDepartemen = null;
+                }),
+              ),
+              if (_selectedKepemilikan != 'universitas') ...[
+                const SizedBox(height: 15),
+                DropdownButtonFormField<String>(
+                  value: _selectedFakultas,
+                  decoration: const InputDecoration(labelText: 'Fakultas'),
+                  items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: (v) => setState(() {
+                    _selectedFakultas = v;
+                    _selectedDepartemen = null;
+                  }),
+                ),
+              ],
+              if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
+                const SizedBox(height: 15),
+                DropdownButtonFormField<String>(
+                  value: _selectedDepartemen,
+                  decoration: const InputDecoration(labelText: 'Departemen'),
+                  items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: (v) => setState(() => _selectedDepartemen = v),
+                ),
+              ],
             ],
           ),
         ),
       ),
+
       actions: <Widget>[
         TextButton(
           onPressed: _isLoading ? null : _deleteVehicle,

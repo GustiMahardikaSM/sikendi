@@ -257,8 +257,11 @@ class MongoDBService {
   static Future<bool> tambahKendaraanManager(
     String plat,
     String model,
-    String deviceId,
-  ) async {
+    String deviceId, {
+    String? kepemilikan,
+    String? fakultas,
+    String? departemen,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan'),
@@ -267,6 +270,9 @@ class MongoDBService {
           'plat': plat,
           'model': model,
           'deviceId': deviceId,
+          'kepemilikan': kepemilikan,
+          'fakultas': fakultas,
+          'departemen': departemen,
         }),
       );
       // Berhasil jika status code 200 (OK) atau 201 (Created)
@@ -277,12 +283,16 @@ class MongoDBService {
     }
   }
 
+
   static Future<bool> updateKendaraanManager(
     String gps1,
     String plat,
     String model,
-    String? status,
-  ) async {
+    String? status, {
+    String? kepemilikan,
+    String? fakultas,
+    String? departemen,
+  }) async {
     try {
       final body = {
         'plat': plat,
@@ -293,6 +303,10 @@ class MongoDBService {
       if (status != null) {
         body['status'] = status;
       }
+      
+      if (kepemilikan != null) body['kepemilikan'] = kepemilikan;
+      if (fakultas != null) body['fakultas'] = fakultas;
+      if (departemen != null) body['departemen'] = departemen;
 
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$gps1'),
@@ -306,6 +320,29 @@ class MongoDBService {
       return false;
     }
   }
+
+  static Future<bool> transferKendaraan(String deviceId, {
+    required String kepemilikan,
+    String? fakultas,
+    String? departemen,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/transfer'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'kepemilikan': kepemilikan,
+          'fakultas': fakultas,
+          'departemen': departemen,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Error transfer kendaraan: $e");
+      return false;
+    }
+  }
+
 
   static Future<bool> hapusMetadataKendaraan(String gps1) async {
     try {
@@ -410,6 +447,77 @@ class MongoDBService {
     }
     return {'total': 0, 'dipakai': 0, 'tersedia': 0, 'pending': 0};
   }
+
+  // MANAJEMEN MANAJER
+  static Future<List<Map<String, dynamic>>> getManagerList({String? status}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/list${status != null ? '?status=$status' : ''}'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      debugPrint("Error getManagerList: $e");
+    }
+    return [];
+  }
+
+
+  static Future<bool> verifyManager(String managerId, String action) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/manager/verify'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'managerId': managerId, 'action': action}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Error verifyManager: $e");
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> registerManager({
+    required String email,
+    required String password,
+    required String nama,
+    required String no_hp,
+    required String level,
+    String? fakultas,
+    String? departemen,
+    String? base64Selfie,
+    String? base64Ktp,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/register-manager'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+          'nama': nama,
+          'no_hp': no_hp,
+          'level': level,
+          'fakultas': fakultas,
+          'departemen': departemen,
+          'base64Selfie': base64Selfie,
+          'base64Ktp': base64Ktp,
+        }),
+      );
+      final body = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 201,
+        'message': body['message'] ?? 'Gagal mendaftar',
+      };
+    } catch (e) {
+      debugPrint("Error registerManager: $e");
+      return {'success': false, 'message': 'Kesalahan koneksi server'};
+    }
+  }
+
 
   // =================================================================
   // BAGIAN SOPIR
