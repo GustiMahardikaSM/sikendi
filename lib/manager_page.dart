@@ -158,14 +158,35 @@ class _ManagerPageState extends State<ManagerPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => const RoleSelectionPage(),
+            onPressed: () async {
+              Navigator.pop(ctx); // Tutup dialog konfirmasi
+              
+              // Tampilkan Dialog Loading (Buffering)
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (loadingCtx) => const AlertDialog(
+                  content: Row(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(width: 20),
+                      Text("Sedang keluar, mohon tunggu..."),
+                    ],
+                  ),
                 ),
-                (route) => false,
               );
+
+              // Tunggu sampai semua proses logout selesai (Server + Lokal)
+              await AuthService.logout();
+              
+              if (mounted) {
+                Navigator.pop(context); // Tutup dialog loading
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                  (route) => false,
+                );
+              }
             },
             child: const Text("Keluar", style: TextStyle(color: Colors.white)),
           ),

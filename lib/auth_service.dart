@@ -28,19 +28,22 @@ class AuthService {
   }
 
   static Future<void> logout() async {
-    // Ambil data user sebelum token dihapus untuk membersihkan token di server
+    // 1. Ambil data user & token dulu
     final user = await getCurrentUser();
-    if (user != null && user['email'] != null) {
-      await MongoDBService.clearFcmToken(user['email']);
-    }
+    final token = await getToken();
 
+    // 2. HAPUS DATA LOKAL SEGERA (Agar Auto-Login tidak memicu navigasi balik)
     await storage.delete(key: 'jwt_token');
     await storage.delete(key: 'nama_sopir');
-    
-    // Hentikan Background Service jika sedang berjalan
-    final service = FlutterBackgroundService();
-    if (await service.isRunning()) {
-      service.invoke('stopService');
+    print("DEBUG AUTH: Token lokal telah dihapus.");
+
+    // 3. Bersihkan token di server (menggunakan token yang sudah disimpan di variabel)
+    if (user != null && user['email'] != null && token != null) {
+      try {
+        await MongoDBService.clearFcmToken(user['email']);
+      } catch (e) {
+        print("DEBUG AUTH: Gagal hapus token di server: $e");
+      }
     }
   }
 

@@ -26,7 +26,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   print("Menangani pesan di background: ${message.messageId}");
 
-  // UBAH KONDISI INI: Kita membaca dari message.data, bukan message.notification
+  // VERIFIKASI PENERIMA: Jangan proses jika notifikasi bukan untuk user yang sedang login
+  final targetEmail = message.data['targetEmail'];
+  final user = await AuthService.getCurrentUser();
+  
+  if (targetEmail != null && user != null && user['email'] != targetEmail) {
+    print("DEBUG FCM: Notifikasi diabaikan (Target: $targetEmail, Login: ${user['email']})");
+    return;
+  }
+
   if (message.data['deviceId'] != null && message.data['type'] == 'panggilan_tugas') {
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -97,7 +105,6 @@ Future<void> main() async {
   // Inisialisasi Firebase
   await Firebase.initializeApp();
   // Inisialisasi Background Service (Konfigurasi awal)
-  await initializeService();
   // Set background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -169,16 +176,11 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
   Future<void> _startSopirAutoFlow(Map<String, dynamic> user) async {
     try {
-      print("DEBUG: Menjalankan layanan latar belakang untuk sopir...");
-      final service = FlutterBackgroundService();
-      if (!(await service.isRunning())) {
-        await service.startService();
-      }
-
       final nama = user['nama'] ?? user['nama_lengkap'];
       if (nama != null) {
         print("DEBUG: Memeriksa tugas untuk: $nama");
         final tugas = await MongoDBService.getTugasSekarang(nama);
+        
         if (tugas != null && tugas['konfirmasi_sopir'] == 'pending') {
           // CEK APAKAH TUGAS SUDAH PERNAH DILIHAT DETAILNYA
           final taskId = tugas['_id'] ?? tugas['id'] ?? '';
@@ -257,8 +259,17 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     );
 
     // 3. Listener untuk pesan FCM saat aplikasi di foreground
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('🚀 FCM Foreground: ${message.data['title']} | Type: ${message.data['type']} | Device: ${message.data['deviceId']}');
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print('🚀 FCM Foreground: ${message.data['title']} | Type: ${message.data['type']} | Target: ${message.data['targetEmail']}');
+      
+      // VERIFIKASI PENERIMA
+      final targetEmail = message.data['targetEmail'];
+      final user = await AuthService.getCurrentUser();
+      if (targetEmail != null && user != null && user['email'] != targetEmail) {
+        print("DEBUG FCM: Notifikasi foreground diabaikan (Target: $targetEmail)");
+        return;
+      }
+
       // Cek jika ini adalah notifikasi penugasan baru (data-only)
       if (message.data['deviceId'] != null && message.data['type'] == 'panggilan_tugas') {
         _handleNotificationNavigation(message.data);
@@ -300,11 +311,24 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     }
 
     final String? deviceId = data['deviceId'];
+    final String? targetEmail = data['targetEmail'];
+
     if (deviceId != null && navigatorKey.currentContext != null) {
       _isNavigating = true;
       // Ambil data user yang sedang login untuk diteruskan ke halaman tugas
       final user = await AuthService.getCurrentUser();
-      if (user == null) return; // Jika tidak ada user login, jangan lakukan apa-apa
+      
+      // VERIFIKASI PENERIMA (Lapis terakhir)
+      if (user == null) {
+        _isNavigating = false;
+        return;
+      }
+      
+      if (targetEmail != null && user['email'] != targetEmail) {
+        print("DEBUG FCM: Tap notifikasi diabaikan karena salah akun.");
+        _isNavigating = false;
+        return;
+      }
 
       // Ambil detail tugas lengkap dari server
       final tugas = await MongoDBService.getDetailKendaraan(deviceId);
