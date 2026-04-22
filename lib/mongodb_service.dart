@@ -438,6 +438,7 @@ class MongoDBService {
           'dipakai': data['dipakai'] ?? 0,
           'tersedia': data['tersedia'] ?? 0,
           'pending': data['pending'] ?? 0,
+          'pendingManager': data['pendingManager'] ?? 0,
         };
       } else {
         debugPrint("Gagal mengambil dashboard summary: ${response.statusCode}");
@@ -445,7 +446,8 @@ class MongoDBService {
     } catch (e) {
       debugPrint("Error API getDashboardSummary: $e");
     }
-    return {'total': 0, 'dipakai': 0, 'tersedia': 0, 'pending': 0};
+    return {'total': 0, 'dipakai': 0, 'tersedia': 0, 'pending': 0, 'pendingManager': 0};
+
   }
 
   // MANAJEMEN MANAJER

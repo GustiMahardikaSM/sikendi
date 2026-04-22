@@ -24,7 +24,6 @@ class _ManagerPageState extends State<ManagerPage> {
   Map<String, dynamic>? _currentUser;
   
   final List<Map<String, dynamic>> _menuItems = [
-
     {
       'title': 'Monitoring Peta',
       'icon': Icons.map_outlined,
@@ -86,14 +85,16 @@ class _ManagerPageState extends State<ManagerPage> {
     return items;
   }
 
-
   Map<String, int> _summaryData = {
     'total': 0,
     'dipakai': 0,
     'tersedia': 0,
     'pending': 0,
+    'pendingManager': 0,
   };
+
   bool _isLoadingSummary = true;
+
 
   @override
   void initState() {
@@ -183,18 +184,12 @@ class _ManagerPageState extends State<ManagerPage> {
                     ),
                     if (item['title'] == 'Verifikasi Sopir' &&
                         _summaryData['pending']! > 0)
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '${_summaryData['pending']}',
-                          style: const TextStyle(color: Colors.white, fontSize: 10),
-                        ),
-                      ),
+                      _buildBadge(_summaryData['pending']!),
+                    if (item['title'] == 'Verifikasi Manajer' &&
+                        _summaryData['pendingManager']! > 0)
+                      _buildBadge(_summaryData['pendingManager']!),
                   ],
+
                 ),
               ),
               const SizedBox(height: 8),
@@ -208,6 +203,29 @@ class _ManagerPageState extends State<ManagerPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadge(int count) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: const BoxDecoration(
+        color: Colors.red,
+        shape: BoxShape.circle,
+      ),
+      constraints: const BoxConstraints(
+        minWidth: 16,
+        minHeight: 16,
+      ),
+      child: Text(
+        '$count',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

@@ -72,15 +72,19 @@ class _ManagerVerifikasiDetailPageState
         title: const Text("Konfirmasi Tindakan"),
         content: Text(
           "Apakah Anda yakin ingin ${status == 'aktif' ? 'menyetujui' : 'menolak'} pendaftaran ${widget.isManager ? 'manajer' : 'sopir'} ini?",
+          style: const TextStyle(fontSize: 15),
         ),
-
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text("Batal"),
+            child: Text(
+              "Batal",
+              style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold),
+            ),
           ),
+          const SizedBox(width: 8),
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
@@ -89,14 +93,17 @@ class _ManagerVerifikasiDetailPageState
             style: ElevatedButton.styleFrom(
               backgroundColor: status == 'aktif' ? Colors.green[700] : Colors.red[700],
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text("Yakin"),
+            child: const Text("Yakin", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
