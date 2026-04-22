@@ -66,16 +66,21 @@ class _DriverPageState extends State<DriverPage> {
           
           // --- AUTO REDIRECT JIKA ADA TUGAS PENDING ---
           if (_activeDeviceId != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DriverIncomingTaskPage(
-                  tugas: tugas,
-                  user: widget.user,
-                  onDecision: _checkCurrentTask,
+            final taskId = tugas['_id'] ?? tugas['id'] ?? '';
+            final alreadySeen = await AuthService.isTaskSeen(taskId.toString());
+            
+            if (!alreadySeen && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DriverIncomingTaskPage(
+                    tugas: tugas,
+                    user: widget.user,
+                    onDecision: _checkCurrentTask,
+                  ),
                 ),
-              ),
-            );
+              );
+            }
           }
         } else if (tugas['konfirmasi_sopir'] == 'accepted') {
           setState(() {

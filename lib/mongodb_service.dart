@@ -792,6 +792,21 @@ class MongoDBService {
     }
   }
 
+  static Future<void> clearFcmToken(String email) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/sopir/$email/fcm-token'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'fcmToken': null}),
+      );
+      if (response.statusCode == 200) {
+        debugPrint("FCM Token berhasil dihapus untuk $email");
+      }
+    } catch (e) {
+      debugPrint("Error API clearFcmToken: $e");
+    }
+  }
+
   // =================================================================
   // BAGIAN TRIP HISTORY
   // =================================================================

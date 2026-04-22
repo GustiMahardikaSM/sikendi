@@ -180,19 +180,27 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         print("DEBUG: Memeriksa tugas untuk: $nama");
         final tugas = await MongoDBService.getTugasSekarang(nama);
         if (tugas != null && tugas['konfirmasi_sopir'] == 'pending') {
-          print("DEBUG: Ditemukan tugas PENDING, mengalihkan ke halaman panggilan...");
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DriverIncomingTaskPage(
-                  tugas: tugas,
-                  user: user,
-                  onDecision: () {},
+          // CEK APAKAH TUGAS SUDAH PERNAH DILIHAT DETAILNYA
+          final taskId = tugas['_id'] ?? tugas['id'] ?? '';
+          bool alreadySeen = await AuthService.isTaskSeen(taskId.toString());
+
+          if (alreadySeen) {
+            print("DEBUG: Tugas $taskId sudah dilihat sebelumnya, masuk Dashboard Utama.");
+          } else {
+            print("DEBUG: Ditemukan tugas PENDING baru, mengalihkan ke halaman panggilan...");
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DriverIncomingTaskPage(
+                    tugas: tugas,
+                    user: user,
+                    onDecision: () {},
+                  ),
                 ),
-              ),
-            );
-            return;
+              );
+              return;
+            }
           }
         }
       }
@@ -302,6 +310,17 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       final tugas = await MongoDBService.getDetailKendaraan(deviceId);
 
       if (tugas != null) {
+        // CEK APAKAH TUGAS SUDAH PERNAH DILIHAT
+        final taskId = tugas['_id'] ?? tugas['id'] ?? '';
+        bool alreadySeen = await AuthService.isTaskSeen(taskId.toString());
+
+        if (alreadySeen) {
+          print("DEBUG: Notifikasi diketuk tapi tugas sudah dilihat, ke Dashboard Saja.");
+          _isNavigating = false;
+          _navigateToDashboard(user);
+          return;
+        }
+
         // Gunakan navigatorKey untuk push halaman dari mana saja
         navigatorKey.currentState?.push(
           MaterialPageRoute(

@@ -9,32 +9,33 @@ Future<void> initializeService() async {
   final service = FlutterBackgroundService();
 
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'my_foreground', 
+    'sikendi_silent_service', // ID Baru untuk mereset cache Android
     'Layanan Penugasan Sopir',
     description: 'Menjaga agar notifikasi penugasan masuk',
-    importance: Importance.min, // Sangat rendah: tidak ada ikon di status bar, tidak ada suara
+    importance: Importance.min,
   );
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >()
       ?.createNotificationChannel(channel);
 
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
-      autoStart: true, // Auto start on boot or app start
+      autoStart: true,
       isForegroundMode: true,
-      initialNotificationTitle: 'Layanan Sopir SiKenDi Aktif',
+      initialNotificationTitle: 'SiKenDi Aktif',
       initialNotificationContent: 'Menunggu penugasan...',
       foregroundServiceNotificationId: 888,
-      notificationChannelId: 'my_foreground',
+      notificationChannelId:
+          'sikendi_silent_service', // Harus sama dengan di atas
     ),
-    iosConfiguration: IosConfiguration(
-      autoStart: true,
-      onForeground: onStart,
-    ),
+    iosConfiguration: IosConfiguration(autoStart: true, onForeground: onStart),
   );
 }
 
@@ -53,7 +54,7 @@ void onStart(ServiceInstance service) async {
   service.on('stopService').listen((event) {
     service.stopSelf();
   });
-  
+
   // Polling logic has been removed and replaced by a real-time FCM handler in main.dart
   debugPrint("Background service is running without polling for tasks.");
 }

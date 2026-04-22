@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:sikendi/mongodb_service.dart';
 
 class AuthService {
 
@@ -27,6 +28,12 @@ class AuthService {
   }
 
   static Future<void> logout() async {
+    // Ambil data user sebelum token dihapus untuk membersihkan token di server
+    final user = await getCurrentUser();
+    if (user != null && user['email'] != null) {
+      await MongoDBService.clearFcmToken(user['email']);
+    }
+
     await storage.delete(key: 'jwt_token');
     await storage.delete(key: 'nama_sopir');
     
@@ -35,6 +42,16 @@ class AuthService {
     if (await service.isRunning()) {
       service.invoke('stopService');
     }
+  }
+
+  // --- MANAJEMEN TUGAS YANG SUDAH DILIHAT ---
+  static Future<void> markTaskAsSeen(String taskId) async {
+    await storage.write(key: 'last_seen_task_id', value: taskId);
+  }
+
+  static Future<bool> isTaskSeen(String taskId) async {
+    final lastSeenId = await storage.read(key: 'last_seen_task_id');
+    return lastSeenId == taskId;
   }
 
   // Fungsi baru untuk mendapatkan data user dari token yang tersimpan

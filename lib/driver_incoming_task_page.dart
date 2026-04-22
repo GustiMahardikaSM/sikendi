@@ -224,11 +224,18 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
                     Column(
                       children: [
                         GestureDetector(
-                          onTap: () {
+                          onTap: () async {
                             _audioPlayer.stop();
                             widget.onDecision();
-                            Navigator.pop(context); // Tutup pop up
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => DriverTugasPage(user: widget.user)));
+                            // Tandai tugas sebagai sudah dilihat agar tidak muncul panggilannya lagi
+                            final taskId = widget.tugas['_id'] ?? widget.tugas['id'] ?? '';
+                            if (taskId.isNotEmpty) {
+                              await AuthService.markTaskAsSeen(taskId.toString());
+                            }
+                            if (mounted) {
+                              Navigator.pop(context); // Tutup pop up
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => DriverTugasPage(user: widget.user)));
+                            }
                           },
                           child: const CircleAvatar(radius: 30, backgroundColor: Colors.orange, child: Icon(Icons.info_outline, color: Colors.white, size: 30)),
                         ),
