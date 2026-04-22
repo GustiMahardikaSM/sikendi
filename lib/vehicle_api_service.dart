@@ -21,7 +21,7 @@ class VehicleApiService {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/tersedia'),
         headers: headers,
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -41,7 +41,7 @@ class VehicleApiService {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/pekerjaan-saya/$encodedNama'),
         headers: headers,
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -60,7 +60,7 @@ class VehicleApiService {
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/check-in'),
         headers: headers,
         body: jsonEncode({'deviceId': deviceId, 'namaSopir': namaSopir}),
-      );
+      ).timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -75,7 +75,7 @@ class VehicleApiService {
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/check-out'),
         headers: headers,
         body: jsonEncode({'deviceId': deviceId}),
-      );
+      ).timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (e) {
       return false;

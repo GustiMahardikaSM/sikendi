@@ -167,9 +167,6 @@ class MongoDBService {
         return [];
       }
     } catch (e) {
-      // Di implementasi lama, error di-throw ulang. Kita bisa memilih untuk
-      // melempar exception atau mengembalikan list kosong tergantung kebutuhan UI.
-      // Untuk konsistensi, kita kembalikan list kosong.
       return [];
     }
   }
@@ -213,8 +210,6 @@ class MongoDBService {
     if (!success) throw Exception("Gagal memperbarui status sopir dari server.");
   }
 
-  // approveDriver dan rejectDriver akan menjadi logika di backend, tidak perlu di sini.
-
   // =================================================================
   // BAGIAN MANAJER
   // =================================================================
@@ -257,13 +252,11 @@ class MongoDBService {
           'departemen': departemen,
         }),
       );
-      // Berhasil jika status code 200 (OK) atau 201 (Created)
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }
   }
-
 
   static Future<bool> updateKendaraanManager(
     String gps1,
@@ -280,7 +273,6 @@ class MongoDBService {
         'model': model,
       };
 
-      // Hanya tambahkan status ke body jika tidak null
       if (status != null) {
         body['status'] = status;
       }
@@ -322,7 +314,6 @@ class MongoDBService {
     }
   }
 
-
   static Future<bool> hapusMetadataKendaraan(String gps1) async {
     try {
       final response = await http.delete(
@@ -345,10 +336,7 @@ class MongoDBService {
       );
 
       if (response.statusCode == 200) {
-        // Backend diharapkan mengembalikan JSON: {"defined": [...], "undefined": [...]}
         final data = jsonDecode(response.body);
-        
-        // Parsing manual untuk memastikan tipe data list di dalamnya benar
         final List<Map<String, dynamic>> defined =
             (data['defined'] as List).cast<Map<String, dynamic>>();
         final List<Map<String, dynamic>> undefined =
@@ -413,13 +401,10 @@ class MongoDBService {
           'pendingManager': data['pendingManager'] ?? 0,
           'pendingVehicle': data['pendingVehicle'] ?? 0,
         };
-      } else {
       }
     } catch (e) {
     }
     return {'total': 0, 'dipakai': 0, 'tersedia': 0, 'pending': 0, 'pendingManager': 0, 'pendingVehicle': 0};
-
-
   }
 
   // MANAJEMEN MANAJER
@@ -498,10 +483,6 @@ class MongoDBService {
     }
   }
 
-
-
-
-
   static Future<bool> verifyManager(String managerId, String action) async {
     try {
       final response = await http.post(
@@ -552,12 +533,10 @@ class MongoDBService {
     }
   }
 
-
   // =================================================================
   // BAGIAN SOPIR
   // =================================================================
 
-  // READ (AVAILABLE): Sopir mencari mobil untuk bekerja
   static Future<List<Map<String, dynamic>>> getKendaraanTersedia() async {
     try {
       final response = await http.get(
@@ -575,7 +554,6 @@ class MongoDBService {
     }
   }
 
-  // READ (MY JOB): Sopir melihat pekerjaan dia sendiri
   static Future<Map<String, dynamic>?> getPekerjaanBySopir(String namaSopir) async {
     try {
       final response = await http.get(
@@ -593,7 +571,6 @@ class MongoDBService {
     return null;
   }
 
-  // READ (MY JOB): Sopir melihat pekerjaan dia sendiri
   static Future<List<Map<String, dynamic>>> getPekerjaanSaya(String namaSopir) async {
     try {
       final response = await http.get(
@@ -609,25 +586,20 @@ class MongoDBService {
     return [];
   }
 
-  // UPDATE (CHECK-IN): Sopir mengambil mobil
   static Future<bool> ambilKendaraan(String deviceId, String namaSopir) async {
     try {
-      // Endpoint diubah dari POST ke PUT agar lebih sesuai dengan REST convention
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/ambil'),
         headers: await _getHeaders(),
         body: json.encode({"namaSopir": namaSopir}),
       );
-      
-      // Mengembalikan true jika berhasil
       return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-  // UPDATE (CHECK-OUT): Sopir mengembalikan mobil (Selesai tugas)
-  static Future<void> selesaikanPekerjaan(Object id) async { // Tipe ID mungkin perlu diubah menjadi String
+  static Future<void> selesaikanPekerjaan(Object id) async {
     try {
       await http.post(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/check-out'),
@@ -660,9 +632,7 @@ class MongoDBService {
   // BAGIAN DETAIL KENDARAAN
   // =================================================================
 
-  static Future<Map<String, dynamic>?> getDetailKendaraan(
-    String deviceId,
-  ) async {
+  static Future<Map<String, dynamic>?> getDetailKendaraan(String deviceId) async {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId'),
@@ -676,11 +646,7 @@ class MongoDBService {
     return null;
   }
 
-  static Future<bool> updateKendaraanDetail(
-    String deviceId,
-    String plat,
-    String model,
-  ) async {
+  static Future<bool> updateKendaraanDetail(String deviceId, String plat, String model) async {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId'),
@@ -693,10 +659,7 @@ class MongoDBService {
     return false;
   }
 
-  static Future<bool> updateFotoKendaraan(
-    String deviceId,
-    String fotoData,
-  ) async {
+  static Future<bool> updateFotoKendaraan(String deviceId, String fotoData) async {
     try {
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/foto'),
@@ -709,10 +672,6 @@ class MongoDBService {
     return false;
   }
 
-  // ==========================================================
-  // FUNGSI UNTUK PROFIL SOPIR
-  // ==========================================================
-  
   static Future<bool> updateFotoProfilSopir(String email, String base64Image) async {
     try {
       final response = await http.put(
@@ -726,30 +685,24 @@ class MongoDBService {
     return false;
   }
 
-  // Fungsi baru untuk menyimpan FCM Token ke backend
   static Future<void> updateFcmToken(String email, String fcmToken) async {
     try {
-      final response = await http.put(
+      await http.put(
         Uri.parse('${ApiConfig.baseUrl}/sopir/$email/fcm-token'),
         headers: await _getHeaders(),
         body: jsonEncode({'fcmToken': fcmToken}),
       );
-      if (response.statusCode == 200) {
-      } else {
-      }
     } catch (e) {
     }
   }
 
   static Future<void> clearFcmToken(String email) async {
     try {
-      final response = await http.put(
+      await http.put(
         Uri.parse('${ApiConfig.baseUrl}/sopir/$email/fcm-token'),
         headers: await _getHeaders(),
         body: jsonEncode({'fcmToken': null}),
       );
-      if (response.statusCode == 200) {
-      }
     } catch (e) {
     }
   }
@@ -769,7 +722,6 @@ class MongoDBService {
         return data.cast<Map<String, dynamic>>();
       }
     } catch (e) {
-      return [];
     }
     return [];
   }
@@ -785,7 +737,6 @@ class MongoDBService {
         return data.cast<Map<String, dynamic>>();
       }
     } catch (e) {
-      return [];
     }
     return [];
   }
@@ -794,7 +745,6 @@ class MongoDBService {
   // BAGIAN PENUGASAN SOPIR (Driver Assignment)
   // =================================================================
 
-  /// Ambil semua data penugasan (kendaraan + status penugasan)
   static Future<List<Map<String, dynamic>>> getSemuaPenugasan() async {
     try {
       final response = await http.get(
@@ -804,12 +754,10 @@ class MongoDBService {
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
-      } else {
-        return [];
       }
     } catch (e) {
-      return [];
     }
+    return [];
   }
 
   static Future<List<Map<String, dynamic>>> getHasilPenugasan() async {
@@ -821,15 +769,12 @@ class MongoDBService {
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.cast<Map<String, dynamic>>();
-      } else {
-        return [];
       }
     } catch (e) {
-      return [];
     }
+    return [];
   }
 
-  /// Buat penugasan baru: assign sopir ke kendaraan dengan tugas
   static Future<Map<String, dynamic>> buatPenugasan({
     required String deviceId,
     required String namaSopir,
@@ -855,7 +800,6 @@ class MongoDBService {
     }
   }
 
-  /// Cabut penugasan: unassign sopir dari kendaraan
   static Future<Map<String, dynamic>> cabutPenugasan(String deviceId) async {
     try {
       final response = await http.delete(
@@ -881,13 +825,13 @@ class MongoDBService {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/sopir/$namaSopir/tugas-sekarang'),
         headers: await _getHeaders(),
-      );
+      ).timeout(const Duration(seconds: 10));
+      
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         return body['tugas'];
       }
     } catch (e) {
-      return null;
     }
     return null;
   }
@@ -898,7 +842,7 @@ class MongoDBService {
         Uri.parse('${ApiConfig.baseUrl}/sopir/tugas/accept'),
         headers: await _getHeaders(),
         body: jsonEncode({'deviceId': deviceId}),
-      );
+      ).timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -911,7 +855,7 @@ class MongoDBService {
         Uri.parse('${ApiConfig.baseUrl}/sopir/tugas/reject'),
         headers: await _getHeaders(),
         body: jsonEncode({'deviceId': deviceId, 'alasan': alasan}),
-      );
+      ).timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (e) {
       return false;

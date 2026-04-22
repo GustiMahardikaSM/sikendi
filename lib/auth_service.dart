@@ -10,7 +10,11 @@ import 'package:sikendi/mongodb_service.dart';
 
 class AuthService {
 
-  static const storage = FlutterSecureStorage();
+  static const storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+  );
 
   static String hashPassword(String password) {
     var bytes = utf8.encode(password);
@@ -28,20 +32,25 @@ class AuthService {
   }
 
   static Future<void> logout() async {
-    // 1. Ambil data user & token dulu
-    final user = await getCurrentUser();
+    // 1. Ambil token secara manual (hindari getCurrentUser() untuk cegah rekursi)
     final token = await getToken();
+    Map<String, dynamic>? user;
+    
+    if (token != null) {
+      try {
+        user = JwtDecoder.decode(token);
+      } catch (e) {}
+    }
 
     // 2. HAPUS DATA LOKAL SEGERA (Agar Auto-Login tidak memicu navigasi balik)
     await storage.delete(key: 'jwt_token');
     await storage.delete(key: 'nama_sopir');
 
-    // 3. Bersihkan token di server (menggunakan token yang sudah disimpan di variabel)
-    if (user != null && user['email'] != null && token != null) {
+    // 3. Bersihkan token di server jika data user tersedia
+    if (user != null && user['email'] != null) {
       try {
         await MongoDBService.clearFcmToken(user['email']);
-      } catch (e) {
-      }
+      } catch (e) {}
     }
   }
 
@@ -57,18 +66,19 @@ class AuthService {
 
   // Fungsi baru untuk mendapatkan data user dari token yang tersimpan
   static Future<Map<String, dynamic>?> getCurrentUser() async {
-    final token = await getToken();
-    if (token != null) {
-      try {
+    try {
+      final token = await getToken();
+      if (token != null) {
         if (JwtDecoder.isExpired(token)) {
-          await logout();
+          // Token expired, hapus data lokal (jangan panggil logout() untuk cegah rekursi)
+          await storage.delete(key: 'jwt_token');
+          await storage.delete(key: 'nama_sopir');
           return null;
         }
-        Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-        return decodedToken;
-      } catch (e) {
-        return null;
+        return JwtDecoder.decode(token);
       }
+    } catch (e) {
+      // Return null jika token tidak valid atau error
     }
     return null;
   }
