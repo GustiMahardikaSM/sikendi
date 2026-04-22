@@ -98,11 +98,8 @@ class _ManagerSignUpPageState extends State<ManagerSignUpPage> {
     setState(() => _isLoading = true);
 
     try {
-      debugPrint("⏳ Memulai kompresi gambar...");
       final base64Selfie = await _compressAndGetBase64(_selfieImage);
       final base64Ktp = await _compressAndGetBase64(_ktpImage);
-      
-      debugPrint("🚀 Mengirim data pendaftaran ke server...");
       
       final result = await MongoDBService.registerManager(
         email: _emailController.text,

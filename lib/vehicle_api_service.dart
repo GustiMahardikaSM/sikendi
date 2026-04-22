@@ -28,7 +28,6 @@ class VehicleApiService {
       }
       return [];
     } catch (e) {
-      debugPrint("Error API getKendaraanTersedia: $e");
       return [];
     }
   }
@@ -49,7 +48,6 @@ class VehicleApiService {
       }
       return [];
     } catch (e) {
-      debugPrint("Error API getPekerjaanSaya: $e");
       return [];
     }
   }
@@ -65,7 +63,6 @@ class VehicleApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint("Error API ambilKendaraan: $e");
       return false;
     }
   }
@@ -81,7 +78,6 @@ class VehicleApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint("Error API selesaikanPekerjaan: $e");
       return false;
     }
   }

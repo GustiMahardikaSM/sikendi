@@ -64,8 +64,7 @@ class _DriverTrackingPageState extends State<DriverTrackingPage> {
         }
       }
     } catch (e) {
-      debugPrint("Error parsing location: $e");
-      return;
+      return null;
     }
 
     if (lat != null && lng != null) {

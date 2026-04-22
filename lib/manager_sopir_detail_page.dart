@@ -51,7 +51,6 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
         });
       }
     } catch (e) {
-      debugPrint("Gagal mengambil status pekerjaan: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -78,7 +77,6 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
         Uint8List imageBytes = base64Decode(base64String);
         return MemoryImage(imageBytes);
       } catch (e) {
-        debugPrint("Gagal decode gambar: $e");
       }
     }
     // Mengembalikan gambar transparan/kosong jika gagal

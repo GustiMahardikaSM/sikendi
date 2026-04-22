@@ -50,7 +50,7 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
         return NetworkImage(fotoData);
       }
     } catch (e) {
-      debugPrint("Error loading image: $e");
+      return null;
     }
 
     return null;

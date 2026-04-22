@@ -146,38 +146,6 @@ class _DriverPageState extends State<DriverPage> {
   }
 
   // Fungsi untuk mengetes notifikasi secara lokal (tanpa FCM)
-  Future<void> _testLocalNotification() async {
-    final notifPlugin = FlutterLocalNotificationsPlugin();
-    
-    const androidDetails = AndroidNotificationDetails(
-      'channel_tugas_urgent_v2',
-      'Panggilan Tugas Urgent',
-      importance: Importance.max,
-      priority: Priority.max, // Set ke max agar di paling atas
-      fullScreenIntent: true,
-      playSound: true,
-      sound: RawResourceAndroidNotificationSound('ringtone_task'),
-    );
-    
-    // Inisialisasi dulu sebelum digunakan (Wajib!)
-    const initializationSettings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    );
-    await notifPlugin.initialize(settings: initializationSettings);
-
-    const generalDetails = NotificationDetails(android: androidDetails);
-    
-    await notifPlugin.show(
-      id: 999,
-      title: 'TES NOTIFIKASI BERHASIL!',
-      body: 'Jika Anda melihat ini, sistem notifikasi di HP Anda sudah benar.',
-      notificationDetails: generalDetails,
-    );
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Mencoba mengirim notifikasi tes..."), backgroundColor: Colors.blue),
-    );
-  }
 
   void _handleLogout(BuildContext context) {
     showDialog(
@@ -313,12 +281,6 @@ class _DriverPageState extends State<DriverPage> {
             ),
           );
         },
-      },
-      {
-        'title': 'Tes Notifikasi',
-        'icon': Icons.notification_important,
-        'color': Colors.redAccent,
-        'onTap': _testLocalNotification,
       },
     ];
 

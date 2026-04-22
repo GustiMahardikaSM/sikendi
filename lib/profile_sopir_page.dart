@@ -112,7 +112,6 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
         }
       }
     } catch (e) {
-      debugPrint("Error saat memproses foto: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Terjadi kesalahan saat memproses foto."), backgroundColor: Colors.red),
       );
@@ -150,7 +149,6 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
         }
       });
     } catch (e) {
-      debugPrint("Gagal mengambil data kendaraan: $e");
     } finally {
       setState(() {
         _isLoading = false;

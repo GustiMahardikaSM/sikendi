@@ -35,14 +35,12 @@ class AuthService {
     // 2. HAPUS DATA LOKAL SEGERA (Agar Auto-Login tidak memicu navigasi balik)
     await storage.delete(key: 'jwt_token');
     await storage.delete(key: 'nama_sopir');
-    print("DEBUG AUTH: Token lokal telah dihapus.");
 
     // 3. Bersihkan token di server (menggunakan token yang sudah disimpan di variabel)
     if (user != null && user['email'] != null && token != null) {
       try {
         await MongoDBService.clearFcmToken(user['email']);
       } catch (e) {
-        print("DEBUG AUTH: Gagal hapus token di server: $e");
       }
     }
   }
@@ -61,22 +59,17 @@ class AuthService {
   static Future<Map<String, dynamic>?> getCurrentUser() async {
     final token = await getToken();
     if (token != null) {
-      print("DEBUG AUTH: Token ditemukan.");
       try {
         if (JwtDecoder.isExpired(token)) {
-          print("DEBUG AUTH: Token KADALUARSA (Expired).");
           await logout();
           return null;
         }
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-        print("DEBUG AUTH: Token Valid. Payload: $decodedToken");
         return decodedToken;
       } catch (e) {
-        print("DEBUG AUTH: Error decoding token: $e");
         return null;
       }
     }
-    print("DEBUG AUTH: Token tidak ditemukan (null).");
     return null;
   }
 
@@ -120,8 +113,6 @@ class AuthService {
         };
       }
     } catch (e, s) {
-      debugPrint("Error Login HTTP: $e");
-      debugPrint("Stack trace: $s");
       return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server. Detail: $e'};
     }
   }
@@ -155,8 +146,6 @@ class AuthService {
         };
       }
     } catch (e, s) {
-      debugPrint("Error Login Manager HTTP: $e");
-      debugPrint("Stack trace: $s");
       return {'error': 'exception', 'message': 'Tidak dapat terhubung ke server. Detail: $e'};
     }
   }
@@ -193,8 +182,6 @@ class AuthService {
         return decoded['error'] ?? decoded['message'] ?? "Pendaftaran gagal. Kode: ${response.statusCode}";
       }
     } catch (e, s) {
-      debugPrint("Error Register HTTP: $e");
-      debugPrint("Stack trace: $s");
       return "Error jaringan: Tidak dapat terhubung ke server. Detail: $e";
     }
   }

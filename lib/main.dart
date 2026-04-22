@@ -24,14 +24,12 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print("Menangani pesan di background: ${message.messageId}");
 
   // VERIFIKASI PENERIMA: Jangan proses jika notifikasi bukan untuk user yang sedang login
   final targetEmail = message.data['targetEmail'];
   final user = await AuthService.getCurrentUser();
   
   if (targetEmail != null && user != null && user['email'] != targetEmail) {
-    print("DEBUG FCM: Notifikasi diabaikan (Target: $targetEmail, Login: ${user['email']})");
     return;
   }
 
@@ -93,7 +91,6 @@ void notificationTapBackground(NotificationResponse notificationResponse) {
   // notifikasi di-tap dari background. Logika navigasi utama tetap
   // ditangani oleh 'onMessageOpenedApp' di main isolate saat aplikasi dibuka.
   // ignore: avoid_print
-  print('Notification tapped in background with payload: ${notificationResponse.payload}');
 }
 
 // GlobalKey untuk navigasi dari luar widget tree (diperlukan oleh FCM)
@@ -142,17 +139,14 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   }
 
   Future<void> _checkAutoLogin() async {
-    print("DEBUG: Memulai pengecekan login otomatis...");
     final user = await AuthService.getCurrentUser();
     
     if (user != null) {
-      print("DEBUG: Sesi ditemukan! Role: ${user['role']}");
       if (mounted && !_isNavigating) {
         _isNavigating = true;
         _navigateToDashboard(user);
       }
     } else {
-      print("DEBUG: Sesi tidak ditemukan atau token expired.");
       if (mounted) setState(() => _isChecking = false);
     }
   }
@@ -160,7 +154,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   void _navigateToDashboard(Map<String, dynamic> user) {
     if (!mounted) return;
     final role = user['role']?.toString().toLowerCase();
-    print("DEBUG: Menentukan arah navigasi untuk role: $role");
     
     if (role == 'manager') {
       Navigator.pushReplacement(
@@ -178,7 +171,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     try {
       final nama = user['nama'] ?? user['nama_lengkap'];
       if (nama != null) {
-        print("DEBUG: Memeriksa tugas untuk: $nama");
         final tugas = await MongoDBService.getTugasSekarang(nama);
         
         if (tugas != null && tugas['konfirmasi_sopir'] == 'pending') {
@@ -187,9 +179,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
           bool alreadySeen = await AuthService.isTaskSeen(taskId.toString());
 
           if (alreadySeen) {
-            print("DEBUG: Tugas $taskId sudah dilihat sebelumnya, masuk Dashboard Utama.");
           } else {
-            print("DEBUG: Ditemukan tugas PENDING baru, mengalihkan ke halaman panggilan...");
             if (mounted) {
               Navigator.pushReplacement(
                 context,
@@ -207,7 +197,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         }
       }
 
-      print("DEBUG: Tidak ada tugas mendesak, masuk ke Dashboard Utama...");
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -215,7 +204,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         );
       }
     } catch (e) {
-      print("DEBUG ERROR di _startSopirAutoFlow: $e");
       if (mounted) setState(() => _isChecking = false);
     }
   }
@@ -252,7 +240,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
             final Map<String, dynamic> data = jsonDecode(response.payload!);
             _handleNotificationNavigation(data);
           } catch (e) {
-            print("Error parsing local notification payload: $e");
           }
         }
       },
@@ -260,13 +247,11 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
     // 3. Listener untuk pesan FCM saat aplikasi di foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      print('🚀 FCM Foreground: ${message.data['title']} | Type: ${message.data['type']} | Target: ${message.data['targetEmail']}');
       
       // VERIFIKASI PENERIMA
       final targetEmail = message.data['targetEmail'];
       final user = await AuthService.getCurrentUser();
       if (targetEmail != null && user != null && user['email'] != targetEmail) {
-        print("DEBUG FCM: Notifikasi foreground diabaikan (Target: $targetEmail)");
         return;
       }
 
@@ -278,7 +263,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
     // 4. Listener untuk saat notifikasi diketuk (app dari background/terminated - FCM standard)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('Notifikasi FCM diketuk!');
       _handleNotificationNavigation(message.data);
     });
 
@@ -297,7 +281,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
           final Map<String, dynamic> data = jsonDecode(payload);
           _handleNotificationNavigation(data);
         } catch (e) {
-          print("Error parsing local notification launch payload: $e");
         }
       }
     }
@@ -306,7 +289,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   // Fungsi untuk navigasi ke halaman tugas saat notifikasi diketuk
   void _handleNotificationNavigation(Map<String, dynamic> data) async {
     if (_isNavigating) {
-      print("DEBUG: Navigasi sedang berlangsung, mengabaikan pemicu kedua.");
       return;
     }
 
@@ -325,7 +307,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
       }
       
       if (targetEmail != null && user['email'] != targetEmail) {
-        print("DEBUG FCM: Tap notifikasi diabaikan karena salah akun.");
         _isNavigating = false;
         return;
       }
@@ -339,7 +320,6 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         bool alreadySeen = await AuthService.isTaskSeen(taskId.toString());
 
         if (alreadySeen) {
-          print("DEBUG: Notifikasi diketuk tapi tugas sudah dilihat, ke Dashboard Saja.");
           _isNavigating = false;
           _navigateToDashboard(user);
           return;

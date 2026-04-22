@@ -69,7 +69,6 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
             }
           }
         } catch (e) {
-          debugPrint("Map not ready for move: $e");
         }
       }
     }
@@ -133,7 +132,6 @@ class _ManagerMapPageState extends State<ManagerMapPage> {
         );
       }
     } catch (e) {
-      debugPrint("Error parsing lokasi untuk ${vehicle['plat']}: $e");
     }
     return null;
   }
