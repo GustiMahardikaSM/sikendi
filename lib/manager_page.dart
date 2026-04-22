@@ -91,7 +91,10 @@ class _ManagerPageState extends State<ManagerPage> {
     'tersedia': 0,
     'pending': 0,
     'pendingManager': 0,
+    'pendingVehicle': 0,
   };
+
+
 
   bool _isLoadingSummary = true;
 
@@ -375,20 +378,49 @@ class _ManagerPageState extends State<ManagerPage> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildSummaryCard(
-                          "Verifikasi Pending",
-                          _isLoadingSummary
-                              ? "-"
-                              : "${_summaryData['pending']}",
-                          Colors.red.shade700,
-                          Icons.hourglass_bottom,
-                        ),
-                      ],
-                    ),
+                    if (_currentUser?['level'] != 'departemen')
+                      Row(
+                        children: [
+                          _buildSummaryCard(
+                            "Manager Pending",
+                            _isLoadingSummary ? "-" : "${_summaryData['pendingManager']}",
+                            Colors.red.shade900,
+                            Icons.admin_panel_settings,
+                          ),
+                          _buildSummaryCard(
+                            "Sopir Pending",
+                            _isLoadingSummary ? "-" : "${_summaryData['pending']}",
+                            Colors.red.shade700,
+                            Icons.person_search,
+                          ),
+                          _buildSummaryCard(
+                            "Armada Pending",
+                            _isLoadingSummary ? "-" : "${_summaryData['pendingVehicle']}",
+                            Colors.red.shade500,
+                            Icons.car_repair,
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          _buildSummaryCard(
+                            "Sopir Pending",
+                            _isLoadingSummary ? "-" : "${_summaryData['pending']}",
+                            Colors.red.shade700,
+                            Icons.person_search,
+                          ),
+                          _buildSummaryCard(
+                            "Armada Pending",
+                            _isLoadingSummary ? "-" : "${_summaryData['pendingVehicle']}",
+                            Colors.red.shade500,
+                            Icons.car_repair,
+                          ),
+                        ],
+                      ),
+
                   ],
+
                 ),
               ),
 

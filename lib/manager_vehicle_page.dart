@@ -96,14 +96,8 @@ class _ManagerVehiclePageState extends State<ManagerVehiclePage> {
     BuildContext context,
     Map<String, dynamic> vehicle,
   ) {
-    if (_currentUser?['level'] != 'universitas') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Hanya Manajer Universitas yang dapat mendefinisikan kendaraan baru")),
-      );
-      return;
-    }
-    
     showDialog(
+
       context: context,
       builder: (BuildContext dialogContext) {
         return DefineVehicleDialog(
@@ -430,6 +424,29 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
   String? _selectedFakultas;
   String? _selectedDepartemen;
   
+  Map<String, dynamic>? _currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await AuthService.getCurrentUser();
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+        if (_currentUser != null) {
+          _selectedKepemilikan = _currentUser!['level'] ?? 'universitas';
+          _selectedFakultas = _currentUser!['fakultas'];
+          _selectedDepartemen = _currentUser!['departemen'];
+        }
+      });
+    }
+  }
+
+  
   bool _isLoading = false;
 
 
@@ -533,42 +550,65 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
                 },
               ),
               const SizedBox(height: 20),
-              const Text("Kepemilikan", style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text("Kepemilikan & Otoritas", style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 value: _selectedKepemilikan,
-                decoration: const InputDecoration(labelText: 'Tingkat'),
-                items: const [
-                  DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
-                  DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
-                  DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
+                decoration: const InputDecoration(
+                  labelText: 'Tingkat Kepemilikan',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.account_balance),
+                ),
+                items: [
+                  if (_currentUser?['level'] == 'universitas')
+                    const DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
+                  if (_currentUser?['level'] == 'universitas' || _currentUser?['level'] == 'fakultas')
+                    const DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
+                  const DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
                 ],
-                onChanged: (v) => setState(() {
+                onChanged: (_currentUser?['level'] == 'departemen') ? null : (v) => setState(() {
                   _selectedKepemilikan = v!;
-                  _selectedFakultas = null;
-                  _selectedDepartemen = null;
+                  // Reset if changed
+                  if (_selectedKepemilikan == 'universitas') {
+                    _selectedFakultas = null;
+                    _selectedDepartemen = null;
+                  }
                 }),
               ),
               if (_selectedKepemilikan != 'universitas') ...[
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
                   value: _selectedFakultas,
-                  decoration: const InputDecoration(labelText: 'Fakultas'),
+                  decoration: const InputDecoration(
+                    labelText: 'Fakultas Pemilik',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.business),
+                  ),
                   items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
-                  onChanged: (v) => setState(() {
-                    _selectedFakultas = v;
-                    _selectedDepartemen = null;
-                  }),
+                  onChanged: (_currentUser?['level'] == 'fakultas' || _currentUser?['level'] == 'departemen') 
+                    ? null 
+                    : (v) => setState(() {
+                        _selectedFakultas = v;
+                        _selectedDepartemen = null;
+                      }),
                 ),
               ],
               if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
                   value: _selectedDepartemen,
-                  decoration: const InputDecoration(labelText: 'Departemen'),
+                  decoration: const InputDecoration(
+                    labelText: 'Departemen Pemilik',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.apartment),
+                  ),
                   items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
-                  onChanged: (v) => setState(() => _selectedDepartemen = v),
+                  onChanged: (_currentUser?['level'] == 'departemen') 
+                    ? null 
+                    : (v) => setState(() => _selectedDepartemen = v),
                 ),
               ],
+
             ],
           ),
         ),
