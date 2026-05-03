@@ -280,7 +280,6 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Filter drivers based on search query
     final filteredDrivers = _drivers.where((sopir) {
       final name = (sopir['nama'] ?? sopir['nama_lengkap'] ?? sopir['username'] ?? '').toString().toLowerCase();
       final email = (sopir['email'] ?? '').toString().toLowerCase();
@@ -291,7 +290,7 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
 
     return Column(
       children: [
-        // --- SEARCH BAR ---
+        // --- SEARCH BAR (Diperhalus) ---
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: TextField(
@@ -299,20 +298,23 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
             onChanged: (val) => setState(() => _driverSearchQuery = val),
             decoration: InputDecoration(
               hintText: "Cari nama, email, atau no hp...",
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
               suffixIcon: _driverSearchQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear, color: Colors.grey),
                       onPressed: () {
                         _driverSearchController.clear();
                         setState(() => _driverSearchQuery = "");
                       },
                     )
                   : null,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
               filled: true,
-              fillColor: Colors.grey[50],
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              fillColor: Colors.grey[200],
+              contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             ),
           ),
         ),
@@ -322,18 +324,12 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
               ? _buildEmptyState(_driverSearchQuery.isEmpty
                   ? "Data sopir tidak ditemukan."
                   : "Sopir tidak ditemukan.")
-              : GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.85,
-                  ),
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: filteredDrivers.length,
                   itemBuilder: (context, index) {
                     final driver = filteredDrivers[index];
-                    return _buildDriverCard(driver);
+                    return _buildDriverListTile(driver);
                   },
                 ),
         ),
@@ -428,38 +424,80 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
     );
   }
 
-  Widget _buildDriverCard(Map<String, dynamic> driver) {
+  Widget _buildDriverListTile(Map<String, dynamic> driver) {
+    final name = driver['nama'] ?? driver['username'] ?? 'Tanpa Nama';
+    final phone = driver['no_hp'] ?? driver['email'] ?? 'Tidak ada kontak';
+    
+    final String initial = name.toString().trim().isNotEmpty 
+        ? name.toString().trim()[0].toUpperCase() 
+        : '?';
+
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _showDriverReports(driver),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 35,
-              backgroundColor: Colors.blue[50],
-              child: const Icon(Icons.person, size: 40, color: Colors.blue),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                driver['nama'] ?? driver['username'] ?? '-',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.blue[100],
+                child: Text(
+                  initial, 
+                  style: TextStyle(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.bold, 
+                    color: Colors.blue[900]
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Lihat Laporan",
-              style: TextStyle(color: Colors.blue[800], fontSize: 12),
-            ),
-          ],
+              const SizedBox(width: 16),
+              
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      phone,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("Laporan", style: TextStyle(color: Colors.blue[800], fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.chevron_right, size: 16, color: Colors.blue[800]),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
