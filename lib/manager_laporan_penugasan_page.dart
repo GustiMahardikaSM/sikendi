@@ -19,13 +19,23 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
   int _currentPage = 1;
   int _currentLimit = 10;
   List<Map<String, dynamic>> _drivers = [];
+  String _driverSearchQuery = "";
+  final TextEditingController _driverSearchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _driverSearchQuery = "";
     _loadData();
     _loadDrivers();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _driverSearchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -270,23 +280,64 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_drivers.isEmpty) {
-      return _buildEmptyState("Data sopir tidak ditemukan.");
-    }
+    // Filter drivers based on search query
+    final filteredDrivers = _drivers.where((sopir) {
+      final name = (sopir['nama'] ?? sopir['nama_lengkap'] ?? sopir['username'] ?? '').toString().toLowerCase();
+      final email = (sopir['email'] ?? '').toString().toLowerCase();
+      final phone = (sopir['no_hp'] ?? '').toString().toLowerCase();
+      final query = _driverSearchQuery.toLowerCase();
+      return name.contains(query) || email.contains(query) || phone.contains(query);
+    }).toList();
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: _drivers.length,
-      itemBuilder: (context, index) {
-        final driver = _drivers[index];
-        return _buildDriverCard(driver);
-      },
+    return Column(
+      children: [
+        // --- SEARCH BAR ---
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _driverSearchController,
+            onChanged: (val) => setState(() => _driverSearchQuery = val),
+            decoration: InputDecoration(
+              hintText: "Cari nama, email, atau no hp...",
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _driverSearchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _driverSearchController.clear();
+                        setState(() => _driverSearchQuery = "");
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: Colors.grey[50],
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+            ),
+          ),
+        ),
+
+        Expanded(
+          child: filteredDrivers.isEmpty
+              ? _buildEmptyState(_driverSearchQuery.isEmpty
+                  ? "Data sopir tidak ditemukan."
+                  : "Sopir tidak ditemukan.")
+              : GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.85,
+                  ),
+                  itemCount: filteredDrivers.length,
+                  itemBuilder: (context, index) {
+                    final driver = filteredDrivers[index];
+                    return _buildDriverCard(driver);
+                  },
+                ),
+        ),
+      ],
     );
   }
 
