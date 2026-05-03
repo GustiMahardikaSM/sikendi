@@ -775,6 +775,60 @@ class MongoDBService {
     return [];
   }
 
+  static Future<Map<String, dynamic>> getPenugasanSelesaiRecent({int page = 1, int limit = 10}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/penugasan-selesai/recent?page=$page&limit=$limit'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+    }
+    return {'data': [], 'metadata': {'totalRecords': 0, 'totalPages': 0, 'currentPage': 1, 'limit': limit}};
+  }
+
+  static Future<List<Map<String, dynamic>>> getPenugasanSelesaiBySopir(String namaSopir) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/penugasan-selesai/sopir/$namaSopir'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>> selesaikanTugas({
+    required String deviceId,
+    String? fotoMobilAkhir,
+    String? catatanDriver,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/manager/selesaikan-tugas'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'deviceId': deviceId,
+          'foto_mobil_akhir': fotoMobilAkhir,
+          'catatan_driver': catatanDriver,
+        }),
+      );
+      final body = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': body['message'] ?? 'Terjadi kesalahan',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Kesalahan koneksi'};
+    }
+  }
+
   static Future<Map<String, dynamic>> buatPenugasan({
     required String deviceId,
     required String namaSopir,
@@ -804,19 +858,16 @@ class MongoDBService {
     }
   }
 
-  static Future<Map<String, dynamic>> cabutPenugasan(String deviceId) async {
+  static Future<bool> cabutPenugasan(String deviceId, {String? alasan}) async {
     try {
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/manager/penugasan/$deviceId'),
         headers: await _getHeaders(),
+        body: jsonEncode({'alasan': alasan ?? 'Dicabut oleh Manager'}),
       );
-      final body = jsonDecode(response.body);
-      return {
-        'success': response.statusCode == 200,
-        'message': body['message'] ?? 'Terjadi kesalahan',
-      };
+      return response.statusCode == 200;
     } catch (e) {
-      return {'success': false, 'message': 'Gagal terhubung ke server'};
+      return false;
     }
   }
 

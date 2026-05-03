@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/jadwal_sopir_page.dart';
@@ -96,51 +99,161 @@ class _DriverPageState extends State<DriverPage> {
   void _showFinishTaskConfirmation() {
     if (_activeDeviceId == null) return;
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Selesaikan Tugas"),
-        content: const Text(
-          "Apakah Anda yakin ingin menyelesaikan tugas ini? Kendaraan akan dilepas dan status Anda kembali tersedia.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            onPressed: () async {
-              Navigator.of(ctx).pop(); // Tutup dialog
-              
-              // Tampilkan loading
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(child: CircularProgressIndicator()),
-              );
+    final notesController = TextEditingController();
+    File? pickedImage;
 
-              try {
-                await MongoDBService.selesaikanPekerjaan(_activeDeviceId!);
-                await _checkCurrentTask(); // Refresh status
-                if (mounted) {
-                  Navigator.of(context).pop(); // Tutup loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Tugas berhasil diselesaikan!"), backgroundColor: Colors.green),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  Navigator.of(context).pop(); // Tutup loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Gagal menyelesaikan tugas: $e"), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-            child: const Text("Ya, Selesai", style: TextStyle(color: Colors.white)),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
           ),
-        ],
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Selesaikan Tugas",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Wajib ambil foto mobil setelah digunakan dan isi catatan jika ada informasi tambahan.",
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+                
+                // --- PHOTO PICKER ---
+                InkWell(
+                  onTap: () async {
+                    final picker = ImagePicker();
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.camera,
+                      imageQuality: 50,
+                      maxWidth: 800,
+                    );
+                    if (image != null) {
+                      setModalState(() => pickedImage = File(image.path));
+                    }
+                  },
+                  child: Container(
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                      image: pickedImage != null
+                          ? DecorationImage(image: FileImage(pickedImage!), fit: BoxFit.cover)
+                          : null,
+                    ),
+                    child: pickedImage == null
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt, size: 40, color: Colors.blue[900]),
+                              const SizedBox(height: 8),
+                              const Text("Ambil Foto Mobil (Wajib)", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // --- NOTES ---
+                const Text("Catatan Detail Tambahan", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                const Text("(Kerusakan, biaya bensin, dll)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: "Contoh: Bensin diisi 100rb, ban depan kiri kurang angin.",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                ),
+                const SizedBox(height: 30),
+                
+                // --- SUBMIT BUTTON ---
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: Colors.green[700],
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      if (pickedImage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Mohon ambil foto mobil terlebih dahulu")),
+                        );
+                        return;
+                      }
+
+                      // Dialog Loading
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                      );
+
+                      try {
+                        final bytes = await pickedImage!.readAsBytes();
+                        final base64Image = "BASE64:${base64Encode(bytes)}";
+
+                        final result = await MongoDBService.selesaikanTugas(
+                          deviceId: _activeDeviceId!,
+                          fotoMobilAkhir: base64Image,
+                          catatanDriver: notesController.text,
+                        );
+
+                        if (context.mounted) {
+                          Navigator.pop(context); // Pop loading
+                          if (result['success']) {
+                            Navigator.pop(context); // Pop sheet
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Tugas berhasil diselesaikan!"), backgroundColor: Colors.green),
+                            );
+                            _checkCurrentTask();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(result['message'])),
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.pop(context); // Pop loading
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Gagal menyelesaikan tugas")),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text("Konfirmasi Selesai", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

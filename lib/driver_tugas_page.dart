@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
@@ -517,37 +519,217 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                         ),
                       )
                     else
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.all(16),
-                            backgroundColor: Colors.blue[800],
-                          ),
-                          onPressed: () {
-                            final deviceId =
-                                _tugas!['deviceId']?.toString() ??
-                                _tugas!['device_id']?.toString() ??
-                                _tugas!['gps_1']?.toString() ??
-                                '';
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    DriverTrackingPage(deviceId: deviceId),
+                      Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.map, color: Colors.white),
+                              label: const Text("Cek Lokasi Kendaraan", style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.all(16),
+                                backgroundColor: Colors.blue[800],
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                            );
-                          },
-                          child: const Text(
-                            "Cek lokasi kendaraan",
-                            style: TextStyle(fontSize: 16, color: Colors.white),
+                              onPressed: () {
+                                final deviceId =
+                                    _tugas!['deviceId']?.toString() ??
+                                    _tugas!['device_id']?.toString() ??
+                                    _tugas!['gps_1']?.toString() ??
+                                    '';
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        DriverTrackingPage(deviceId: deviceId),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.check_circle_outline, color: Colors.green),
+                              label: const Text("Selesaikan Tugas", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.all(16),
+                                side: const BorderSide(color: Colors.green, width: 2),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () => _handleSelesaikanTugas(),
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  void _handleSelesaikanTugas() {
+    final deviceId = _tugas!['deviceId']?.toString() ??
+        _tugas!['device_id']?.toString() ??
+        _tugas!['gps_1']?.toString() ??
+        '';
+
+    final notesController = TextEditingController();
+    File? pickedImage;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Selesaikan Tugas",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Silakan ambil foto kondisi mobil saat ini dan tambahkan catatan jika ada.",
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
+                
+                // --- PHOTO PICKER ---
+                InkWell(
+                  onTap: () async {
+                    final picker = ImagePicker();
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.camera,
+                      imageQuality: 50,
+                      maxWidth: 800,
+                    );
+                    if (image != null) {
+                      setModalState(() => pickedImage = File(image.path));
+                    }
+                  },
+                  child: Container(
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                      image: pickedImage != null
+                          ? DecorationImage(image: FileImage(pickedImage!), fit: BoxFit.cover)
+                          : null,
+                    ),
+                    child: pickedImage == null
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt, size: 40, color: Colors.blue[900]),
+                              const SizedBox(height: 8),
+                              const Text("Ambil Foto Mobil (Wajib)", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // --- NOTES ---
+                const Text("Catatan Tambahan (Opsional)", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: "Contoh: Bensin habis, ada goresan baru, dll.",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                ),
+                const SizedBox(height: 30),
+                
+                // --- SUBMIT BUTTON ---
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: Colors.blue[900],
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      if (pickedImage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Mohon ambil foto mobil terlebih dahulu")),
+                        );
+                        return;
+                      }
+
+                      // Dialog Loading
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                      );
+
+                      try {
+                        final bytes = await pickedImage!.readAsBytes();
+                        final base64Image = "BASE64:${base64Encode(bytes)}";
+
+                        final result = await MongoDBService.selesaikanTugas(
+                          deviceId: deviceId,
+                          fotoMobilAkhir: base64Image,
+                          catatanDriver: notesController.text,
+                        );
+
+                        if (context.mounted) {
+                          Navigator.pop(context); // Pop loading
+                          if (result['success']) {
+                            Navigator.pop(context); // Pop sheet
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Tugas berhasil diselesaikan!"), backgroundColor: Colors.green),
+                            );
+                            _loadTugas();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(result['message'])),
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.pop(context); // Pop loading
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Gagal menyelesaikan tugas")),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text("Kirim & Selesaikan", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

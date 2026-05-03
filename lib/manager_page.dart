@@ -11,6 +11,7 @@ import 'package:sikendi/manager_informasi_tugas_page.dart';
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/manager_list_page.dart';
 import 'package:sikendi/manager_profile_page.dart';
+import 'package:sikendi/manager_laporan_penugasan_page.dart';
 
 
 
@@ -70,6 +71,12 @@ class _ManagerPageState extends State<ManagerPage> {
       'icon': Icons.history_edu,
       'color': Colors.blueGrey,
       'page': () => const ManagerInformasiTugasPage(),
+    },
+    {
+      'title': 'Laporan Penugasan',
+      'icon': Icons.description_outlined,
+      'color': Colors.indigo[900]!,
+      'page': () => const ManagerLaporanPenugasanPage(),
     },
     {
       'title': 'Data Saya',

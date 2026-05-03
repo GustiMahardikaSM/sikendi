@@ -59,79 +59,109 @@ class _ManagerInformasiTugasPageState extends State<ManagerInformasiTugasPage>
   // CABUT PENUGASAN
   // ============================
   void _confirmCabutPenugasan(Map<String, dynamic> penugasan) {
+    final isPending = penugasan['konfirmasi_sopir'] == 'pending';
+    final reasonController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            SizedBox(width: 10),
-            Text("Cabut Penugasan?"),
+            Icon(
+              isPending ? Icons.cancel_outlined : Icons.warning_amber_rounded,
+              color: isPending ? Colors.red : Colors.orange,
+              size: 28,
+            ),
+            const SizedBox(width: 10),
+            Text(isPending ? "Batalkan Penugasan?" : "Cabut Penugasan?"),
           ],
         ),
-        content: RichText(
-          text: TextSpan(
-            style: const TextStyle(color: Colors.black87, fontSize: 14),
-            children: [
-              const TextSpan(text: "Anda akan mencabut penugasan "),
-              TextSpan(
-                text: penugasan['peminjam'] ?? '-',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                style: const TextStyle(color: Colors.black87, fontSize: 14),
+                children: [
+                  TextSpan(text: isPending ? "Anda akan membatalkan penugasan " : "Anda akan mencabut penugasan "),
+                  TextSpan(
+                    text: penugasan['peminjam'] ?? '-',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: " dari kendaraan "),
+                  TextSpan(
+                    text: "${penugasan['model']} (${penugasan['plat']})",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: ". Lanjutkan?"),
+                ],
               ),
-              const TextSpan(text: " dari kendaraan "),
-              TextSpan(
-                text: "${penugasan['model']} (${penugasan['plat']})",
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (!isPending) ...[
+              const SizedBox(height: 20),
+              const Text("Alasan Pencabutan / Catatan:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: reasonController,
+                decoration: InputDecoration(
+                  hintText: "Masukkan alasan...",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
               ),
-              const TextSpan(text: ". Lanjutkan?"),
             ],
-          ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text("Batal", style: TextStyle(color: Colors.grey)),
+            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () async {
+              if (!isPending && reasonController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Alasan wajib diisi")),
+                );
+                return;
+              }
               Navigator.pop(ctx);
-              _executeCabutPenugasan(penugasan['deviceId']);
+              _executeCabutPenugasan(penugasan['deviceId'], reasonController.text);
             },
-            child: const Text("Ya, Cabut"),
+            child: Text(isPending ? "Ya, Batalkan" : "Ya, Cabut"),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _executeCabutPenugasan(String deviceId) async {
+  Future<void> _executeCabutPenugasan(String deviceId, String alasan) async {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
-    final result = await MongoDBService.cabutPenugasan(deviceId);
+    final success = await MongoDBService.cabutPenugasan(deviceId, alasan: alasan);
 
     if (mounted) Navigator.pop(context);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']),
-          backgroundColor: result['success'] ? Colors.green : Colors.red,
+          content: Text(success ? "Penugasan berhasil dicabut" : "Gagal mencabut penugasan"),
+          backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
-      if (result['success']) _loadData();
+      if (success) _loadData();
     }
   }
 
