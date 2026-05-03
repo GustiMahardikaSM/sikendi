@@ -62,127 +62,205 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
 
   void _showFormTugas(Map<String, dynamic> kendaraan) {
     final tugasController = TextEditingController();
-    final speedController = TextEditingController(text: '80');
-    final radiusController = TextEditingController(text: '5');
+    final speedController = TextEditingController();
+    final radiusController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.assignment, color: Colors.blue[800]),
-            ),
-            const SizedBox(width: 12),
-            const Text("Detail Penugasan", style: TextStyle(fontSize: 18)),
-          ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
         ),
-        content: Form(
+        child: Form(
           key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Info Box
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.person, color: Colors.blue[700], size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text("Sopir: ${widget.sopir['nama'] ?? '-'}", style: const TextStyle(fontWeight: FontWeight.bold))),
-                      ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const Divider(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.directions_car, color: Colors.blue[700], size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text("Mobil: ${kendaraan['model']} (${kendaraan['plat']})", style: const TextStyle(fontWeight: FontWeight.bold))),
-                      ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text("Detail Penugasan", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                
+                // Info Box
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blue[100]!),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.person, color: Colors.blue[800], size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("SOPIR", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+                                Text(widget.sopir['nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Divider(height: 1, color: Colors.blue),
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.directions_car, color: Colors.blue[800], size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("KENDARAAN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+                                Text("${kendaraan['model']} (${kendaraan['plat']})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                TextFormField(
+                  controller: tugasController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Deskripsi Tugas',
+                    hintText: 'Contoh: Antar tamu dari bandara ke kampus',
+                    alignLabelWithHint: true,
+                    filled: true,
+                    fillColor: Colors.white,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
                     ),
-                  ],
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.red),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.red, width: 2),
+                    ),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'Tugas wajib diisi' : null,
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: tugasController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Deskripsi Tugas',
-                  hintText: 'Contoh: Antar tamu dari bandara ke kampus',
-                  alignLabelWithHint: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                const SizedBox(height: 16),
+                const Text(
+                  "Batas Kecepatan Maksimal", 
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'Tugas wajib diisi' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: speedController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Batas Kecepatan Maksimal',
-                  suffixText: 'km/h',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.speed, size: 20),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: speedController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan angka (km/h)',
+                    suffixText: 'km/h',
+                    filled: true,
+                    fillColor: Colors.white,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
+                    ),
+                    prefixIcon: const Icon(Icons.speed, size: 20),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'Batas kecepatan wajib diisi' : null,
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'Batas kecepatan wajib diisi' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: radiusController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Radius Jarak Terjauh dari Kampus',
-                  suffixText: 'km',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.map, size: 20),
+                const SizedBox(height: 20),
+                
+                const Text(
+                  "Radius Jarak Terjauh dari Kampus", 
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'Radius wajib diisi' : null,
-              ),
-            ],
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: radiusController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan angka (km)',
+                    suffixText: 'km',
+                    filled: true,
+                    fillColor: Colors.white,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
+                    ),
+                    prefixIcon: const Icon(Icons.map, size: 20),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'Radius wajib diisi' : null,
+                ),
+                const SizedBox(height: 32),
+                
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.blue[900],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        Navigator.pop(ctx);
+                        _submitPenugasan(
+                          kendaraan['deviceId'] ?? '', 
+                          tugasController.text,
+                          double.tryParse(speedController.text) ?? 80.0,
+                          (double.tryParse(radiusController.text) ?? 5.0) * 1000,
+                        );
+                      }
+                    },
+                    child: const Text("Simpan Penugasan", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text("Simpan Penugasan"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[800],
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(ctx);
-                _submitPenugasan(
-                  kendaraan['deviceId'] ?? '', 
-                  tugasController.text,
-                  double.tryParse(speedController.text) ?? 80.0,
-                  (double.tryParse(radiusController.text) ?? 5.0) * 1000,
-                );
-              }
-            },
-          ),
-        ],
       ),
     );
   }
@@ -220,34 +298,71 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Pilih Kendaraan"),
+        title: const Text(
+          "Pilih Kendaraan",
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+        ),
+        titleSpacing: 0,
+        centerTitle: false,
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      backgroundColor: Colors.grey[100],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
             width: double.infinity,
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 24, top: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue[900],
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Menugaskan Sopir:", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                Text("Sopir yang ditugaskan:", style: TextStyle(color: Colors.blue[200], fontSize: 13)),
                 const SizedBox(height: 4),
                 Text(
                   widget.sopir['nama'] ?? 'Tanpa Nama',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87),
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+            child: TextField(
+              controller: _searchKendaraanController,
+              onChanged: (val) => setState(() => _searchKendaraanQuery = val),
+              decoration: InputDecoration(
+                hintText: 'Cari model / plat...',
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                suffixIcon: _searchKendaraanQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchKendaraanController.clear();
+                          setState(() => _searchKendaraanQuery = '');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -256,81 +371,66 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
               ],
             ),
           ),
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              controller: _searchKendaraanController,
-              decoration: InputDecoration(
-                hintText: 'Cari model / plat...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchKendaraanQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchKendaraanController.clear();
-                          setState(() => _searchKendaraanQuery = '');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              onChanged: (val) => setState(() => _searchKendaraanQuery = val),
-            ),
-          ),
+
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredKendaraan.isEmpty
                     ? Center(
-                        child: Text(
-                          _searchKendaraanQuery.isNotEmpty 
-                            ? "Kendaraan tidak ditemukan." 
-                            : "Tidak ada kendaraan tersedia.", 
-                          style: const TextStyle(fontSize: 16, color: Colors.grey)
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.directions_car_outlined, size: 64, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchKendaraanQuery.isNotEmpty 
+                                ? "Kendaraan tidak ditemukan." 
+                                : "Tidak ada kendaraan tersedia.", 
+                              style: const TextStyle(color: Colors.grey)
+                            ),
+                          ],
                         )
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: _filteredKendaraan.length,
                         itemBuilder: (context, index) {
                           final item = _filteredKendaraan[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey[200]!),
+                            ),
                             child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              contentPadding: const EdgeInsets.all(12),
                               leading: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: Colors.green[50],
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Icon(Icons.directions_car, color: Colors.green[700], size: 28),
+                                child: Icon(Icons.directions_car, color: Colors.green[700], size: 24),
                               ),
                               title: Text(
                                 item['model'] ?? '-',
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  Text(item['plat'] ?? '-', style: TextStyle(color: Colors.grey[600])),
-                                ],
+                              subtitle: Text(
+                                item['plat'] ?? '-', 
+                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
                               ),
                               trailing: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue[800],
+                                  backgroundColor: Colors.blue[900],
                                   foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
                                 ),
                                 onPressed: () => _showFormTugas(item),
-                                child: const Text("Pilih"),
+                                child: const Text("Pilih", style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                             ),
                           );
