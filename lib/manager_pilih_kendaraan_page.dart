@@ -62,6 +62,8 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
 
   void _showFormTugas(Map<String, dynamic> kendaraan) {
     final tugasController = TextEditingController();
+    final speedController = TextEditingController(text: '80');
+    final radiusController = TextEditingController(text: '5');
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -128,6 +130,30 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
                 ),
                 validator: (value) => value == null || value.isEmpty ? 'Tugas wajib diisi' : null,
               ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: speedController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Batas Kecepatan Maksimal',
+                  suffixText: 'km/h',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.speed, size: 20),
+                ),
+                validator: (value) => value == null || value.isEmpty ? 'Batas kecepatan wajib diisi' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: radiusController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Radius Jarak Terjauh dari Kampus',
+                  suffixText: 'km',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.map, size: 20),
+                ),
+                validator: (value) => value == null || value.isEmpty ? 'Radius wajib diisi' : null,
+              ),
             ],
           ),
         ),
@@ -147,7 +173,12 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
             onPressed: () {
               if (formKey.currentState!.validate()) {
                 Navigator.pop(ctx);
-                _submitPenugasan(kendaraan['deviceId'] ?? '', tugasController.text);
+                _submitPenugasan(
+                  kendaraan['deviceId'] ?? '', 
+                  tugasController.text,
+                  double.tryParse(speedController.text) ?? 80.0,
+                  (double.tryParse(radiusController.text) ?? 5.0) * 1000,
+                );
               }
             },
           ),
@@ -156,7 +187,7 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
     );
   }
 
-  Future<void> _submitPenugasan(String deviceId, String tugas) async {
+  Future<void> _submitPenugasan(String deviceId, String tugas, double maxSpeed, double maxRadius) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -167,6 +198,8 @@ class _ManagerPilihKendaraanPageState extends State<ManagerPilihKendaraanPage> {
       deviceId: deviceId,
       namaSopir: widget.sopir['nama'] ?? 'Tanpa Nama',
       tugas: tugas,
+      maxSpeed: maxSpeed,
+      maxRadius: maxRadius,
     );
 
     if (mounted) Navigator.pop(context); // close loading

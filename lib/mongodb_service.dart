@@ -779,6 +779,8 @@ class MongoDBService {
     required String deviceId,
     required String namaSopir,
     String? tugas,
+    double? maxSpeed,
+    double? maxRadius,
   }) async {
     try {
       final response = await http.post(
@@ -788,6 +790,8 @@ class MongoDBService {
           'deviceId': deviceId,
           'namaSopir': namaSopir,
           'tugas': tugas,
+          'max_speed': maxSpeed,
+          'max_radius': maxRadius,
         }),
       );
       final body = jsonDecode(response.body);
@@ -860,5 +864,20 @@ class MongoDBService {
     } catch (e) {
       return false;
     }
+  }
+
+  static Future<List<Map<String, dynamic>>> getGeofencingAlerts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/manager/alerts'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+    }
+    return [];
   }
 }

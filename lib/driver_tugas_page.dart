@@ -56,6 +56,17 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
     return null;
   }
 
+  String _getUnitName(Map<String, dynamic> tugas) {
+    final level = tugas['manager_level'];
+    final fakultas = tugas['manager_fakultas'];
+    final departemen = tugas['manager_departemen'];
+
+    if (level == 'universitas') return 'Universitas';
+    if (level == 'fakultas') return 'Fakultas $fakultas';
+    if (level == 'departemen') return 'Departemen $departemen ($fakultas)';
+    return '-';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -271,6 +282,50 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                               _tugas!['tugas'] ?? 'Tidak ada detail tugas',
                               style: const TextStyle(fontSize: 15, height: 1.4),
                             ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Divider(),
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.admin_panel_settings, color: Colors.blue[700], size: 20),
+                              const SizedBox(width: 8),
+                              const Text("Pemberi Tugas", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _tugas!['manager_email'] ?? '-',
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            _getUnitName(_tugas!),
+                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 16),
+                          Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.speed, color: Colors.red[700], size: 20),
+                                  const SizedBox(width: 8),
+                                  const Text("Batas Kecepatan Maksimal", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                                  const Spacer(),
+                                  Text("${_tugas!['max_speed'] ?? 80} km/h", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Icon(Icons.map, color: Colors.orange[700], size: 20),
+                                  const SizedBox(width: 8),
+                                  const Text("Radius Jarak Terjauh", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                                  const Spacer(),
+                                  Text("${((_tugas!['max_radius'] ?? 5000) / 1000).toStringAsFixed(1)} km", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                ],
+                              ),
+                            ],
                           ),
                         ],
                       ),
