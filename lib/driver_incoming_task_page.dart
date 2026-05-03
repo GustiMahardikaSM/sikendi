@@ -171,6 +171,17 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
     }
   }
 
+  String _getUnitName(Map<String, dynamic> tugas) {
+    final level = tugas['manager_level'];
+    final fakultas = tugas['manager_fakultas'];
+    final departemen = tugas['manager_departemen'];
+
+    if (level == 'universitas') return 'Manager Universitas';
+    if (level == 'fakultas') return 'Manager Fakultas $fakultas';
+    if (level == 'departemen') return 'Manager Departemen $departemen ($fakultas)';
+    return '-';
+  }
+
   @override
   Widget build(BuildContext context) {
     // Tampilan menyerupai telepon masuk
@@ -195,6 +206,11 @@ class _DriverIncomingTaskPageState extends State<DriverIncomingTaskPage> {
                     const Text("Kendaraan:", style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 4),
                     Text("${widget.tugas['model']} (${widget.tugas['plat']})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Divider(height: 30),
+                    const Text("Pemberi Tugas:", style: TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Text(widget.tugas['manager_name'] ?? 'Manager', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                    Text(_getUnitName(widget.tugas), style: TextStyle(fontSize: 14, color: Colors.blue[900], fontWeight: FontWeight.w500)),
                     const Divider(height: 30),
                     const Text("Deskripsi Tugas:", style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 8),

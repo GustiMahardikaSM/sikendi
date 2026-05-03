@@ -61,9 +61,10 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
     final fakultas = tugas['manager_fakultas'];
     final departemen = tugas['manager_departemen'];
 
-    if (level == 'universitas') return 'Universitas';
-    if (level == 'fakultas') return 'Fakultas $fakultas';
-    if (level == 'departemen') return 'Departemen $departemen ($fakultas)';
+    if (level == 'universitas') return 'Manager Universitas';
+    if (level == 'fakultas') return 'Manager Fakultas $fakultas';
+    if (level == 'departemen')
+      return 'Manager Departemen $departemen ($fakultas)';
     return '-';
   }
 
@@ -78,10 +79,13 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () async {
             // Jika kita punya data user lengkap, langsung ke DriverPage
-            if (widget.user.containsKey('nama') || widget.user.containsKey('nama_lengkap')) {
+            if (widget.user.containsKey('nama') ||
+                widget.user.containsKey('nama_lengkap')) {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => DriverPage(user: widget.user)),
+                MaterialPageRoute(
+                  builder: (_) => DriverPage(user: widget.user),
+                ),
                 (route) => false,
               );
             } else {
@@ -91,14 +95,18 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                 if (currentUser != null) {
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => DriverPage(user: currentUser)),
+                    MaterialPageRoute(
+                      builder: (_) => DriverPage(user: currentUser),
+                    ),
                     (route) => false,
                   );
                 } else {
                   // Fallback terakhir jika benar-benar tidak ada session
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const RoleSelectionPage(),
+                    ),
                     (route) => false,
                   );
                 }
@@ -127,266 +135,417 @@ class _DriverTugasPageState extends State<DriverTugasPage> {
                 ],
               ),
             )
-          : Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _tugas!['konfirmasi_sopir'] == 'pending'
-                        ? "Tugas Pending"
-                        : "Tugas Saat Ini",
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _tugas!['konfirmasi_sopir'] == 'pending'
+                          ? "Tugas Pending"
+                          : "Tugas Saat Ini",
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // FOTO MOBIL (Logika sama dengan VehicleDetailPage)
-                          Container(
-                            width: double.infinity,
-                            height: 180,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(12),
-                              image: (_tugas!['foto_url'] != null &&
-                                      _tugas!['foto_url'].toString().isNotEmpty &&
-                                      _getImageProvider(_tugas!['foto_url'].toString()) != null)
-                                  ? DecorationImage(
-                                      image: _getImageProvider(_tugas!['foto_url'].toString())!,
-                                      fit: BoxFit.cover,
+                    const SizedBox(height: 20),
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // FOTO MOBIL (Logika sama dengan VehicleDetailPage)
+                            Container(
+                              width: double.infinity,
+                              height: 180,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                                image:
+                                    (_tugas!['foto_url'] != null &&
+                                        _tugas!['foto_url']
+                                            .toString()
+                                            .isNotEmpty &&
+                                        _getImageProvider(
+                                              _tugas!['foto_url'].toString(),
+                                            ) !=
+                                            null)
+                                    ? DecorationImage(
+                                        image: _getImageProvider(
+                                          _tugas!['foto_url'].toString(),
+                                        )!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child:
+                                  (_tugas!['foto_url'] == null ||
+                                      _tugas!['foto_url'].toString().isEmpty ||
+                                      _getImageProvider(
+                                            _tugas!['foto_url'].toString(),
+                                          ) ==
+                                          null)
+                                  ? Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.directions_car,
+                                          size: 60,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          "Foto Mobil Belum Tersedia",
+                                          style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
                                     )
                                   : null,
                             ),
-                            child: (_tugas!['foto_url'] == null ||
-                                    _tugas!['foto_url'].toString().isEmpty ||
-                                    _getImageProvider(_tugas!['foto_url'].toString()) == null)
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[50],
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.directions_car,
+                                    color: Colors.blue[700],
+                                    size: 28,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(Icons.directions_car, size: 60, color: Colors.grey[400]),
-                                      const SizedBox(height: 8),
+                                      const Text(
+                                        "Kendaraan",
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 13,
+                                        ),
+                                      ),
                                       Text(
-                                        "Foto Mobil Belum Tersedia",
-                                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                                        "${_tugas!['model']} (${_tugas!['plat']})",
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ],
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(Icons.directions_car, color: Colors.blue[700], size: 28),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text("Kendaraan", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                                    Text("${_tugas!['model']} (${_tugas!['plat']})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(),
-                          ),
-                          Row(
-                            children: [
-                              Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
-                              const SizedBox(width: 8),
-                              const Text("Status", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: _tugas!['konfirmasi_sopir'] == 'pending' ? Colors.orange.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _tugas!['konfirmasi_sopir'] == 'pending' ? Icons.access_time : Icons.check_circle,
-                                  color: _tugas!['konfirmasi_sopir'] == 'pending' ? Colors.orange[800] : Colors.green[700],
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _tugas!['konfirmasi_sopir'] == 'pending' ? "Menunggu Konfirmasi" : "Sedang Dijalankan",
-                                  style: TextStyle(
-                                    color: _tugas!['konfirmasi_sopir'] == 'pending' ? Colors.orange[800] : Colors.green[700],
-                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Icon(Icons.access_time_filled, color: Colors.blue[700], size: 20),
-                              const SizedBox(width: 8),
-                              const Text("Waktu Penugasan", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _tugas!['waktu_ambil'] != null
-                                ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(_tugas!['waktu_ambil']).toLocal())
-                                : '-',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(),
-                          ),
-                          Row(
-                            children: [
-                              Icon(Icons.assignment, color: Colors.blue[700], size: 20),
-                              const SizedBox(width: 8),
-                              const Text("Deskripsi Tugas", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(10),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(),
                             ),
-                            child: Text(
-                              _tugas!['tugas'] ?? 'Tidak ada detail tugas',
-                              style: const TextStyle(fontSize: 15, height: 1.4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Colors.blue[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Status",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(),
-                          ),
-                          Row(
-                            children: [
-                              Icon(Icons.admin_panel_settings, color: Colors.blue[700], size: 20),
-                              const SizedBox(width: 8),
-                              const Text("Pemberi Tugas", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _tugas!['manager_email'] ?? '-',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                          ),
-                          Text(
-                            _getUnitName(_tugas!),
-                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 16),
-                          Column(
-                            children: [
-                              Row(
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _tugas!['konfirmasi_sopir'] == 'pending'
+                                    ? Colors.orange.withOpacity(0.1)
+                                    : Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.speed, color: Colors.red[700], size: 20),
-                                  const SizedBox(width: 8),
-                                  const Text("Batas Kecepatan Maksimal", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                                  const Spacer(),
-                                  Text("${_tugas!['max_speed'] ?? 80} km/h", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  Icon(
+                                    _tugas!['konfirmasi_sopir'] == 'pending'
+                                        ? Icons.access_time
+                                        : Icons.check_circle,
+                                    color:
+                                        _tugas!['konfirmasi_sopir'] == 'pending'
+                                        ? Colors.orange[800]
+                                        : Colors.green[700],
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _tugas!['konfirmasi_sopir'] == 'pending'
+                                        ? "Menunggu Konfirmasi"
+                                        : "Sedang Dijalankan",
+                                    style: TextStyle(
+                                      color:
+                                          _tugas!['konfirmasi_sopir'] ==
+                                              'pending'
+                                          ? Colors.orange[800]
+                                          : Colors.green[700],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Icon(Icons.map, color: Colors.orange[700], size: 20),
-                                  const SizedBox(width: 8),
-                                  const Text("Radius Jarak Terjauh", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                                  const Spacer(),
-                                  Text("${((_tugas!['max_radius'] ?? 5000) / 1000).toStringAsFixed(1)} km", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time_filled,
+                                  color: Colors.blue[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Waktu Penugasan",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _tugas!['waktu_ambil'] != null
+                                  ? DateFormat('dd MMM yyyy, HH:mm').format(
+                                      DateTime.parse(
+                                        _tugas!['waktu_ambil'],
+                                      ).toLocal(),
+                                    )
+                                  : '-',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(),
+                            ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.assignment,
+                                  color: Colors.blue[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Deskripsi Tugas",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                _tugas!['tugas'] ?? 'Tidak ada detail tugas',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(),
+                            ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.admin_panel_settings,
+                                  color: Colors.blue[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Pemberi Tugas",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _tugas!['manager_name'] ?? 'Manager',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "Telp: ${_tugas!['manager_phone'] ?? '-'}",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                            Text(
+                              _getUnitName(_tugas!),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.speed,
+                                      color: Colors.red[700],
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      "Batas Kecepatan Maksimal",
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      "${_tugas!['max_speed'] ?? 80} km/h",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.map,
+                                      color: Colors.orange[700],
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      "Radius Jarak Terjauh",
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      "${((_tugas!['max_radius'] ?? 5000) / 1000).toStringAsFixed(1)} km",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    if (_tugas!['konfirmasi_sopir'] == 'pending')
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.all(16),
+                            backgroundColor: Colors.orange,
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  if (_tugas!['konfirmasi_sopir'] == 'pending')
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
-                          backgroundColor: Colors.orange,
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => DriverIncomingTaskPage(
-                                tugas: _tugas!,
-                                onDecision: _loadTugas,
-                                user: widget.user,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DriverIncomingTaskPage(
+                                  tugas: _tugas!,
+                                  onDecision: _loadTugas,
+                                  user: widget.user,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Tanggapi Penugasan",
-                          style: TextStyle(fontSize: 16, color: Colors.white),
+                            );
+                          },
+                          child: const Text(
+                            "Tanggapi Penugasan",
+                            style: TextStyle(fontSize: 16, color: Colors.white),
+                          ),
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.all(16),
+                            backgroundColor: Colors.blue[800],
+                          ),
+                          onPressed: () {
+                            final deviceId =
+                                _tugas!['deviceId']?.toString() ??
+                                _tugas!['device_id']?.toString() ??
+                                _tugas!['gps_1']?.toString() ??
+                                '';
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    DriverTrackingPage(deviceId: deviceId),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "Cek lokasi kendaraan",
+                            style: TextStyle(fontSize: 16, color: Colors.white),
+                          ),
                         ),
                       ),
-                    )
-                  else
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
-                          backgroundColor: Colors.blue[800],
-                        ),
-                        onPressed: () {
-                          final deviceId =
-                              _tugas!['deviceId']?.toString() ??
-                              _tugas!['device_id']?.toString() ??
-                              _tugas!['gps_1']?.toString() ??
-                              '';
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  DriverTrackingPage(deviceId: deviceId),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Buka Tracking GPS",
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
     );
