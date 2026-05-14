@@ -420,7 +420,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
   final TextEditingController _modelController = TextEditingController();
 
   
-  String _selectedKepemilikan = 'universitas';
+  String _selectedKepemilikan = 'departemen';
   String? _selectedFakultas;
   String? _selectedDepartemen;
   
@@ -438,7 +438,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
       setState(() {
         _currentUser = user;
         if (_currentUser != null) {
-          _selectedKepemilikan = _currentUser!['level'] ?? 'universitas';
+          _selectedKepemilikan = _currentUser!['level'] ?? 'departemen';
           _selectedFakultas = _currentUser!['fakultas'];
           _selectedDepartemen = _currentUser!['departemen'];
         }
@@ -554,6 +554,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
               const Text("Kepemilikan & Otoritas", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 value: _selectedKepemilikan,
                 decoration: const InputDecoration(
                   labelText: 'Tingkat Kepemilikan',
@@ -579,13 +580,14 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
               if (_selectedKepemilikan != 'universitas') ...[
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _selectedFakultas,
                   decoration: const InputDecoration(
                     labelText: 'Fakultas Pemilik',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.business),
                   ),
-                  items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+                  items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis, maxLines: 1))).toList(),
                   onChanged: (_currentUser?['level'] == 'fakultas' || _currentUser?['level'] == 'departemen') 
                     ? null 
                     : (v) => setState(() {
@@ -598,13 +600,14 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
               if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _selectedDepartemen,
                   decoration: const InputDecoration(
                     labelText: 'Departemen Pemilik',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.apartment),
                   ),
-                  items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+                  items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis, maxLines: 1))).toList(),
                   onChanged: (_currentUser?['level'] == 'departemen') 
                     ? null 
                     : (v) => setState(() => _selectedDepartemen = v),
@@ -845,6 +848,7 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
               ),
               const SizedBox(height: 15),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 value: _selectedStatus,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: const [
@@ -864,6 +868,7 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
               const SizedBox(height: 20),
               const Text("Transfer Kepemilikan", style: TextStyle(fontWeight: FontWeight.bold)),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 value: _selectedKepemilikan,
                 decoration: const InputDecoration(labelText: 'Tingkat'),
                 items: const [
@@ -880,9 +885,10 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
               if (_selectedKepemilikan != 'universitas') ...[
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _selectedFakultas,
                   decoration: const InputDecoration(labelText: 'Fakultas'),
-                  items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+                  items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis, maxLines: 1))).toList(),
                   onChanged: (v) => setState(() {
                     _selectedFakultas = v;
                     _selectedDepartemen = null;
@@ -892,9 +898,10 @@ class _VehicleCrudDialogState extends State<VehicleCrudDialog> {
               if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _selectedDepartemen,
                   decoration: const InputDecoration(labelText: 'Departemen'),
-                  items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+                  items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis, maxLines: 1))).toList(),
                   onChanged: (v) => setState(() => _selectedDepartemen = v),
                 ),
               ],

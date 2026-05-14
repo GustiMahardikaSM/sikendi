@@ -70,8 +70,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       return '-';
     }
     try {
-      String cleanTimeStr = dateTimeStr.replaceAll('Z', '');
-      final dateTime = DateTime.parse(cleanTimeStr);
+      final dateTime = DateTime.parse(dateTimeStr).toLocal();
       final formatter = DateFormat('dd MMMM yyyy, HH:mm:ss', 'id_ID');
       return formatter.format(dateTime);
     } catch (e) {
