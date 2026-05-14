@@ -318,7 +318,7 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
                     children: [
                       TileLayer(
                         urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                        userAgentPackageName: 'com.example.sikendi',
+                        userAgentPackageName: 'com.sikendi.app',
                       ),
                       PolylineLayer(
                         polylines: [

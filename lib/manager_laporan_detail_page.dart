@@ -296,6 +296,7 @@ class ManagerLaporanDetailPage extends StatelessWidget {
           children: [
             TileLayer(
               urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+              userAgentPackageName: 'com.sikendi.app',
             ),
             PolylineLayer(
               polylines: [

@@ -443,7 +443,7 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
                     children: [
                       TileLayer(
                         urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                        userAgentPackageName: 'com.example.sikendi',
+                        userAgentPackageName: 'com.sikendi.app',
                       ),
                       PolylineLayer(
                         polylines: [
