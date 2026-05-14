@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/vehicle_detail_page.dart';
 import 'package:sikendi/auth_service.dart';
@@ -419,6 +424,8 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
   final TextEditingController _platController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
 
+  File? _vehicleImage;
+  final ImagePicker _picker = ImagePicker();
   
   String _selectedKepemilikan = 'departemen';
   String? _selectedFakultas;
@@ -449,6 +456,74 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
   
   bool _isLoading = false;
 
+  Future<void> _pickAndCropImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+    );
+
+    if (pickedFile != null) {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Potong Foto Kendaraan',
+            toolbarColor: Colors.blue[900],
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.ratio4x3,
+            lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+          ),
+          IOSUiSettings(
+            title: 'Potong Foto Kendaraan',
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _vehicleImage = File(croppedFile.path);
+        });
+      }
+    }
+  }
+
+  Future<String?> _compressAndGetBase64(File? file) async {
+    if (file == null) return null;
+    
+    final filePath = file.absolute.path;
+    final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
+    final splitted = filePath.substring(0, (lastIndex));
+    final outPath = "${splitted}_compressed.jpg";
+
+    final result = await FlutterImageCompress.compressAndGetFile(
+      file.absolute.path,
+      outPath,
+      quality: 25,
+      minWidth: 800,
+      minHeight: 600,
+    );
+
+    if (result == null) return null;
+    final bytes = await result.readAsBytes();
+    
+    // Clean up temporary file
+    try { File(outPath).delete(); } catch (_) {}
+    
+    return base64Encode(bytes);
+  }
+
 
   @override
   void dispose() {
@@ -462,6 +537,19 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
       setState(() => _isLoading = true);
 
       try {
+        if (_vehicleImage == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Foto kendaraan wajib diunggah."),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        final base64Image = await _compressAndGetBase64(_vehicleImage);
+
         final success = await MongoDBService.tambahKendaraanManager(
           _platController.text.toUpperCase(),
           _modelController.text,
@@ -469,6 +557,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
           kepemilikan: _selectedKepemilikan,
           fakultas: _selectedFakultas,
           departemen: _selectedDepartemen,
+          fotoUrl: base64Image,
         );
 
 
@@ -510,115 +599,28 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text("Definisikan Kendaraan"),
+      backgroundColor: Colors.grey[100],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(
-                "Device ID: ${widget.gps1}",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _platController,
-                decoration: const InputDecoration(
-                  labelText: 'Plat Nomor (e.g., H 1234 XY)',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Plat nomor tidak boleh kosong';
-                  }
-                  return null;
-                },
-                textCapitalization: TextCapitalization.characters,
-              ),
-              const SizedBox(height: 15),
-              TextFormField(
-                controller: _modelController,
-                decoration: const InputDecoration(
-                  labelText: 'Model (e.g., Toyota Avanza)',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Model tidak boleh kosong';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              const Text("Kepemilikan & Otoritas", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                value: _selectedKepemilikan,
-                decoration: const InputDecoration(
-                  labelText: 'Tingkat Kepemilikan',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.account_balance),
-                ),
-                items: [
-                  if (_currentUser?['level'] == 'universitas')
-                    const DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
-                  if (_currentUser?['level'] == 'universitas' || _currentUser?['level'] == 'fakultas')
-                    const DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
-                  const DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
-                ],
-                onChanged: (_currentUser?['level'] == 'departemen') ? null : (v) => setState(() {
-                  _selectedKepemilikan = v!;
-                  // Reset if changed
-                  if (_selectedKepemilikan == 'universitas') {
-                    _selectedFakultas = null;
-                    _selectedDepartemen = null;
-                  }
-                }),
-              ),
-              if (_selectedKepemilikan != 'universitas') ...[
-                const SizedBox(height: 15),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  value: _selectedFakultas,
-                  decoration: const InputDecoration(
-                    labelText: 'Fakultas Pemilik',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.business),
-                  ),
-                  items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis, maxLines: 1))).toList(),
-                  onChanged: (_currentUser?['level'] == 'fakultas' || _currentUser?['level'] == 'departemen') 
-                    ? null 
-                    : (v) => setState(() {
-                        _selectedFakultas = v;
-                        _selectedDepartemen = null;
-                      }),
-                ),
-              ],
+              // SECTION 1: INFO KENDARAAN (Mirip _buildInfoCard)
+              _buildInfoSection(),
+              const SizedBox(height: 16),
+              
+              // SECTION 2: FOTO KENDARAAN (Mirip _buildPhotoCard)
+              _buildPhotoInputSection(),
+              const SizedBox(height: 16),
 
-              if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
-                const SizedBox(height: 15),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  value: _selectedDepartemen,
-                  decoration: const InputDecoration(
-                    labelText: 'Departemen Pemilik',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.apartment),
-                  ),
-                  items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis, maxLines: 1))).toList(),
-                  onChanged: (_currentUser?['level'] == 'departemen') 
-                    ? null 
-                    : (v) => setState(() => _selectedDepartemen = v),
-                ),
-              ],
-
+              // SECTION 3: OTORITAS
+              _buildAuthoritySection(),
             ],
           ),
         ),
       ),
-
       actions: <Widget>[
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
@@ -626,15 +628,217 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _submitForm,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue[900],
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
           child: _isLoading
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
               : const Text('Simpan'),
         ),
       ],
+    );
+  }
+
+  Widget _buildInfoSection() {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue[900], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  "Informasi Dasar",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey[800]),
+                ),
+              ],
+            ),
+            const Divider(),
+            const SizedBox(height: 8),
+            Text(
+              "Device ID: ${widget.gps1}",
+              style: TextStyle(fontWeight: FontWeight.w500, color: Colors.blue[900]),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _platController,
+              decoration: const InputDecoration(
+                labelText: 'Plat Nomor',
+                hintText: 'e.g., H 1234 XY',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.pin),
+              ),
+              validator: (value) => (value == null || value.isEmpty) ? 'Wajib diisi' : null,
+              textCapitalization: TextCapitalization.characters,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _modelController,
+              decoration: const InputDecoration(
+                labelText: 'Model Kendaraan',
+                hintText: 'e.g., Toyota Avanza',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.directions_car),
+              ),
+              validator: (value) => (value == null || value.isEmpty) ? 'Wajib diisi' : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoInputSection() {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Icon(Icons.camera_alt_outlined, color: Colors.blue[900], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  "Foto Kendaraan",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey[800]),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          GestureDetector(
+            onTap: _pickAndCropImage,
+            child: Container(
+              height: 200,
+              width: double.infinity,
+              color: Colors.white,
+              child: _vehicleImage != null
+                  ? Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Image.file(_vehicleImage!, fit: BoxFit.cover),
+                        ),
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.blue[900],
+                            child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo, size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text("Ketuk untuk ambil foto", style: TextStyle(color: Colors.grey[600])),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuthoritySection() {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.account_balance, color: Colors.blue[900], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  "Kepemilikan & Otoritas",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey[800]),
+                ),
+              ],
+            ),
+            const Divider(),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              value: _selectedKepemilikan,
+              decoration: const InputDecoration(
+                labelText: 'Tingkat Kepemilikan',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                if (_currentUser?['level'] == 'universitas')
+                  const DropdownMenuItem(value: 'universitas', child: Text('Universitas')),
+                if (_currentUser?['level'] == 'universitas' || _currentUser?['level'] == 'fakultas')
+                  const DropdownMenuItem(value: 'fakultas', child: Text('Fakultas')),
+                const DropdownMenuItem(value: 'departemen', child: Text('Departemen')),
+              ],
+              onChanged: (_currentUser?['level'] == 'departemen') ? null : (v) => setState(() {
+                _selectedKepemilikan = v!;
+                if (_selectedKepemilikan == 'universitas') {
+                  _selectedFakultas = null;
+                  _selectedDepartemen = null;
+                }
+              }),
+            ),
+            if (_selectedKepemilikan != 'universitas') ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                value: _selectedFakultas,
+                decoration: const InputDecoration(
+                  labelText: 'Fakultas Pemilik',
+                  border: OutlineInputBorder(),
+                ),
+                items: HierarchyData.listFakultas.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))).toList(),
+                onChanged: (_currentUser?['level'] == 'fakultas' || _currentUser?['level'] == 'departemen') 
+                  ? null 
+                  : (v) => setState(() {
+                      _selectedFakultas = v;
+                      _selectedDepartemen = null;
+                    }),
+              ),
+            ],
+            if (_selectedKepemilikan == 'departemen' && _selectedFakultas != null) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                value: _selectedDepartemen,
+                decoration: const InputDecoration(
+                  labelText: 'Departemen Pemilik',
+                  border: OutlineInputBorder(),
+                ),
+                items: HierarchyData.getDepartemen(_selectedFakultas!).map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+                onChanged: (_currentUser?['level'] == 'departemen') 
+                  ? null 
+                  : (v) => setState(() => _selectedDepartemen = v),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

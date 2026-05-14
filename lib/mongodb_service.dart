@@ -238,6 +238,7 @@ class MongoDBService {
     String? kepemilikan,
     String? fakultas,
     String? departemen,
+    String? fotoUrl,
   }) async {
     try {
       final response = await http.post(
@@ -250,6 +251,7 @@ class MongoDBService {
           'kepemilikan': kepemilikan,
           'fakultas': fakultas,
           'departemen': departemen,
+          'foto_url': fotoUrl,
         }),
       );
       return response.statusCode == 200 || response.statusCode == 201;
