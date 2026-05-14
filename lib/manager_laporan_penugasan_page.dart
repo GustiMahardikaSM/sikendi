@@ -405,6 +405,8 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
                   _buildMiniStat(Icons.route, "${report['jarak_km']} km"),
                   _buildMiniStat(Icons.speed, "${report['kecepatan_maksimal']} km/h"),
                   _buildMiniStat(Icons.timer_outlined, "${report['durasi_menit']}m"),
+                  if (report['predominant_driving_style'] != null)
+                    _buildDrivingStyleBadge(report['predominant_driving_style']),
                 ],
               ),
             ],
@@ -421,6 +423,30 @@ class _ManagerLaporanPenugasanPageState extends State<ManagerLaporanPenugasanPag
         const SizedBox(width: 4),
         Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue[900])),
       ],
+    );
+  }
+
+  Widget _buildDrivingStyleBadge(String style) {
+    Color color = Colors.grey;
+    if (style == 'Defensive Driving') {
+      color = Colors.green;
+    } else if (style == 'Normal Driving') {
+      color = Colors.blue;
+    } else if (style == 'Aggressive Driving') {
+      color = Colors.red;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.5), width: 0.5),
+      ),
+      child: Text(
+        style.replaceFirst(' Driving', ''),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
     );
   }
 

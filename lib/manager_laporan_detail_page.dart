@@ -100,6 +100,12 @@ class ManagerLaporanDetailPage extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
+                  // --- FUZZY ANALYSIS SECTION ---
+                  if (report['predominant_driving_style'] != null) ...[
+                    _buildFuzzyAnalysisSection(),
+                    const SizedBox(height: 24),
+                  ],
+
                   // --- DETAIL SECTION ---
                   _buildSectionTitle("Informasi Penugasan"),
                   const SizedBox(height: 12),
@@ -305,6 +311,96 @@ class ManagerLaporanDetailPage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFuzzyAnalysisSection() {
+    final predominantStyle = report['predominant_driving_style'] ?? 'N/A';
+    final avgScore = report['avg_fuzzy_score'] != null ? report['avg_fuzzy_score'].toString() : '-';
+    final counts = report['fuzzy_style_counts'];
+
+    Color styleColor = Colors.grey;
+    IconData styleIcon = Icons.help_outline;
+
+    if (predominantStyle == 'Defensive Driving') {
+      styleColor = Colors.green;
+      styleIcon = Icons.shield;
+    } else if (predominantStyle == 'Normal Driving') {
+      styleColor = Colors.blue;
+      styleIcon = Icons.drive_eta;
+    } else if (predominantStyle == 'Aggressive Driving') {
+      styleColor = Colors.red;
+      styleIcon = Icons.warning;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle("Analisis Gaya Berkendara (Fuzzy)"),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: styleColor.withOpacity(0.1), shape: BoxShape.circle),
+                    child: Icon(styleIcon, color: styleColor, size: 30),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Gaya Dominan", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        Text(predominantStyle, style: TextStyle(color: styleColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text("Rata-rata Skor: $avgScore", style: const TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (counts != null && counts is Map) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildFuzzyCountItem("Defensive", counts['Defensive Driving'] ?? 0, Colors.green),
+                    _buildFuzzyCountItem("Normal", counts['Normal Driving'] ?? 0, Colors.blue),
+                    _buildFuzzyCountItem("Aggressive", counts['Aggressive Driving'] ?? 0, Colors.red),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFuzzyCountItem(String label, dynamic count, Color color) {
+    return Column(
+      children: [
+        Text(count.toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      ],
     );
   }
 }
