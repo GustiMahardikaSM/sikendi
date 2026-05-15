@@ -19,7 +19,7 @@ class _DriverTrackingPageState extends State<DriverTrackingPage> {
   double _currentSpeed = 0.0;
   Timer? _timer;
   
-  final double _speedLimit = 60.0; 
+  double _speedLimit = 60.0; // ✨ SEKARANG DINAMIS
   bool _isOverspeeding = false;
 
   @override
@@ -73,6 +73,11 @@ class _DriverTrackingPageState extends State<DriverTrackingPage> {
       setState(() {
         _currentPosition = LatLng(lat!, lng!);
         _currentSpeed = speed;
+        
+        // ✨ UPDATE BATAS KECEPATAN DARI BACKEND
+        if (doc.containsKey('max_speed')) {
+          _speedLimit = (doc['max_speed'] as num).toDouble();
+        }
 
         if (_currentSpeed > _speedLimit) {
           if (!_isOverspeeding) {
