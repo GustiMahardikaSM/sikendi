@@ -1,14 +1,28 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
-class ManagerLaporanDetailPage extends StatelessWidget {
+class ManagerLaporanDetailPage extends StatefulWidget {
   final Map<String, dynamic> report;
 
   const ManagerLaporanDetailPage({super.key, required this.report});
+
+  @override
+  State<ManagerLaporanDetailPage> createState() => _ManagerLaporanDetailPageState();
+}
+
+class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
+  final GlobalKey _mapBoundaryKey = GlobalKey();
+
+  Map<String, dynamic> get report => widget.report;
 
   ImageProvider? _getImageProvider(String? fotoData) {
     if (fotoData == null || fotoData.isEmpty) return null;
@@ -37,6 +51,13 @@ class ManagerLaporanDetailPage extends StatelessWidget {
         title: const Text("Detail Laporan Penugasan"),
         backgroundColor: Colors.blue[900],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download),
+            onPressed: () => _downloadPdf(context),
+            tooltip: "Unduh PDF",
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -280,36 +301,40 @@ class ManagerLaporanDetailPage extends StatelessWidget {
 
     final bounds = LatLngBounds.fromPoints(routePoints);
 
-    return Container(
-      height: 300,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: FlutterMap(
-          options: MapOptions(
-            initialCameraFit: CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(20)),
+    return RepaintBoundary(
+      key: _mapBoundaryKey,
+      child: Container(
+        height: 300,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: FlutterMap(
+            options: MapOptions(
+              initialCameraFit: CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(20)),
+              interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                userAgentPackageName: 'com.sikendi.app',
+              ),
+              PolylineLayer(
+                polylines: [
+                  Polyline(points: routePoints, color: Colors.blueAccent, strokeWidth: 5),
+                ],
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(point: routePoints.first, child: const Icon(Icons.location_on, color: Colors.green, size: 30)),
+                  Marker(point: routePoints.last, child: const Icon(Icons.location_on, color: Colors.red, size: 30)),
+                ],
+              ),
+            ],
           ),
-          children: [
-            TileLayer(
-              urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-              userAgentPackageName: 'com.sikendi.app',
-            ),
-            PolylineLayer(
-              polylines: [
-                Polyline(points: routePoints, color: Colors.blueAccent, strokeWidth: 5),
-              ],
-            ),
-            MarkerLayer(
-              markers: [
-                Marker(point: routePoints.first, child: const Icon(Icons.location_on, color: Colors.green, size: 30)),
-                Marker(point: routePoints.last, child: const Icon(Icons.location_on, color: Colors.red, size: 30)),
-              ],
-            ),
-          ],
         ),
       ),
     );
@@ -401,6 +426,401 @@ class ManagerLaporanDetailPage extends StatelessWidget {
       children: [
         Text(count.toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
         Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      ],
+    );
+  }
+
+  Future<void> _downloadPdf(BuildContext context) async {
+    final pdf = pw.Document();
+
+    final fontRegular = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+    final fontItalic = await PdfGoogleFonts.robotoItalic();
+
+    final startTime = DateTime.parse(report['waktu_ambil']).toLocal();
+    final endTime = DateTime.parse(report['waktu_selesai']).toLocal();
+    final isRevoked = report['alasan_pencabutan'] != null;
+
+    // Load images
+    pw.MemoryImage? fotoAwal;
+    pw.MemoryImage? fotoAkhir;
+
+    pw.MemoryImage? _getPdfImage(String? fotoData) {
+      if (fotoData == null || fotoData.isEmpty) return null;
+      try {
+        Uint8List bytes;
+        if (fotoData.startsWith('BASE64:')) {
+          bytes = base64Decode(fotoData.substring(7));
+        } else if (fotoData.contains(',')) {
+          bytes = base64Decode(fotoData.split(',').last.replaceAll(RegExp(r'\s+'), ''));
+        } else {
+          bytes = base64Decode(fotoData.replaceAll(RegExp(r'\s+'), ''));
+        }
+        return pw.MemoryImage(bytes);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    fotoAwal = _getPdfImage(report['foto_mobil_awal']);
+    fotoAkhir = _getPdfImage(report['foto_mobil_akhir']);
+
+    // Capture Map Image
+    pw.MemoryImage? mapImage;
+    try {
+      final boundary = _mapBoundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary != null) {
+        // Reduced pixelRatio to avoid "Unable to print" due to large memory size
+        final image = await boundary.toImage(pixelRatio: 1.5);
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null) {
+          mapImage = pw.MemoryImage(byteData.buffer.asUint8List());
+        }
+      }
+    } catch (e) {
+      debugPrint("Error capturing map image: $e");
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
+        theme: pw.ThemeData.withFont(
+          base: fontRegular,
+          bold: fontBold,
+          italic: fontItalic,
+        ),
+        header: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text("SIKENDI",
+                          style: pw.TextStyle(
+                              fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                      pw.Text("Sistem Informasi Kendaraan Digital",
+                          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text("LAPORAN PENUGASAN",
+                          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                      pw.Text("ID: ${report['_id']?.toString().substring(0, 8).toUpperCase() ?? '-'}",
+                          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 10),
+              pw.Divider(thickness: 2, color: PdfColors.blue900),
+              pw.SizedBox(height: 20),
+            ],
+          );
+        },
+        footer: (pw.Context context) {
+          return pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 20),
+            child: pw.Text(
+              "Halaman ${context.pageNumber} dari ${context.pagesCount} | Dicetak pada: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}",
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey),
+            ),
+          );
+        },
+        build: (pw.Context context) {
+          return [
+            // --- HEADER INFO TABLE ---
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      _buildPdfInfoRow("Kendaraan", "${report['model']} (${report['plat']})", fontBold),
+                      _buildPdfInfoRow("Sopir", report['namaSopir'] ?? '-', fontBold),
+                      _buildPdfInfoRow("Unit Kerja", report['manager_info']?['unit'] ?? '-', fontBold),
+                    ],
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      _buildPdfStatusBadge(isRevoked ? "DICABUT" : "SELESAI", isRevoked ? PdfColors.red : PdfColors.green),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 20),
+
+            // --- STATS BAR ---
+            pw.Container(
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blue50,
+                borderRadius: pw.BorderRadius.circular(8),
+                border: pw.Border.all(color: PdfColors.blue100),
+              ),
+              padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                children: [
+                  _buildPdfStatItemCompact("Jarak", "${report['jarak_km']} km", fontBold),
+                  _buildPdfStatVerticalDivider(),
+                  _buildPdfStatItemCompact("Kec. Maks", "${report['kecepatan_maksimal']} km/h", fontBold),
+                  _buildPdfStatVerticalDivider(),
+                  _buildPdfStatItemCompact("Durasi", "${report['durasi_menit']} m", fontBold),
+                  _buildPdfStatVerticalDivider(),
+                  _buildPdfStatItemCompact("Aktif", report['waktu_aktif'] ?? '-', fontBold),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 24),
+
+            // --- FUZZY ANALYSIS CARD ---
+            if (report['predominant_driving_style'] != null) ...[
+              pw.Text("Analisis Gaya Berkendara",
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+              pw.SizedBox(height: 10),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(16),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  children: [
+                    pw.Row(
+                      children: [
+                        pw.Expanded(
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text("Gaya Dominan", style: const pw.TextStyle(color: PdfColors.grey, fontSize: 10)),
+                              pw.Text(report['predominant_driving_style'],
+                                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                              pw.Text("Rata-rata Skor: ${report['avg_fuzzy_score'] ?? '-'}",
+                                  style: const pw.TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (report['fuzzy_style_counts'] != null) ...[
+                      pw.SizedBox(height: 15),
+                      pw.Divider(color: PdfColors.grey200),
+                      pw.SizedBox(height: 10),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildPdfFuzzyCountItem("Defensive", report['fuzzy_style_counts']['Defensive Driving'] ?? 0, PdfColors.green, fontBold),
+                          _buildPdfFuzzyCountItem("Normal", report['fuzzy_style_counts']['Normal Driving'] ?? 0, PdfColors.blue, fontBold),
+                          _buildPdfFuzzyCountItem("Aggressive", report['fuzzy_style_counts']['Aggressive Driving'] ?? 0, PdfColors.red, fontBold),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 24),
+            ],
+
+            // --- ASSIGNMENT DETAILS ---
+            pw.Text("Detail Penugasan",
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+            pw.SizedBox(height: 10),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey200),
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                children: [
+                  _buildPdfDetailRowNew("Tugas", report['tugas'] ?? '-', fontBold),
+                  _buildPdfDetailRowNew("Manager", report['manager_info']?['name'] ?? '-', fontBold),
+                  _buildPdfDetailRowNew("Waktu Ambil", DateFormat('dd MMM yyyy, HH:mm').format(startTime), fontBold),
+                  _buildPdfDetailRowNew("Waktu Selesai", DateFormat('dd MMM yyyy, HH:mm').format(endTime), fontBold),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 24),
+
+            // --- PHOTOS ---
+            pw.NewPage(),
+            pw.Text("Dokumentasi Kendaraan",
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+            pw.SizedBox(height: 10),
+            pw.Row(
+              children: [
+                pw.Expanded(child: _buildPdfPhotoBoxNew("Foto Awal", fotoAwal)),
+                pw.SizedBox(width: 15),
+                pw.Expanded(child: _buildPdfPhotoBoxNew("Foto Akhir", fotoAkhir)),
+              ],
+            ),
+
+            // --- DRIVER NOTES ---
+            if (report['catatan_driver'] != null && report['catatan_driver'].toString().isNotEmpty) ...[
+              pw.SizedBox(height: 24),
+              pw.Text("Catatan Sopir",
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+              pw.SizedBox(height: 8),
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: pw.BorderRadius.circular(8)),
+                child: pw.Text(report['catatan_driver'], style: pw.TextStyle(fontStyle: pw.FontStyle.italic, fontSize: 11)),
+              ),
+            ],
+
+            pw.SizedBox(height: 24),
+            pw.NewPage(),
+            pw.Text("Riwayat Rute Perjalanan",
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+            pw.SizedBox(height: 10),
+            if (mapImage != null)
+              pw.Container(
+                width: double.infinity,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.ClipRRect(
+                  horizontalRadius: 8,
+                  verticalRadius: 8,
+                  child: pw.Image(mapImage, fit: pw.BoxFit.contain),
+                ),
+              )
+            else
+              pw.Container(
+                height: 120,
+                width: double.infinity,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: pw.BorderRadius.circular(8),
+                  color: PdfColors.grey50,
+                ),
+                child: pw.Center(
+                  child: pw.Text("Gagal memuat visualisasi rute.",
+                      style: const pw.TextStyle(color: PdfColors.grey700, fontSize: 10)),
+                ),
+              ),
+          ];
+        },
+      ),
+    );
+
+    try {
+      final bytes = await pdf.save();
+      final fileName = "${report['namaSopir'] ?? 'Laporan'}_${DateFormat('ddMMyyyy').format(endTime)}.pdf";
+      
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: fileName,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Laporan siap diunduh: $fileName")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal mengunduh PDF: ${e.toString()}")),
+        );
+      }
+    }
+  }
+
+  pw.Widget _buildPdfInfoRow(String label, String value, pw.Font fontBold) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 4),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(width: 80, child: pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700))),
+          pw.Text(": ", style: const pw.TextStyle(fontSize: 10)),
+          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: fontBold))),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStatusBadge(String text, PdfColor color) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: pw.BoxDecoration(
+        color: color,
+        borderRadius: pw.BorderRadius.circular(4),
+      ),
+      child: pw.Text(text, style: pw.TextStyle(color: PdfColors.white, fontSize: 12, fontWeight: pw.FontWeight.bold)),
+    );
+  }
+
+  pw.Widget _buildPdfStatItemCompact(String label, String value, pw.Font fontBold) {
+    return pw.Column(
+      children: [
+        pw.Text(label, style: const pw.TextStyle(fontSize: 8, color: PdfColors.blue700)),
+        pw.SizedBox(height: 2),
+        pw.Text(value, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: fontBold, color: PdfColors.blue900)),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfStatVerticalDivider() {
+    return pw.Container(width: 1, height: 20, color: PdfColors.blue200);
+  }
+
+  pw.Widget _buildPdfFuzzyCountItem(String label, dynamic count, PdfColor color, pw.Font fontBold) {
+    return pw.Column(
+      children: [
+        pw.Text(count.toString(), style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: fontBold, color: color)),
+        pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfDetailRowNew(String label, String value, pw.Font fontBold) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(width: 100, child: pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey))),
+          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: fontBold))),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfPhotoBoxNew(String label, pw.MemoryImage? image) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+        pw.SizedBox(height: 5),
+        pw.Container(
+          height: 140,
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: PdfColors.grey300),
+            borderRadius: pw.BorderRadius.circular(6),
+            color: PdfColors.grey100,
+          ),
+          child: image != null
+              ? pw.ClipRRect(
+                  horizontalRadius: 6,
+                  verticalRadius: 6,
+                  child: pw.Image(image, fit: pw.BoxFit.cover))
+              : pw.Center(child: pw.Text("N/A", style: const pw.TextStyle(fontSize: 10))),
+        ),
       ],
     );
   }
