@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:sikendi/trip_route_detail_page.dart';
 
 class ManagerLaporanDetailPage extends StatefulWidget {
   final Map<String, dynamic> report;
@@ -164,7 +165,47 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
                   const SizedBox(height: 24),
 
                   // --- MAP SECTION ---
-                  _buildSectionTitle("Riwayat Perjalanan"),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSectionTitle("Riwayat Perjalanan"),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          final List<LatLng> routePoints = [];
+                          if (report['route'] != null && report['route']['coordinates'] != null) {
+                            for (var coord in report['route']['coordinates']) {
+                              routePoints.add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
+                            }
+                          }
+                          if (routePoints.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TripRouteDetailPage(
+                                  routePoints: routePoints,
+                                  title: "Rute Perjalanan",
+                                  tripData: report,
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Data rute tidak tersedia")),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.fullscreen, size: 18),
+                        label: const Text("Lihat Fullscreen", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[900],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   _buildMapSection(),
                   const SizedBox(height: 30),

@@ -12,6 +12,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart'; 
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/constants/hierarchy.dart';
+import 'package:sikendi/trip_route_detail_page.dart';
 
 
 // ==========================================================
@@ -1580,11 +1581,49 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
           // Footer Statistics Card
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+            padding: const EdgeInsets.all(16.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildTripStat(Icons.timer_outlined, "$duration Menit", "Durasi"),
+                Expanded(
+                  child: Row(
+                    children: [
+                      _buildTripStat(Icons.timer_outlined, "$duration m", "Durasi"),
+                      const SizedBox(width: 12),
+                      _buildTripStat(Icons.route_outlined, "$distance km", "Jarak"),
+                      const SizedBox(width: 12),
+                      _buildTripStat(Icons.speed, "${trip['kecepatan_maksimal'] ?? trip['max_speed'] ?? '0'} km/h", "Kec. Maks"),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (routePoints.isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TripRouteDetailPage(
+                            routePoints: routePoints,
+                            title: "Rute - $date",
+                            tripData: trip,
+                          ),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Data rute tidak tersedia")),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.map, size: 16),
+                  label: const Text("Detail", style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[900],
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1595,11 +1634,17 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
   Widget _buildTripStat(IconData icon, String value, String label) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Colors.blue[800], size: 22),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.blue[900], size: 14),
+            const SizedBox(width: 4),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
       ],
     );
   }
