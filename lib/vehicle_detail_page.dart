@@ -3,6 +3,8 @@ import 'dart:io'; // Untuk File
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Plugin ambil gambar
+import 'package:image_cropper/image_cropper.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:sikendi/manager_map_page.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:intl/intl.dart';
@@ -78,21 +80,103 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
     }
   }
 
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Ubah Foto Kendaraan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFF0D47A1)),
+              title: const Text('Kamera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFF0D47A1)),
+              title: const Text('Galeri'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Logika Upload Gambar (Kompresi & Base64)
-  Future<void> _pickAndUploadImage() async {
+  Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 40, // Kompres kualitas agar ringan di DB
-        maxWidth: 800, // Resize lebar maksimal
+        source: source,
+        imageQuality: 50, // Kompres kualitas awal
       );
 
       if (image != null) {
+        // ✨ TAMBAHAN: FITUR CROP
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Potong Foto Kendaraan',
+              toolbarColor: Colors.blue[900],
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.ratio4x3,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
+            ),
+            IOSUiSettings(
+              title: 'Potong Foto Kendaraan',
+            ),
+          ],
+        );
+
+        if (croppedFile == null) return;
+
         setState(() => _isUploadingPhoto = true);
 
-        File imageFile = File(image.path);
-        List<int> imageBytes = await imageFile.readAsBytes();
-        String base64Image = base64Encode(imageBytes);
+        // Kompresi Tambahan menggunakan flutter_image_compress
+        final filePath = croppedFile.path;
+        final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
+        final splitted = filePath.substring(0, (lastIndex));
+        final outPath = "${splitted}_compressed.jpg";
+
+        final compressedFile = await FlutterImageCompress.compressAndGetFile(
+          filePath,
+          outPath,
+          quality: 30,
+          minWidth: 800,
+          minHeight: 600,
+        );
+
+        if (compressedFile == null) {
+          setState(() => _isUploadingPhoto = false);
+          return;
+        }
+
+        String base64Image = base64Encode(await compressedFile.readAsBytes());
+
+        // Bersihkan file sementara
+        try { File(outPath).delete(); } catch (_) {}
 
         // Tambahkan prefix agar kita tahu ini Base64
         String dataToSave = "BASE64:$base64Image";
@@ -108,7 +192,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text("Foto berhasil disimpan!"),
+                content: Text("Foto berhasil diperbarui!"),
                 backgroundColor: Colors.green,
               ),
             );
@@ -491,7 +575,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                                 ),
                               )
                             : FloatingActionButton.small(
-                                onPressed: _pickAndUploadImage,
+                                onPressed: _showImageSourceDialog,
                                 backgroundColor: Colors.white,
                                 child: const Icon(
                                   Icons.add_a_photo,

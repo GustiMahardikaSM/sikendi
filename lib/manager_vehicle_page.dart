@@ -456,9 +456,47 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
   
   bool _isLoading = false;
 
-  Future<void> _pickAndCropImage() async {
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Pilih Sumber Foto',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFF0D47A1)),
+              title: const Text('Kamera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndCropImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFF0D47A1)),
+              title: const Text('Galeri'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndCropImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndCropImage(ImageSource source) async {
     final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 50,
     );
 
@@ -722,7 +760,7 @@ class _DefineVehicleDialogState extends State<DefineVehicleDialog> {
           ),
           const Divider(height: 1),
           GestureDetector(
-            onTap: _pickAndCropImage,
+            onTap: _showImageSourceDialog,
             child: Container(
               height: 200,
               width: double.infinity,
