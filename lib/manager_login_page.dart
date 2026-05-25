@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/manager_page.dart';
 import 'package:sikendi/manager_signup_page.dart';
+import 'package:sikendi/superadmin_page.dart';
 
 
 class ManagerLoginPage extends StatefulWidget {
@@ -17,6 +18,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  Map<String, dynamic>? _loginResult;
 
   // Tema Warna Kustom
   final Color primaryColor = const Color(0xFF003366); // Navy Blue
@@ -95,11 +97,12 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
     final password = _passwordController.text;
 
     // Panggil API Node.js untuk Login Manager
-    var result = await AuthService.loginManager(email, password);
+    final result = await AuthService.loginManager(email, password);
 
     if (mounted) {
       setState(() {
         _isLoading = false;
+        _loginResult = result;
       });
 
       if (result == null) {
@@ -174,10 +177,18 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ManagerPage()),
-                );
+                final role = _loginResult?['role']?.toString().toLowerCase();
+                if (role == 'superadmin') {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SuperAdminPage()),
+                  );
+                } else {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ManagerPage()),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
@@ -232,7 +243,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withValues(alpha: 0.03),
               ),
             ),
           ),
@@ -244,7 +255,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.02),
+                color: Colors.white.withValues(alpha: 0.02),
               ),
             ),
           ),
@@ -269,7 +280,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withValues(alpha: 0.3),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
@@ -324,7 +335,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2), // Soft shadow
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 30, // Sebarannya dibuat besar agar elegan
                                 offset: const Offset(0, 15),
                               ),
@@ -429,7 +440,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: primaryColor.withOpacity(0.4),
+                                      color: primaryColor.withValues(alpha: 0.4),
                                       blurRadius: 15,
                                       offset: const Offset(0, 8),
                                     ),

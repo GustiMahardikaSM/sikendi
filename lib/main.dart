@@ -8,7 +8,8 @@ import 'package:sikendi/login_page.dart';
 import 'package:sikendi/manager_page.dart'; // Import halaman manager
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Tambahkan ini untuk defaultTargetPlatform
-import 'package:sikendi/manager_login_page.dart'; // Library UI standar Flutter (Tombol, Teks, Warna)
+import 'package:sikendi/manager_login_page.dart';
+import 'package:sikendi/superadmin_page.dart';
 import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
 import 'package:sikendi/background_service.dart'; // Import background service
@@ -155,7 +156,12 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     if (!mounted) return;
     final role = user['role']?.toString().toLowerCase();
     
-    if (role == 'manager') {
+    if (role == 'superadmin') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => SuperAdminPage(user: user)),
+      );
+    } else if (role == 'manager') {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => ManagerPage(user: user)),
