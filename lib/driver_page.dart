@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:sikendi/driver_tracking_page.dart';
 import 'package:sikendi/auth_service.dart';
-import 'package:sikendi/jadwal_sopir_page.dart';
 import 'package:sikendi/main.dart';
 import 'package:sikendi/mongodb_service.dart';
 import 'package:sikendi/profile_sopir_page.dart'; 
@@ -365,20 +364,6 @@ class _DriverPageState extends State<DriverPage> {
               );
             }
           }
-        },
-      },
-      {
-        'title': 'Jadwal Perjalanan',
-        'icon': Icons.calendar_today,
-        'color': Colors.orange,
-        'onTap': () {
-          // Mengirim email sopir untuk filter jadwal
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => JadwalSopirPage(email: widget.user['email']),
-            ),
-          );
         },
       },
       {
