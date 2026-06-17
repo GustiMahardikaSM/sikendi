@@ -74,7 +74,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Email dan password harus diisi'),
+          content: const Text('Email/No. Telepon dan password harus diisi'),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -338,11 +338,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               
                               TextField(
                                 controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
+                                keyboardType: TextInputType.text,
                                 decoration: InputDecoration(
-                                  labelText: 'Email',
-                                  hintText: 'Masukkan email Anda',
-                                  prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
+                                  labelText: 'Email atau No. Telepon',
+                                  hintText: 'Masukkan email atau no. telepon',
+                                  prefixIcon: Icon(Icons.person_outline, color: primaryColor),
                                   filled: true,
                                   fillColor: Colors.grey[50],
                                   border: OutlineInputBorder(

@@ -80,7 +80,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Email dan password harus diisi'),
+          content: const Text('Email/No. Telepon dan password harus diisi'),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -120,7 +120,7 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
       if (result.containsKey('error')) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? "Email atau Password salah."),
+            content: Text(result['message'] ?? "Email/No. Telepon atau Password salah."),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -369,11 +369,11 @@ class _ManagerLoginPageState extends State<ManagerLoginPage> with SingleTickerPr
                               // Input Email
                               TextField(
                                 controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
+                                keyboardType: TextInputType.text,
                                 decoration: InputDecoration(
-                                  labelText: 'Email',
-                                  hintText: 'Masukkan email manajer',
-                                  prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
+                                  labelText: 'Email atau No. Telepon',
+                                  hintText: 'Masukkan email atau no. telepon',
+                                  prefixIcon: Icon(Icons.person_outline, color: primaryColor),
                                   filled: true,
                                   fillColor: Colors.grey[50],
                                   border: OutlineInputBorder(
