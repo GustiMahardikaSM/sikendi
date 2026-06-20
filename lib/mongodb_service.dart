@@ -926,10 +926,16 @@ class MongoDBService {
         headers: await _getHeaders(),
       );
       if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
-        return data.cast<Map<String, dynamic>>();
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return decoded.cast<Map<String, dynamic>>();
+        }
+        debugPrint('[Alerts] Response bukan array: ${response.body.substring(0, 200)}');
+        return [];
       }
+      debugPrint('[Alerts] HTTP ${response.statusCode}: ${response.body.substring(0, 200)}');
     } catch (e) {
+      debugPrint('[Alerts] Exception: $e');
     }
     return [];
   }
