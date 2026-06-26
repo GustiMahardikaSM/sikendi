@@ -308,7 +308,11 @@ class _KendaraanDetailSheetState extends State<_KendaraanDetailSheet> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _EditKendaraanForm(
         kendaraan: widget.kendaraan,
-        onSuccess: () { widget.onRefresh(); Navigator.pop(context); },
+        onSuccess: () {
+          widget.onRefresh();
+          Navigator.pop(context); // Tutup edit form
+          Navigator.pop(context); // Tutup detail sheet
+        },
       ),
     );
   }
@@ -451,7 +455,11 @@ class _EditKendaraanFormState extends State<_EditKendaraanForm> {
       content: Text(result['message'] ?? ''),
       backgroundColor: result['success'] == true ? Colors.green : Colors.red,
     ));
-    if (result['success'] == true) widget.onSuccess();
+    // Tutup form edit setelah 1 detik (biar snackbar terlihat)
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      widget.onSuccess(); // Ini refresh + tutup edit form + tutup detail sheet
+    });
   }
 
   @override
@@ -471,6 +479,16 @@ class _EditKendaraanFormState extends State<_EditKendaraanForm> {
             TextField(
               controller: _platCtrl,
               textCapitalization: TextCapitalization.characters,
+              onChanged: (value) {
+                if (value != value.toUpperCase()) {
+                  _platCtrl.value = TextEditingValue(
+                    text: value.toUpperCase(),
+                    selection: TextSelection.fromPosition(
+                      TextPosition(offset: value.length),
+                    ),
+                  );
+                }
+              },
               decoration: const InputDecoration(
                 labelText: 'Plat Nomor *', border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.pin),
