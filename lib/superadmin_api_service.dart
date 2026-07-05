@@ -204,7 +204,7 @@ class SuperAdminApiService {
     return [];
   }
 
-  // POST /api/kendaraan (reuse endpoint manager — superadmin bypass role check)
+  // POST /api/superadmin/kendaraan
   static Future<Map<String, dynamic>> addKendaraan({
     required String plat,
     required String model,
@@ -215,7 +215,7 @@ class SuperAdminApiService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan'),
+        Uri.parse('${ApiConfig.baseUrl}/superadmin/kendaraan'),
         headers: await _getHeaders(),
         body: jsonEncode({
           'plat': plat,
@@ -227,20 +227,20 @@ class SuperAdminApiService {
         }),
       );
       final decoded = jsonDecode(response.body);
-      return {'success': response.statusCode == 200, ...decoded};
+      return {'success': response.statusCode == 201, ...decoded};
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
     }
   }
 
-  // PUT /api/kendaraan/:deviceId
+  // PUT /api/superadmin/kendaraan/:deviceId
   static Future<Map<String, dynamic>> editKendaraan(
     String deviceId,
     Map<String, dynamic> data,
   ) async {
     try {
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId'),
+        Uri.parse('${ApiConfig.baseUrl}/superadmin/kendaraan/$deviceId'),
         headers: await _getHeaders(),
         body: jsonEncode(data),
       );
@@ -251,11 +251,11 @@ class SuperAdminApiService {
     }
   }
 
-  // DELETE /api/kendaraan/:deviceId/metadata
+  // DELETE /api/superadmin/kendaraan/:deviceId/metadata
   static Future<Map<String, dynamic>> deleteKendaraan(String deviceId) async {
     try {
       final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/kendaraan/$deviceId/metadata'),
+        Uri.parse('${ApiConfig.baseUrl}/superadmin/kendaraan/$deviceId/metadata'),
         headers: await _getHeaders(),
       );
       final decoded = jsonDecode(response.body);

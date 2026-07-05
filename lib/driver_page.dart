@@ -12,6 +12,7 @@ import 'package:sikendi/driver_tugas_page.dart';
 import 'package:sikendi/driver_incoming_task_page.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:sikendi/driver_riwayat_perjalanan_page.dart';
 
 // ==========================================================
 // KELAS UTAMA HALAMAN SOPIR
@@ -376,6 +377,19 @@ class _DriverPageState extends State<DriverPage> {
             context,
             MaterialPageRoute(
               builder: (context) => ProfileSopirPage(user: widget.user),
+            ),
+          );
+        },
+      },
+      {
+        'title': 'Riwayat Perjalanan',
+        'icon': Icons.history, // Ikon history
+        'color': Colors.orange, // Warna oranye
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DriverRiwayatPerjalananPage(user: widget.user),
             ),
           );
         },

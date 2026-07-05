@@ -100,7 +100,9 @@ class _ManagerPeringatanPageState extends State<ManagerPeringatanPage> with Sing
 
   Widget _buildAlertCard(Map<String, dynamic> alert) {
     final bool isSpeed = alert['type'] == 'speed';
-    final DateTime time = DateTime.parse(alert['timestamp']).toLocal();
+    final DateTime time = alert['timestamp'] != null
+        ? DateTime.parse(alert['timestamp'].toString()).toLocal()
+        : DateTime.now();
     final String formattedTime = DateFormat('dd MMM yyyy, HH:mm').format(time);
     
     // Parse location
