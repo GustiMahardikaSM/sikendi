@@ -64,6 +64,8 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
     final email = sopir['email'] ?? '-';
     final hp = sopir['no_hp'] ?? '-';
     final status = sopir['status_akun'] ?? 'pending'; // Ambil status
+    final statusKetersediaan = sopir['status_ketersediaan'] ?? 'tersedia';
+    final bool isTersedia = statusKetersediaan == 'tersedia';
 
     // Tentukan warna dan ikon berdasarkan status
     final Color statusColor;
@@ -170,6 +172,22 @@ class _ManagerSopirPageState extends State<ManagerSopirPage> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isTersedia ? Colors.green : Colors.red).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      isTersedia ? "Tersedia" : "Tidak Tersedia",
+                      style: TextStyle(
+                        color: isTersedia ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),

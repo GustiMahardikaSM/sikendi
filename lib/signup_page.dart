@@ -13,11 +13,11 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateMixin {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  final _namaController = TextEditingController();
-  final _hpController = TextEditingController();
+  final _emailController = TextEditingController(); // controller untuk field Email
+  final _passwordController = TextEditingController(); // controller untuk field Kata Sandi
+  final _confirmPasswordController = TextEditingController(); // controller untuk field Konfirmasi Kata Sandi
+  final _namaController = TextEditingController(); // controller untuk field Nama Lengkap
+  final _hpController = TextEditingController(); // controller untuk field Nomor HP
 
   File? _imageSelfie;
   File? _imageKtp;
@@ -356,19 +356,19 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                   children: [
                                     TextField(
-                                      controller: _namaController,
-                                      decoration: _buildInputDecoration("Nama Lengkap", "Sesuai KTP", Icons.person_outline),
-                                      enabled: !_isLoading,
+                                      controller: _namaController, // penyimpan & pembaca nilai input nama
+                                      decoration: _buildInputDecoration("Nama Lengkap", "Sesuai KTP", Icons.person_outline), // label, hint, & ikon field
+                                      enabled: !_isLoading, // field terkunci saat proses submit berjalan
                                     ),
                                     TextField(
-                                      controller: _emailController,
-                                      keyboardType: TextInputType.emailAddress,
+                                      controller: _emailController, // penyimpan & pembaca nilai input email
+                                      keyboardType: TextInputType.emailAddress, // munculkan keyboard khusus email (ada tombol @)
                                       decoration: _buildInputDecoration("Email", "Email aktif", Icons.email_outlined),
                                       enabled: !_isLoading,
                                     ),
                                     TextField(
-                                      controller: _hpController,
-                                      keyboardType: TextInputType.phone,
+                                      controller: _hpController, // penyimpan & pembaca nilai input nomor HP
+                                      keyboardType: TextInputType.phone, // munculkan keyboard angka/telepon
                                       decoration: _buildInputDecoration("Nomor HP", "Contoh: 08123456789", Icons.phone_android_outlined),
                                       enabled: !_isLoading,
                                     ),

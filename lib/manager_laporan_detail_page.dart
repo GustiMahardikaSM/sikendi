@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:http/http.dart' as http;
 import 'package:sikendi/trip_route_detail_page.dart';
 
 class ManagerLaporanDetailPage extends StatefulWidget {
@@ -483,12 +484,14 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
     final isRevoked = report['alasan_pencabutan'] != null;
 
     // Load images
-    pw.MemoryImage? fotoAwal;
-    pw.MemoryImage? fotoAkhir;
-
-    pw.MemoryImage? _getPdfImage(String? fotoData) {
+    Future<pw.MemoryImage?> _getPdfImage(String? fotoData) async {
       if (fotoData == null || fotoData.isEmpty) return null;
       try {
+        if (fotoData.startsWith('http')) {
+          final response = await http.get(Uri.parse(fotoData));
+          if (response.statusCode != 200) return null;
+          return pw.MemoryImage(response.bodyBytes);
+        }
         Uint8List bytes;
         if (fotoData.startsWith('BASE64:')) {
           bytes = base64Decode(fotoData.substring(7));
@@ -503,8 +506,8 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
       }
     }
 
-    fotoAwal = _getPdfImage(report['foto_mobil_awal']);
-    fotoAkhir = _getPdfImage(report['foto_mobil_akhir']);
+    final fotoAwal = await _getPdfImage(report['foto_mobil_awal']);
+    final fotoAkhir = await _getPdfImage(report['foto_mobil_akhir']);
 
     // Capture Map Image
     pw.MemoryImage? mapImage;
@@ -543,7 +546,7 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
                       pw.Text("SIKENDI",
                           style: pw.TextStyle(
                               fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                      pw.Text("Sistem Informasi Kendaraan Digital",
+                      pw.Text("Sistem Informasi Kendaraan Dinas",
                           style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                     ],
                   ),

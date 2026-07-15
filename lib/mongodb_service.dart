@@ -860,6 +860,31 @@ class MongoDBService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateAvailability({
+    required String email,
+    required String statusKetersediaan,
+    String? alasanTidakTersedia,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/sopir/$email/update-availability'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'status_ketersediaan': statusKetersediaan,
+          if (alasanTidakTersedia != null) 'alasan_tidak_tersedia': alasanTidakTersedia,
+        }),
+      );
+      final body = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': body['message'] ?? 'Terjadi kesalahan',
+        'user': body['user'],
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server'};
+    }
+  }
+
   static Future<bool> cabutPenugasan(String deviceId, {String? alasan}) async {
     try {
       final response = await http.delete(

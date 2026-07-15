@@ -27,7 +27,7 @@ class _ManagerPeringatanPageState extends State<ManagerPeringatanPage> with Sing
 
   Future<void> _loadAlerts() async {
     setState(() => _isLoading = true);
-    final data = await MongoDBService.getGeofencingAlerts();
+    final data = await MongoDBService.getGeofencingAlerts(); // Mengambil data dari MongoDB untuk pelanggaran geofencing
     if (mounted) {
       setState(() {
         _alerts = data;

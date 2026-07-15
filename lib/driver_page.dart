@@ -32,10 +32,15 @@ class _DriverPageState extends State<DriverPage> {
   String? _activeDeviceId;
   Timer? _refreshTimer;
 
+  // Status ketersediaan sopir (terpisah dari status tugas saat ini)
+  late String _statusKetersediaan;
+  bool _isUpdatingAvailability = false;
+
   @override
   void initState() {
     super.initState();
     _checkCurrentTask();
+    _statusKetersediaan = widget.user['status_ketersediaan'] ?? 'tersedia';
     // Refresh otomatis setiap 10 detik
     _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkCurrentTask();
@@ -52,7 +57,7 @@ class _DriverPageState extends State<DriverPage> {
   Future<void> _checkCurrentTask() async {
     final nama = widget.user['nama'] ?? widget.user['nama_lengkap'];
     if (nama != null) {
-      final tugas = await MongoDBService.getTugasSekarang(nama);
+      final tugas = await MongoDBService.getTugasSekarang(nama); // Ambil tugas saat ini
       if (mounted) {
         if (tugas == null) {
           setState(() {
@@ -94,6 +99,83 @@ class _DriverPageState extends State<DriverPage> {
         }
       }
     }
+  }
+
+  Future<void> _submitAvailability(String statusBaru, {String? alasan}) async {
+    setState(() {
+      _isUpdatingAvailability = true;
+    });
+
+    final result = await MongoDBService.updateAvailability(
+      email: widget.user['email'],
+      statusKetersediaan: statusBaru,
+      alasanTidakTersedia: statusBaru == 'tidak_tersedia' ? alasan : null,
+    );
+
+    setState(() {
+      _isUpdatingAvailability = false;
+      if (result['success'] == true) {
+        final updatedUser = result['user'];
+        _statusKetersediaan = updatedUser?['status_ketersediaan'] ?? statusBaru;
+        widget.user['status_ketersediaan'] = _statusKetersediaan;
+        widget.user['alasan_tidak_tersedia'] = updatedUser?['alasan_tidak_tersedia'];
+      }
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: result['success'] == true ? Colors.green : Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showTidakTersediaDialog() {
+    final alasanController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Tidak Menerima Penugasan"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Masukkan alasan (wajib diisi):"),
+            const SizedBox(height: 8),
+            TextField(
+              controller: alasanController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: "Contoh: Cuti, sakit, dll.",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              if (alasanController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text("Alasan wajib diisi"), backgroundColor: Colors.red),
+                );
+                return;
+              }
+              Navigator.of(ctx).pop();
+              _submitAvailability('tidak_tersedia', alasan: alasanController.text.trim());
+            },
+            child: const Text("Simpan", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showFinishTaskConfirmation() {
@@ -298,7 +380,7 @@ class _DriverPageState extends State<DriverPage> {
               
               if (mounted) {
                 Navigator.pop(context); // Tutup dialog loading
-                Navigator.pushAndRemoveUntil(
+                Navigator.pushAndRemoveUntil( // Pindah ke halaman login
                   context,
                   MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
                   (route) => false,
@@ -341,7 +423,7 @@ class _DriverPageState extends State<DriverPage> {
             barrierDismissible: false,
             builder: (context) => const Center(child: CircularProgressIndicator()),
           );
-
+          // --- CEK APAKAH ADA TUGAS PENDING ---
           final namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'];
           String? idMobilDipinjam;
 
@@ -353,7 +435,7 @@ class _DriverPageState extends State<DriverPage> {
           }
 
           if (context.mounted) Navigator.pop(context); // Tutup loading
-
+        // TRACKING MOBIL TERTENTU
           if (idMobilDipinjam != null && idMobilDipinjam.isNotEmpty) {
             if (context.mounted) {
               Navigator.push(context, MaterialPageRoute(builder: (context) => DriverTrackingPage(deviceId: idMobilDipinjam!)));
@@ -475,6 +557,49 @@ class _DriverPageState extends State<DriverPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 10),
+                      // --- STATUS KETERSEDIAAN SOPIR ---
+                      const Text(
+                        "Ketersediaan:",
+                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          GestureDetector(
+                            onTap: _isUpdatingAvailability || _statusKetersediaan == 'tersedia'
+                                ? null
+                                : () => _submitAvailability('tersedia'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _statusKetersediaan == 'tersedia' ? Colors.green : Colors.white24,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text(
+                                "Tersedia",
+                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _isUpdatingAvailability ? null : _showTidakTersediaDialog,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _statusKetersediaan == 'tidak_tersedia' ? Colors.red : Colors.white24,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text(
+                                "Tidak Menerima Penugasan",
+                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

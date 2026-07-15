@@ -161,6 +161,7 @@ class _ManagerPenugasanPageState extends State<ManagerPenugasanPage> {
                   itemCount: data.length,
                   itemBuilder: (context, index) {
                     final item = data[index];
+                    final bool isTersedia = (item['status_ketersediaan'] ?? 'tersedia') == 'tersedia';
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
                       elevation: 2,
@@ -190,13 +191,13 @@ class _ManagerPenugasanPageState extends State<ManagerPenugasanPage> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.1),
+                                color: (isTersedia ? Colors.green : Colors.red).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text(
-                                "Tersedia",
+                              child: Text(
+                                isTersedia ? "Tersedia" : "Tidak Tersedia",
                                 style: TextStyle(
-                                    color: Colors.green,
+                                    color: isTersedia ? Colors.green : Colors.red,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold),
                               ),
@@ -205,15 +206,15 @@ class _ManagerPenugasanPageState extends State<ManagerPenugasanPage> {
                         ),
                         trailing: ElevatedButton.icon(
                           icon: const Icon(Icons.assignment, size: 16),
-                          label: const Text("Tugaskan"),
+                          label: Text(isTersedia ? "Tugaskan" : "Tidak Tersedia"),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[800],
+                            backgroundColor: isTersedia ? Colors.blue[800] : Colors.grey[400],
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8)),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
-                          onPressed: () => _navigateToPilihKendaraan(item),
+                          onPressed: isTersedia ? () => _navigateToPilihKendaraan(item) : null,
                         ),
                       ),
                     );

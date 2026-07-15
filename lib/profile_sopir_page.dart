@@ -27,6 +27,12 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
   Map<String, dynamic>? _kendaraanSaatIni;
   bool _isLoading = false;
 
+  // Status ketersediaan sopir
+  late String _statusKetersediaan;
+  String? _alasanTidakTersedia;
+  bool _isUpdatingAvailability = false;
+  final TextEditingController _alasanController = TextEditingController();
+
   final ImagePicker _picker = ImagePicker();
   late Future<List<Map<String, dynamic>>> _tripHistoryFuture;
 
@@ -125,6 +131,57 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
     _loadData(); // Memanggil fungsi ambil data saat halaman pertama kali dibuka
     String namaSopir = widget.user['nama'] ?? widget.user['nama_lengkap'] ?? '';
     _tripHistoryFuture = MongoDBService.getTripHistoryBySopir(namaSopir);
+    _statusKetersediaan = widget.user['status_ketersediaan'] ?? 'tersedia';
+    _alasanTidakTersedia = widget.user['alasan_tidak_tersedia'];
+    _alasanController.text = _alasanTidakTersedia ?? '';
+  }
+
+  @override
+  void dispose() {
+    _alasanController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitAvailability(String statusBaru) async {
+    if (statusBaru == 'tidak_tersedia' && _alasanController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Alasan wajib diisi"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() {
+      _isUpdatingAvailability = true;
+    });
+
+    final result = await MongoDBService.updateAvailability(
+      email: widget.user['email'],
+      statusKetersediaan: statusBaru,
+      alasanTidakTersedia: statusBaru == 'tidak_tersedia' ? _alasanController.text.trim() : null,
+    );
+
+    setState(() {
+      _isUpdatingAvailability = false;
+      if (result['success'] == true) {
+        final updatedUser = result['user'];
+        _statusKetersediaan = updatedUser?['status_ketersediaan'] ?? statusBaru;
+        _alasanTidakTersedia = updatedUser?['alasan_tidak_tersedia'];
+        widget.user['status_ketersediaan'] = _statusKetersediaan;
+        widget.user['alasan_tidak_tersedia'] = _alasanTidakTersedia;
+        if (_statusKetersediaan == 'tersedia') {
+          _alasanController.clear();
+        }
+      }
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: result['success'] == true ? Colors.green : Colors.red,
+        ),
+      );
+    }
   }
 
   // Fungsi untuk mengambil status kendaraan dari database
@@ -297,6 +354,12 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
                 ),
                 const SizedBox(height: 20),
 
+                // ==========================================
+                // BAGIAN 3.1: STATUS KETERSEDIAAN SOPIR
+                // ==========================================
+                _buildAvailabilityCard(),
+                const SizedBox(height: 20),
+
                 // ==========================================================
                 // BAGIAN 4: RIWAYAT PERJALANAN (TRIP HISTORY)
                 // ==========================================================
@@ -309,6 +372,91 @@ class _ProfileSopirPageState extends State<ProfileSopirPage> {
               ],
             ),
           ),
+    );
+  }
+
+  // ==========================================================
+  // WIDGET STATUS KETERSEDIAAN SOPIR
+  // ==========================================================
+  Widget _buildAvailabilityCard() {
+    final bool isTersedia = _statusKetersediaan == 'tersedia';
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Status Ketersediaan",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isUpdatingAvailability || isTersedia
+                        ? null
+                        : () => _submitAvailability('tersedia'),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: isTersedia ? Colors.green : null,
+                      foregroundColor: isTersedia ? Colors.white : Colors.green,
+                      side: const BorderSide(color: Colors.green),
+                    ),
+                    child: const Text("Tersedia"),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isUpdatingAvailability
+                        ? null
+                        : () => setState(() => _statusKetersediaan = 'tidak_tersedia'),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: !isTersedia ? Colors.red : null,
+                      foregroundColor: !isTersedia ? Colors.white : Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                    child: const Text("Tidak Menerima Penugasan"),
+                  ),
+                ),
+              ],
+            ),
+            if (!isTersedia) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: _alasanController,
+                enabled: !_isUpdatingAvailability,
+                decoration: const InputDecoration(
+                  labelText: "Alasan (wajib diisi)",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isUpdatingAvailability
+                      ? null
+                      : () => _submitAvailability('tidak_tersedia'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: _isUpdatingAvailability
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text("Simpan Status", style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

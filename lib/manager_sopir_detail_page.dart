@@ -68,6 +68,10 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
 
     if (base64String != null && base64String.isNotEmpty) {
       try {
+        // Foto sekarang bisa berupa URL bertanda-tangan (signed URL), bukan base64 langsung.
+        if (base64String.startsWith('http')) {
+          return NetworkImage(base64String);
+        }
         // Jika ada prefix "data:image/png;base64,", kita harus memotongnya
         if (base64String.contains(',')) {
           base64String = base64String.split(',').last;
@@ -94,7 +98,7 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
     // Cek apakah gambar berhasil diload
     bool hasValidImage = false;
     ImageProvider imageProvider = _getProfileImage();
-    if (imageProvider is MemoryImage) {
+    if (imageProvider is MemoryImage || imageProvider is NetworkImage) {
       hasValidImage = true;
     }
 
@@ -106,6 +110,9 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
       ? 'Sedang bertugas: $namaKendaraan ($platNomor)' 
       : 'Saat ini sedang standby';
     final Color statusColor = isBekerja ? Colors.orange : Colors.green;
+
+    final bool isTidakTersedia = widget.dataSopir['status_ketersediaan'] == 'tidak_tersedia';
+    final String alasanTidakTersedia = widget.dataSopir['alasan_tidak_tersedia'] ?? 'Tidak ada alasan yang diberikan.';
 
 
     return Scaffold(
@@ -161,6 +168,37 @@ class _ManagerSopirDetailPageState extends State<ManagerSopirDetailPage> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // --- BAGIAN STATUS KETERSEDIAAN (tampil hanya jika tidak tersedia) ---
+            if (isTidakTersedia) ...[
+              Card(
+                elevation: 4,
+                color: Colors.red[50],
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'Sopir Sedang Tidak Menerima Penugasan',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Alasan: $alasanTidakTersedia'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // --- BAGIAN STATUS PEKERJAAN ---
             Card(

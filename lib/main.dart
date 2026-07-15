@@ -100,11 +100,15 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   // Pastikan semua widget Flutter siap sebelum menjalankan kode async
   WidgetsFlutterBinding.ensureInitialized();
-  // Inisialisasi Firebase
-  await Firebase.initializeApp();
-  // Inisialisasi Background Service (Konfigurasi awal)
-  // Set background message handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // Firebase (push notification) belum dikonfigurasi untuk platform Web,
+  // jadi dilewati di web agar UI tetap bisa dijalankan tanpa setup tambahan.
+  if (!kIsWeb) {
+    // Inisialisasi Firebase
+    await Firebase.initializeApp();
+    // Inisialisasi Background Service (Konfigurasi awal)
+    // Set background message handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
 
   runApp(
     MaterialApp(
@@ -216,6 +220,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
   // Fungsi untuk setup listener dan izin FCM
   Future<void> _setupFCM() async {
+    if (kIsWeb) return; // Firebase belum dikonfigurasi untuk platform Web
     FirebaseMessaging messaging = FirebaseMessaging.instance;
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
