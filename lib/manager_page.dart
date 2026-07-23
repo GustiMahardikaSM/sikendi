@@ -12,6 +12,8 @@ import 'package:sikendi/auth_service.dart';
 import 'package:sikendi/manager_list_page.dart';
 import 'package:sikendi/manager_profile_page.dart';
 import 'package:sikendi/manager_laporan_penugasan_page.dart';
+import 'package:sikendi/chat_room_list_page.dart';
+import 'package:sikendi/chat_socket_service.dart';
 
 
 
@@ -84,6 +86,12 @@ class _ManagerPageState extends State<ManagerPage> {
       'color': Colors.teal,
       'page': () => const ManagerProfilePage(),
     },
+    {
+      'title': 'Chat Sopir',
+      'icon': Icons.chat_bubble_outline,
+      'color': Colors.redAccent,
+      'page': () => const ChatRoomListPage(),
+    },
   ];
 
 
@@ -129,6 +137,7 @@ class _ManagerPageState extends State<ManagerPage> {
   void initState() {
     super.initState();
     _loadUserAndSummary();
+    ChatSocketService.instance.connect();
   }
 
   Future<void> _loadUserAndSummary() async {

@@ -13,6 +13,8 @@ import 'package:sikendi/driver_incoming_task_page.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:sikendi/driver_riwayat_perjalanan_page.dart';
+import 'package:sikendi/chat_room_list_page.dart';
+import 'package:sikendi/chat_socket_service.dart';
 
 // ==========================================================
 // KELAS UTAMA HALAMAN SOPIR
@@ -45,6 +47,7 @@ class _DriverPageState extends State<DriverPage> {
     _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkCurrentTask();
     });
+    ChatSocketService.instance.connect();
   }
 
   @override
@@ -472,6 +475,19 @@ class _DriverPageState extends State<DriverPage> {
             context,
             MaterialPageRoute(
               builder: (context) => DriverRiwayatPerjalananPage(user: widget.user),
+            ),
+          );
+        },
+      },
+      {
+        'title': 'Chat',
+        'icon': Icons.chat_bubble_outline,
+        'color': Colors.redAccent,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatRoomListPage(user: widget.user),
             ),
           );
         },

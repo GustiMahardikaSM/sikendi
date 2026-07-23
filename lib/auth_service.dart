@@ -7,6 +7,7 @@ import 'package:sikendi/api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:sikendi/mongodb_service.dart';
+import 'package:sikendi/chat_socket_service.dart';
 
 class AuthService {
 
@@ -45,6 +46,7 @@ class AuthService {
     // 2. HAPUS DATA LOKAL SEGERA (Agar Auto-Login tidak memicu navigasi balik)
     await storage.delete(key: 'jwt_token');
     await storage.delete(key: 'nama_sopir');
+    ChatSocketService.instance.disconnect();
 
     // 3. Bersihkan token di server jika data user tersedia
     if (user != null && user['email'] != null) {

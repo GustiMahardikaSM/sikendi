@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sikendi/api_config.dart';
 import 'package:sikendi/models/kegiatan_sopir.dart';
+import 'package:sikendi/models/chat_room.dart';
+import 'package:sikendi/models/chat_message.dart';
 import 'package:sikendi/auth_service.dart';
 
 // TODO: Ganti nama file ini menjadi 'api_service.dart' atau nama lain yang lebih sesuai
@@ -963,5 +965,94 @@ class MongoDBService {
       debugPrint('[Alerts] Exception: $e');
     }
     return [];
+  }
+
+  // =================================================================
+  // BAGIAN CHAT SOPIR <-> MANAGER
+  // =================================================================
+
+  static Future<List<ChatRoom>> getChatRooms() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/chat/rooms'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((e) => ChatRoom.fromJson(e)).toList();
+      }
+    } catch (e) {
+      debugPrint('[Chat] getChatRooms exception: $e');
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>> getChatMessages(
+    String roomId, {
+    String? before,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/chat/rooms/${Uri.encodeComponent(roomId)}/messages',
+      ).replace(queryParameters: before != null ? {'before': before} : null);
+      final response = await http.get(uri, headers: await _getHeaders());
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'messages': data.map((e) => ChatMessage.fromJson(e)).toList(),
+        };
+      }
+      final decoded = jsonDecode(response.body);
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': decoded['message'] ?? 'Gagal memuat pesan',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal terhubung ke server'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendChatMessage(
+    String roomId, {
+    String? text,
+    String? fotoBase64,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/chat/rooms/${Uri.encodeComponent(roomId)}/messages',
+        ),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          if (text != null && text.isNotEmpty) 'text': text,
+          if (fotoBase64 != null) 'foto_base64': fotoBase64,
+        }),
+      );
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        return {'success': true, 'message': ChatMessage.fromJson(decoded)};
+      }
+      return {
+        'success': false,
+        'error': decoded['message'] ?? 'Gagal mengirim pesan',
+      };
+    } catch (e) {
+      return {'success': false, 'error': 'Gagal terhubung ke server'};
+    }
+  }
+
+  static Future<void> markChatRoomRead(String roomId) async {
+    try {
+      await http.post(
+        Uri.parse(
+          '${ApiConfig.baseUrl}/chat/rooms/${Uri.encodeComponent(roomId)}/read',
+        ),
+        headers: await _getHeaders(),
+      );
+    } catch (e) {
+      // no-op
+    }
   }
 }

@@ -138,6 +138,8 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
                   _buildDetailRow(Icons.access_time, "Waktu Ambil", DateFormat('dd MMM yyyy, HH:mm').format(startTime)),
                   _buildDetailRow(Icons.event_available, "Waktu Selesai", DateFormat('dd MMM yyyy, HH:mm').format(endTime)),
 
+                  _buildChatLogSection(),
+
                   const SizedBox(height: 24),
 
                   // --- PHOTO SECTION ---
@@ -273,6 +275,89 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> get _chatLog {
+    final raw = report['chat_log'];
+    if (raw is List) return raw.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    return [];
+  }
+
+  Widget _buildChatLogSection() {
+    final chatLog = _chatLog;
+    if (chatLog.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle("Riwayat Chat"),
+          const SizedBox(height: 12),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 320),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: chatLog.length,
+              itemBuilder: (context, index) => _buildChatLogBubble(chatLog[index]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatLogBubble(Map<String, dynamic> msg) {
+    final isSopir = msg['sender_role'] == 'sopir';
+    final roleLabel = isSopir ? 'Sopir' : 'Manager';
+    final senderNama = msg['sender_nama'] ?? roleLabel;
+    final text = msg['text'] as String?;
+    final image = _getImageProvider(msg['foto'] as String?);
+    DateTime? createdAt;
+    if (msg['created_at'] != null) {
+      createdAt = DateTime.tryParse(msg['created_at'].toString())?.toLocal();
+    }
+
+    return Align(
+      alignment: isSopir ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        constraints: const BoxConstraints(maxWidth: 320),
+        decoration: BoxDecoration(
+          color: isSopir ? Colors.white : Colors.blue[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSopir ? Colors.grey[300]! : Colors.blue[100]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$senderNama ($roleLabel)',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+            ),
+            if (image != null) ...[
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image(image: image, fit: BoxFit.contain),
+              ),
+            ],
+            if (text != null && text.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(text, style: const TextStyle(fontSize: 13)),
+            ],
+            const SizedBox(height: 4),
+            Text(
+              createdAt != null ? DateFormat('dd MMM yyyy, HH:mm').format(createdAt) : '',
+              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -508,6 +593,12 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
 
     final fotoAwal = await _getPdfImage(report['foto_mobil_awal']);
     final fotoAkhir = await _getPdfImage(report['foto_mobil_akhir']);
+
+    final chatLog = _chatLog;
+    final List<pw.MemoryImage?> chatImages = [];
+    for (final msg in chatLog) {
+      chatImages.add(await _getPdfImage(msg['foto'] as String?));
+    }
 
     // Capture Map Image
     pw.MemoryImage? mapImage;
@@ -758,6 +849,18 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
                       style: const pw.TextStyle(color: PdfColors.grey700, fontSize: 10)),
                 ),
               ),
+
+            // --- CHAT LOG ---
+            if (chatLog.isNotEmpty) ...[
+              pw.NewPage(),
+              pw.Text("Riwayat Chat",
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+              pw.SizedBox(height: 10),
+              ...List.generate(
+                chatLog.length,
+                (i) => _buildPdfChatBubble(chatLog[i], chatImages[i], fontBold),
+              ),
+            ],
           ];
         },
       ),
@@ -840,6 +943,55 @@ class _ManagerLaporanDetailPageState extends State<ManagerLaporanDetailPage> {
         children: [
           pw.SizedBox(width: 100, child: pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey))),
           pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: fontBold))),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfChatBubble(Map<String, dynamic> msg, pw.MemoryImage? image, pw.Font fontBold) {
+    final isSopir = msg['sender_role'] == 'sopir';
+    final roleLabel = isSopir ? 'Sopir' : 'Manager';
+    final senderNama = msg['sender_nama'] ?? roleLabel;
+    final text = msg['text'] as String?;
+    DateTime? createdAt;
+    if (msg['created_at'] != null) {
+      createdAt = DateTime.tryParse(msg['created_at'].toString())?.toLocal();
+    }
+
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 10),
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(8),
+        color: isSopir ? PdfColors.white : PdfColors.blue50,
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('$senderNama ($roleLabel)',
+                  style: pw.TextStyle(
+                      fontSize: 9, fontWeight: pw.FontWeight.bold, font: fontBold, color: PdfColors.blue900)),
+              if (createdAt != null)
+                pw.Text(DateFormat('dd/MM/yyyy HH:mm').format(createdAt),
+                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+            ],
+          ),
+          if (image != null) ...[
+            pw.SizedBox(height: 6),
+            pw.ClipRRect(
+              horizontalRadius: 6,
+              verticalRadius: 6,
+              child: pw.Image(image, width: 220, fit: pw.BoxFit.contain),
+            ),
+          ],
+          if (text != null && text.isNotEmpty) ...[
+            pw.SizedBox(height: 6),
+            pw.Text(text, style: const pw.TextStyle(fontSize: 10)),
+          ],
         ],
       ),
     );
